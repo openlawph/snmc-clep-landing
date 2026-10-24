@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Our Team · SNMC Law Legal Clinic</title>
+  <meta name="description" content="Supervising attorneys and certified law student practitioners of the SNMC Law Legal Clinic.">
+
+  <!-- ===== Shared head: keep identical on every page ===== -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="assets/js/theme.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="assets/js/components.js" defer></script>
+  <script src="assets/js/components/site-header.js" defer></script>
+  <script src="assets/js/components/site-footer.js" defer></script>
+  <script src="assets/js/components/page-intro.js" defer></script>
+  <script src="assets/js/components/legal-notice.js" defer></script>
+  <script src="assets/js/components/contact-info.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" defer></script>
+  <!-- ===== /Shared head ===== -->
+</head>
+<body class="bg-cream text-ink">
+  <site-header active="team"></site-header>
+
+  <main>
+    <page-intro eyebrow="Our team" title="Supervising attorneys and certified student practitioners">
+      <p>A case is assigned only after a conflicts check and an ethics briefing. A supervising attorney of record signs off on every work product the clinic releases.</p>
+    </page-intro>
+
+    <section class="py-20 sm:py-28">
+      <!-- To add a person: copy one <article>, change the photo, name, role and description. -->
+      <div class="container-site grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <article class="group overflow-hidden rounded-md bg-paper shadow-sm ring-1 ring-black/5" data-reveal>
+          <div class="overflow-hidden"><img src="assets/img/team-basalo.jpg" alt="Atty. GM Basalo" class="aspect-[4/5] w-full object-cover transition duration-700 group-hover:scale-105"></div>
+          <div class="p-6">
+            <h2 class="text-2xl">Atty. GM Basalo</h2>
+            <p class="eyebrow mt-1">Clinical Program Director</p>
+            <p class="mt-4 text-sm leading-relaxed text-muted">Oversees case assignment, ethics screening, and student certification under Rule 138-A.</p>
+          </div>
+        </article>
+        <article class="group overflow-hidden rounded-md bg-paper shadow-sm ring-1 ring-black/5" data-reveal data-reveal-delay="100">
+          <div class="overflow-hidden"><img src="assets/img/team-sugod.jpg" alt="Atty. Maria Sugod" class="aspect-[4/5] w-full object-cover transition duration-700 group-hover:scale-105"></div>
+          <div class="p-6">
+            <h2 class="text-2xl">Atty. Maria Sugod</h2>
+            <p class="eyebrow mt-1">Supervising Attorney</p>
+            <p class="mt-4 text-sm leading-relaxed text-muted">Reviews, approves, and signs every work product released by the clinic.</p>
+          </div>
+        </article>
+        <article class="group overflow-hidden rounded-md bg-paper shadow-sm ring-1 ring-black/5" data-reveal data-reveal-delay="200">
+          <div class="overflow-hidden"><img src="assets/img/team-carlo.jpg" alt="Atty. Wae Carlo" class="aspect-[4/5] w-full object-cover transition duration-700 group-hover:scale-105"></div>
+          <div class="p-6">
+            <h2 class="text-2xl">Atty. Wae Carlo</h2>
+            <p class="eyebrow mt-1">Supervising Attorney</p>
+            <p class="mt-4 text-sm leading-relaxed text-muted">Handles labour, civil, and small claims matters.</p>
+          </div>
+        </article>
+        <article class="group overflow-hidden rounded-md bg-paper shadow-sm ring-1 ring-black/5" data-reveal data-reveal-delay="300">
+          <div class="overflow-hidden"><img src="assets/img/team-sunset.jpg" alt="Mrs. Sunset" class="aspect-[4/5] w-full object-cover transition duration-700 group-hover:scale-105"></div>
+          <div class="p-6">
+            <h2 class="text-2xl">Mrs. Sunset</h2>
+            <p class="eyebrow mt-1">Clinic Coordinator</p>
+            <p class="mt-4 text-sm leading-relaxed text-muted">Manages intake scheduling, records, and client communication.</p>
+          </div>
+        </article>
+      </div>
+
+      <div class="container-site mt-16">
+        <article class="grid gap-8 rounded-md bg-ink p-8 text-white sm:p-12 lg:grid-cols-[1fr_2fr]" data-reveal>
+          <h2 class="text-3xl sm:text-4xl">Law student practitioners</h2>
+          <div class="space-y-4 leading-relaxed text-white/80">
+            <p>Level 1 certified students interview clients, conduct legal research, and draft documents for attorney review. Level 2 certified students may appear in court and before quasi-judicial bodies within the limits of Rule 138-A, with the supervising attorney of record.</p>
+            <p>Every student signs a confidentiality undertaking. Client information is privileged and is never discussed outside the clinic or posted on social media.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <site-footer></site-footer>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Our Services · SNMC Law Legal Clinic</title>
+  <meta name="description" content="Legal advice, document drafting, and representation where the Rule allows — free for residents of Lapu-Lapu City.">
+
+  <!-- ===== Shared head: keep identical on every page ===== -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="assets/js/theme.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="assets/js/components.js" defer></script>
+  <script src="assets/js/components/site-header.js" defer></script>
+  <script src="assets/js/components/site-footer.js" defer></script>
+  <script src="assets/js/components/page-intro.js" defer></script>
+  <script src="assets/js/components/legal-notice.js" defer></script>
+  <script src="assets/js/components/contact-info.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" defer></script>
+  <!-- ===== /Shared head ===== -->
+</head>
+<body class="bg-cream text-ink">
+  <site-header active="services"></site-header>
+
+  <main>
+    <page-intro eyebrow="What we do" title="Advice, documents, and representation where the Rule allows"></page-intro>
+
+    <section class="py-20 sm:py-28">
+      <div class="container-site grid gap-6 lg:grid-cols-2">
+        <!-- Legal advice -->
+        <article class="card" data-reveal>
+          <p class="eyebrow">01</p>
+          <h2 class="mt-3 text-3xl">Legal advice and case assistance</h2>
+          <ul class="mt-6 space-y-3 leading-relaxed text-muted">
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span>Client counselling and a written summary of your options</li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span>Supervised written legal opinions on your situation and the governing law</li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span>Barangay mediation and conciliation preparation, including the settlement documents</li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span>DOLE, NLRC and other agency matters where student practice is allowed</li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span>Pleadings prepared and reviewed under attorney supervision</li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span>Court appearance by Level 2 practitioners where Rule 138-A permits</li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span>Referral to the Public Attorney's Office, IBP Legal Aid, or the proper agency</li>
+          </ul>
+        </article>
+
+        <!-- Documents -->
+        <article class="card" data-reveal data-reveal-delay="120">
+          <p class="eyebrow">02</p>
+          <h2 class="mt-3 text-3xl">Documents we draft</h2>
+          <ul class="mt-6 space-y-3 leading-relaxed text-muted">
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span>Affidavits: loss, desistance, two disinterested persons, sworn statements</li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span>Deeds of absolute sale and donation, and lease contracts</li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span>Special and general powers of attorney</li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span>Extrajudicial settlement of estate and deeds of partition</li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span>Promissory notes and acknowledgments of debt</li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span>Complaints, answers, position papers, petitions and motions</li>
+          </ul>
+          <legal-notice title="About notarisation" class="mt-8 block">
+            <p>Drafts are reviewed and signed off by a supervising attorney before release. Notarisation is arranged separately with an independent notary public — the clinic does not notarise the documents it prepared for its own clients.</p>
+          </legal-notice>
+        </article>
+      </div>
+
+      <!-- Outreach -->
+      <div class="container-site mt-6">
+        <article class="grid gap-8 overflow-hidden rounded-md bg-ink p-8 text-white sm:p-12 lg:grid-cols-[1fr_2fr]" data-reveal>
+          <div>
+            <p class="eyebrow">03</p>
+            <h2 class="mt-3 text-3xl sm:text-4xl">Community legal outreach</h2>
+          </div>
+          <div class="space-y-4 leading-relaxed text-white/80">
+            <p>Barangay legal education sessions on tenants' rights, labour rights, and protection from violence. Mobile legal aid days in partner barangays across Mactan. Free document drafting clinics for seniors, solo parents, and persons with disabilities.</p>
+            <p>Barangay officials and community organisations may request a session by emailing the clinic.</p>
+            <a href="mailto:legal-clinic@snmclaw.com?subject=Community%20legal%20outreach%20request" class="btn btn-primary mt-4">Request a session</a>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <site-footer></site-footer>
+</body>
+</html>

@@ -3,51 +3,195 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Coming Soon</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+  <title>SNMC Law Legal Clinic · Free legal help in Lapu-Lapu City</title>
+  <meta name="description" content="Free legal aid for the people of Lapu-Lapu City, supervised by faculty of Sto. Niño Mactan College – School of Law.">
 
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background-color: #f9fafb;
-      color: #111827;
-      text-align: center;
-    }
-
-    .container {
-      padding: 2rem;
-    }
-
-    h1 {
-      font-size: 3rem;
-      font-weight: 700;
-      letter-spacing: -0.025em;
-      margin-bottom: 0.5rem;
-    }
-
-    p {
-      font-size: 1.25rem;
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      font-weight: 500;
-    }
-  </style>
+  <!-- ===== Shared head: keep identical on every page ===== -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="assets/js/theme.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="assets/js/components.js" defer></script>
+  <script src="assets/js/components/site-header.js" defer></script>
+  <script src="assets/js/components/site-footer.js" defer></script>
+  <script src="assets/js/components/page-intro.js" defer></script>
+  <script src="assets/js/components/legal-notice.js" defer></script>
+  <script src="assets/js/components/contact-info.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" defer></script>
+  <!-- ===== /Shared head ===== -->
 </head>
-<body>
+<body class="bg-ink text-ink">
+  <site-header active="home"></site-header>
 
-  <div class="container">
-    <h1>snmclaw.com</h1>
-    <p>Coming Soon!</p>
-  </div>
+  <main>
+    <!-- Hero -->
+    <section class="relative isolate flex min-h-[calc(100svh-4rem)] items-center overflow-hidden bg-night text-white">
+      <img src="assets/img/hero.jpg" alt="" class="absolute inset-0 -z-10 size-full object-cover object-right">
+      <div aria-hidden="true" class="absolute inset-0 -z-10 bg-gradient-to-r from-night via-night/80 to-night/10"></div>
+      <div class="container-site py-24">
+        <p class="font-display text-lg text-white/85 sm:text-xl" data-reveal>Free legal aid, supervised by faculty</p>
+        <h1 class="mt-4 max-w-2xl text-5xl leading-[1.05] sm:text-6xl lg:text-7xl" data-reveal data-reveal-delay="100">
+          Free legal help for the people of <span class="whitespace-nowrap">Lapu-Lapu</span> City.
+        </h1>
+        <div class="mt-10 flex flex-wrap gap-4" data-reveal data-reveal-delay="200">
+          <a href="book.html" class="btn btn-primary">Book an appointment</a>
+          <a href="#how-it-works" class="btn btn-ghost text-white hover:bg-white/10">How it works</a>
+        </div>
+      </div>
+    </section>
 
+    <!-- How It Works -->
+    <section id="how-it-works" class="bg-ink py-20 text-white sm:py-28">
+      <div class="container-site">
+        <h2 class="text-4xl text-white/90 sm:text-5xl" data-reveal>How It Works</h2>
+        <div class="mt-12 grid gap-6 md:grid-cols-3">
+          <article class="group relative isolate flex min-h-[26rem] flex-col justify-end overflow-hidden rounded-md p-6" data-reveal>
+            <img src="assets/img/step-book.jpg" alt="" class="absolute inset-0 -z-10 size-full object-cover transition duration-700 group-hover:scale-105">
+            <div aria-hidden="true" class="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/50 to-black/10"></div>
+            <span class="grid size-9 place-items-center rounded-sm bg-copper text-sm font-semibold">01</span>
+            <h3 class="mt-4 text-2xl">Book a slot</h3>
+            <p class="mt-2 text-sm leading-relaxed text-white/85">Choose a consultation date online, by email, or by walking into the clinic office in Soong. Bring or send the papers about your problem: IDs, contracts, receipts, barangay records, court notices.</p>
+          </article>
+          <article class="group relative isolate flex min-h-[26rem] flex-col justify-end overflow-hidden rounded-md p-6" data-reveal data-reveal-delay="120">
+            <img src="assets/img/step-intake.jpg" alt="" class="absolute inset-0 -z-10 size-full object-cover transition duration-700 group-hover:scale-105">
+            <div aria-hidden="true" class="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/50 to-black/10"></div>
+            <span class="grid size-9 place-items-center rounded-sm bg-copper text-sm font-semibold">02</span>
+            <h3 class="mt-4 text-2xl">Intake interview</h3>
+            <p class="mt-2 text-sm leading-relaxed text-white/85">A law student practitioner interviews you, confirms your eligibility, and opens your case file. What you tell the clinic is confidential and covered by lawyer-client privilege.</p>
+          </article>
+          <article class="group relative isolate flex min-h-[26rem] flex-col justify-end overflow-hidden rounded-md p-6" data-reveal data-reveal-delay="240">
+            <img src="assets/img/step-plan.jpg" alt="" class="absolute inset-0 -z-10 size-full object-cover transition duration-700 group-hover:scale-105">
+            <div aria-hidden="true" class="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/50 to-black/10"></div>
+            <span class="grid size-9 place-items-center rounded-sm bg-copper text-sm font-semibold">03</span>
+            <h3 class="mt-4 text-2xl">Your legal plan</h3>
+            <p class="mt-2 text-sm leading-relaxed text-white/85">A supervising attorney reviews the file, then the clinic gives you written advice, the documents you need, or a referral to the right office. There is no charge at any stage.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- What We Handle -->
+    <section class="bg-white py-20 sm:py-28">
+      <div class="container-site grid items-center gap-12 lg:grid-cols-2">
+        <div data-reveal>
+          <h2 class="text-4xl sm:text-5xl">What We Handle</h2>
+          <p class="mt-5 text-lg leading-relaxed text-muted">We take the everyday legal problems families in Lapu-Lapu City actually face. We also draft the documents you need — affidavits, special powers of attorney, deeds, and pleadings — all reviewed and signed by a supervising attorney. If your matter is not on this list, book anyway and we will tell you where to go.</p>
+          <ul class="mt-8 grid gap-3 sm:grid-cols-2">
+            <li class="flex items-start gap-3"><span class="mt-2 size-1.5 shrink-0 rounded-full bg-copper"></span>Family and women's rights</li>
+            <li class="flex items-start gap-3"><span class="mt-2 size-1.5 shrink-0 rounded-full bg-copper"></span>Labor and employment claims</li>
+            <li class="flex items-start gap-3"><span class="mt-2 size-1.5 shrink-0 rounded-full bg-copper"></span>Civil, property and land disputes</li>
+            <li class="flex items-start gap-3"><span class="mt-2 size-1.5 shrink-0 rounded-full bg-copper"></span>Small claims and consumer cases</li>
+            <li class="flex items-start gap-3"><span class="mt-2 size-1.5 shrink-0 rounded-full bg-copper"></span>Barangay conciliation</li>
+            <li class="flex items-start gap-3"><span class="mt-2 size-1.5 shrink-0 rounded-full bg-copper"></span>Criminal case assistance</li>
+          </ul>
+          <a href="services.html" class="mt-10 inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-copper-dark hover:text-copper">See all services <span aria-hidden="true">→</span></a>
+        </div>
+        <img src="assets/img/law-books.jpg" alt="Shelves of bound law case reports" class="aspect-[4/3] w-full rounded-md object-cover shadow-xl" data-reveal data-reveal-delay="150">
+      </div>
+    </section>
+
+    <!-- Our Team -->
+    <section class="bg-ink py-20 text-white sm:py-28">
+      <div class="container-site">
+        <div class="flex flex-wrap items-end justify-between gap-4" data-reveal>
+          <h2 class="text-4xl text-white/90 sm:text-5xl">Our Team</h2>
+          <a href="team.html" class="text-sm font-semibold uppercase tracking-wider text-rose hover:text-white">Meet the full team →</a>
+        </div>
+        <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <figure class="group overflow-hidden rounded-md bg-white/5" data-reveal>
+            <img src="assets/img/team-sugod.jpg" alt="Atty. Maria Sugod" class="aspect-[4/5] w-full object-cover transition duration-700 group-hover:scale-105">
+            <figcaption class="p-5"><p class="font-display text-xl">Atty. Maria Sugod</p><p class="text-sm text-white/60">Supervising Attorney</p></figcaption>
+          </figure>
+          <figure class="group overflow-hidden rounded-md bg-white/5" data-reveal data-reveal-delay="120">
+            <img src="assets/img/team-basalo.jpg" alt="Atty. GM Basalo" class="aspect-[4/5] w-full object-cover transition duration-700 group-hover:scale-105">
+            <figcaption class="p-5"><p class="font-display text-xl">Atty. GM Basalo</p><p class="text-sm text-white/60">Clinical Program Director</p></figcaption>
+          </figure>
+          <figure class="group overflow-hidden rounded-md bg-white/5" data-reveal data-reveal-delay="240">
+            <img src="assets/img/team-carlo.jpg" alt="Atty. Wae Carlo" class="aspect-[4/5] w-full object-cover transition duration-700 group-hover:scale-105">
+            <figcaption class="p-5"><p class="font-display text-xl">Atty. Wae Carlo</p><p class="text-sm text-white/60">Supervising Attorney</p></figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- Supervising Attorney -->
+    <section class="relative isolate overflow-hidden bg-ink py-20 text-white sm:py-28">
+      <img src="assets/img/supervising-bg.jpg" alt="" class="absolute inset-0 -z-10 size-full object-cover opacity-25 blur-sm">
+      <div class="container-site">
+        <h2 class="text-4xl text-white/90 sm:text-5xl" data-reveal>Supervising<br>Attorney</h2>
+        <div class="mt-12 grid overflow-hidden rounded-md shadow-2xl md:grid-cols-[2fr_3fr] lg:mx-16" data-reveal>
+          <img src="assets/img/team-basalo.jpg" alt="Atty. GM Basalo" class="h-full min-h-80 w-full object-cover">
+          <div class="bg-brown p-8 sm:p-10">
+            <h3 class="text-3xl">Atty. GM BASALO</h3>
+            <p class="mt-1 text-xs font-bold uppercase tracking-[0.15em]">Clinical Program Director</p>
+            <p class="mt-6 leading-relaxed text-white/90">Every case is handled by certified law student practitioners under Rule 138-A, the Revised Law Student Practice Rule, with a supervising attorney who reviews and signs off on all work before it is released. Level 1 practitioners interview clients, conduct legal research, and draft documents. Level 2 practitioners may appear before courts and quasi-judicial bodies within the limits of the Rule. Every student signs a confidentiality undertaking.</p>
+            <contact-info variant="inline" class="mt-8 block"></contact-info>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Who We Can Help -->
+    <section class="bg-amber py-20 sm:py-28">
+      <div class="container-site">
+        <div class="max-w-2xl" data-reveal>
+          <h2 class="text-4xl text-night sm:text-5xl">Who We Can Help</h2>
+          <p class="mt-3 text-lg text-night/75">Eligibility is confirmed at intake, free of charge</p>
+        </div>
+        <div class="mt-12 grid gap-px overflow-hidden rounded-md bg-white/15 shadow-2xl md:grid-cols-3" data-reveal>
+          <div class="bg-brown p-8 text-white">
+            <p class="eyebrow text-rose">01</p>
+            <h3 class="mt-3 text-2xl">Who qualifies</h3>
+            <p class="mt-4 leading-relaxed text-white/85">Residents of Lapu-Lapu City and the Mactan island barangays who cannot afford private counsel, with household income within the clinic's indigency threshold, following Public Attorney's Office standards.</p>
+          </div>
+          <div class="bg-brown p-8 text-white">
+            <p class="eyebrow text-rose">02</p>
+            <h3 class="mt-3 text-2xl">What we can take</h3>
+            <p class="mt-4 leading-relaxed text-white/85">Matters within our practice areas and within the scope of law student practice, where there is no conflict of interest with an existing clinic client and you are not already represented by another lawyer.</p>
+          </div>
+          <div class="bg-brown p-8 text-white">
+            <p class="eyebrow text-rose">03</p>
+            <h3 class="mt-3 text-2xl">What we cannot take</h3>
+            <p class="mt-4 leading-relaxed text-white/85">Cases already handled by another lawyer, and matters needing court action beyond the scope of student practice. Not sure whether you qualify? Book anyway. Screening costs nothing and we will point you to the right office.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Important Notice -->
+    <section class="relative isolate overflow-hidden bg-night py-24 text-white sm:py-32">
+      <img src="assets/img/gavel.jpg" alt="" class="absolute inset-0 -z-10 size-full object-cover">
+      <div aria-hidden="true" class="absolute inset-0 -z-10 bg-gradient-to-r from-night via-night/90 to-night/40"></div>
+      <div class="container-site" data-reveal>
+        <p class="eyebrow text-rose">Important notice</p>
+        <div class="mt-5 max-w-3xl space-y-4 font-display text-xl leading-relaxed text-white/90 sm:text-2xl">
+          <p>What you tell the clinic is confidential and is protected by the lawyer-client privilege as applied under the Code of Professional Responsibility and Accountability.</p>
+        </div>
+        <div class="mt-6 max-w-3xl space-y-4 leading-relaxed text-white/75">
+          <p>Booking a consultation does not by itself create a lawyer-client relationship; that relationship begins only when the clinic formally accepts your case in writing. The clinic charges no fees at any stage. If anyone asks you for payment in the clinic's name, report it to the Clinical Program Director immediately.</p>
+          <p>Law student practitioners act only under Rule 138-A, the Revised Law Student Practice Rule, and under the direct supervision of a licensed supervising attorney.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Book a Visit -->
+    <section id="visit" class="bg-ink py-20 text-white sm:py-28">
+      <div class="container-site grid gap-12 lg:grid-cols-[3fr_2fr]">
+        <div class="min-h-80 overflow-hidden rounded-md bg-night" data-reveal>
+          <iframe title="Map to Sto. Niño Mactan College – School of Law"
+                  src="https://maps.google.com/maps?q=Sto.%20Ni%C3%B1o%20Mactan%20College%2C%20Soong%2C%20Lapu-Lapu%20City&z=15&output=embed"
+                  class="size-full min-h-80 grayscale invert-[.9] hue-rotate-180" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </div>
+        <div data-reveal data-reveal-delay="120">
+          <h2 class="text-4xl sm:text-5xl">Book a Visit</h2>
+          <contact-info class="mt-10 block"></contact-info>
+          <a href="book.html" class="btn btn-primary mt-10">Book an appointment</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <site-footer></site-footer>
 </body>
 </html>
