@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en" data-auth-required><!-- protected: only signed-in, verified staff (see assets/js/auth.js) -->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Users · SNMC Law Legal Clinic</title>
+  <meta name="robots" content="noindex, nofollow"><!-- staff page: keep it out of search results -->
+
+  <!-- ===== Shared head: keep identical on every page ===== -->
+  <link rel="icon" type="image/png" href="assets/img/snmc-legal-aid-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="assets/js/theme.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="assets/js/components.js" defer></script>
+  <script src="assets/js/components/site-header.js" defer></script>
+  <script src="assets/js/components/site-footer.js" defer></script>
+  <script src="assets/js/components/page-intro.js" defer></script>
+  <script src="assets/js/components/legal-notice.js" defer></script>
+  <script src="assets/js/components/contact-info.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.28.1/dist/pocketbase.umd.js"></script><!-- page-specific: PocketBase SDK -->
+  <script src="assets/js/auth.js"></script><!-- page-specific: checks the session before showing the page -->
+  <script src="assets/js/components/dashboard-sidebar.js" defer></script><!-- page-specific: staff sidebar -->
+  <script src="assets/js/users.js" defer></script><!-- page-specific, must come before Alpine -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" defer></script>
+  <!-- ===== /Shared head ===== -->
+</head>
+<body x-data="users" class="bg-cream text-ink">
+  <dashboard-sidebar active="users"></dashboard-sidebar>
+
+  <div class="lg:pl-64">
+    <header class="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-black/10 bg-cream/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+      <button type="button" class="-ml-2 rounded-sm p-2 lg:hidden" @click="$dispatch('open-sidebar')" aria-label="Open menu">
+        <svg class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <h1 class="text-2xl">Users</h1>
+      <button type="button" x-show="isAdmin" x-cloak class="btn btn-primary ml-auto px-4 py-2" @click="openCreate()">
+        <svg class="size-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        New user
+      </button>
+    </header>
+
+    <main class="space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+
+      <!-- Not an admin: explain why only one row shows -->
+      <p x-show="!isAdmin" x-cloak class="rounded-md bg-paper px-5 py-4 text-sm leading-relaxed text-muted ring-1 ring-black/5">
+        You can see and edit your own account here. Only admins can add, change or remove other users.
+      </p>
+
+      <section class="rounded-md bg-paper shadow-sm ring-1 ring-black/5" aria-labelledby="users-title">
+        <div class="flex flex-col gap-4 border-b border-black/10 p-5 sm:p-6">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="users-title" class="text-2xl">Accounts</h2>
+            <p class="text-sm text-muted">Staff who can sign in to this dashboard</p>
+          </div>
+
+          <!-- Controls -->
+          <div class="grid gap-3 sm:grid-cols-2" :class="isAdmin ? 'lg:grid-cols-[2fr_1fr_1fr_auto]' : 'lg:grid-cols-[2fr_1fr_auto]'">
+            <label class="relative block">
+              <span class="sr-only">Search users</span>
+              <svg class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input type="search" x-model.debounce.300ms="search" placeholder="Search name or email…" class="field pl-9">
+            </label>
+            <label>
+              <span class="sr-only">Filter by email status</span>
+              <select x-model="verifiedFilter" class="field">
+                <option value="">Verified or not</option>
+                <option value="yes">Verified</option>
+                <option value="no">Not verified</option>
+              </select>
+            </label>
+            <label x-show="isAdmin">
+              <span class="sr-only">Filter by role</span>
+              <select x-model="roleFilter" class="field">
+                <option value="">All roles</option>
+                <template x-for="r in roles" :key="r.value"><option :value="r.value" x-text="r.label"></option></template>
+              </select>
+            </label>
+            <button type="button" class="btn btn-ghost py-2.5 text-ink" @click="clearFilters()"
+                    :disabled="!search && !verifiedFilter && !roleFilter">Clear</button>
+          </div>
+        </div>
+
+        <!-- Table (scrolls sideways inside the card on small screens) -->
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[720px] text-left text-sm" :aria-busy="loading">
+            <thead class="bg-cream/60 text-xs uppercase tracking-wider text-muted">
+              <tr>
+                <template x-for="col in columns" :key="col.key">
+                  <th scope="col" class="px-5 py-3 font-semibold" :aria-sort="col.sortable ? ariaSort(col.key) : null">
+                    <button x-show="col.sortable" type="button" @click="sortBy(col.key)" class="inline-flex items-center gap-1.5 uppercase tracking-wider hover:text-ink"
+                            :class="sortKey === col.key && 'text-ink'">
+                      <span x-text="col.label"></span>
+                      <svg class="size-3.5 transition" :class="sortKey !== col.key ? 'opacity-30' : (sortDir === 'desc' ? 'rotate-180' : '')"
+                           fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
+                    </button>
+                    <span x-show="!col.sortable" x-text="col.label"></span>
+                  </th>
+                </template>
+                <th scope="col" class="px-5 py-3 text-right font-semibold"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-black/5" :class="loading && rows.length && 'opacity-50'">
+              <template x-for="user in rows" :key="user.id">
+                <tr class="hover:bg-cream/50">
+                  <td class="px-5 py-3">
+                    <div class="flex items-center gap-3">
+                      <img x-show="avatarURL(user)" :src="avatarURL(user)" alt="" class="size-9 shrink-0 rounded-full object-cover">
+                      <span x-show="!avatarURL(user)" class="grid size-9 shrink-0 place-items-center rounded-full bg-copper/15 font-semibold text-copper-dark" x-text="initial(user)" aria-hidden="true"></span>
+                      <span class="min-w-0">
+                        <span class="flex items-center gap-2">
+                          <span class="truncate font-semibold" x-text="user.name || '(no name)'" :class="!user.name && 'font-normal italic text-muted'"></span>
+                          <span x-show="isSelf(user)" class="rounded-sm bg-ink/5 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted">You</span>
+                        </span>
+                        <span class="block truncate text-muted" x-text="user.email || 'Email hidden'"></span>
+                      </span>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-5 py-3">
+                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1"
+                          :class="user.role === 'admin' ? 'bg-ink text-white ring-ink' : 'bg-white text-ink ring-black/15'"
+                          x-text="roleLabel(user.role)"></span>
+                  </td>
+                  <td class="whitespace-nowrap px-5 py-3">
+                    <span x-show="user.verified" class="inline-flex rounded-full bg-emerald-600/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-600/25">Verified</span>
+                    <span x-show="!user.verified" class="inline-flex rounded-full bg-amber/15 px-2.5 py-0.5 text-xs font-semibold text-[#8a5a1c] ring-1 ring-amber/30">Not verified</span>
+                  </td>
+                  <td class="whitespace-nowrap px-5 py-3 text-muted" x-text="formatDate(user.created)"></td>
+                  <td class="whitespace-nowrap px-5 py-3 text-right">
+                    <div class="inline-flex items-center gap-1">
+                      <button x-show="isAdmin && !user.verified && user.email" type="button" @click="sendVerification(user)"
+                              class="rounded-sm px-2.5 py-1.5 font-semibold text-copper-dark hover:bg-black/5">Send link</button>
+                      <button type="button" @click="openEdit(user)" class="rounded-sm px-2.5 py-1.5 font-semibold text-ink hover:bg-black/5"
+                              :aria-label="'Edit ' + (user.name || user.email)">Edit</button>
+                      <button x-show="isAdmin && !isSelf(user)" type="button" @click="askDelete(user)"
+                              class="rounded-sm px-2.5 py-1.5 font-semibold text-red-700 hover:bg-red-50"
+                              :aria-label="'Delete ' + (user.name || user.email)">Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+
+              <tr x-show="loading && !rows.length">
+                <td :colspan="columns.length + 1" class="px-5 py-12 text-center text-muted">Loading users…</td>
+              </tr>
+              <tr x-show="!loading && loadError" x-cloak>
+                <td :colspan="columns.length + 1" class="px-5 py-12 text-center">
+                  <span class="text-red-700" x-text="loadError"></span>
+                  <button type="button" class="ml-2 font-semibold text-copper-dark hover:underline" @click="load()">Try again</button>
+                </td>
+              </tr>
+              <tr x-show="!loading && !loadError && !rows.length" x-cloak>
+                <td :colspan="columns.length + 1" class="px-5 py-12 text-center text-muted">
+                  No users match these filters.
+                  <button type="button" class="ml-1 font-semibold text-copper-dark hover:underline" @click="clearFilters()">Clear filters</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex flex-col gap-3 border-t border-black/10 px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-center gap-3 text-muted">
+            <span x-text="rangeLabel" aria-live="polite"></span>
+            <label class="flex items-center gap-2">
+              <span class="sr-only sm:not-sr-only">Rows</span>
+              <select x-model.number="perPage" class="rounded-sm border border-black/15 bg-white px-2 py-1 text-ink focus:border-copper focus:outline-none">
+                <option>10</option><option>25</option><option>50</option>
+              </select>
+            </label>
+          </div>
+          <nav class="flex items-center gap-1" aria-label="Table pages">
+            <button type="button" class="rounded-sm px-3 py-1.5 hover:bg-black/5 disabled:opacity-30 disabled:hover:bg-transparent" @click="goTo(page - 1)" :disabled="page === 1">Previous</button>
+            <template x-for="n in totalPages" :key="n">
+              <button type="button" @click="goTo(n)" :aria-current="page === n ? 'page' : null"
+                      :class="page === n ? 'bg-copper text-white' : 'hover:bg-black/5'"
+                      class="min-w-8 rounded-sm px-2 py-1.5 font-semibold" x-text="n"></button>
+            </template>
+            <button type="button" class="rounded-sm px-3 py-1.5 hover:bg-black/5 disabled:opacity-30 disabled:hover:bg-transparent" @click="goTo(page + 1)" :disabled="page === totalPages">Next</button>
+          </nav>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ================= Add / edit dialog ================= -->
+  <dialog x-ref="formDialog" aria-labelledby="form-title"
+          class="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-md bg-paper p-0 text-ink shadow-xl backdrop:bg-black/50">
+    <form @submit.prevent="save()" novalidate class="p-6 sm:p-8">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="eyebrow" x-text="editing ? (isSelf(editing) ? 'Your account' : 'Edit user') : 'New user'"></p>
+          <h2 id="form-title" class="mt-2 text-3xl" x-text="editing ? (editing.name || editing.email || 'Edit user') : 'Add a user'"></h2>
+        </div>
+        <button type="button" class="-mr-2 -mt-2 rounded-sm p-2 text-muted hover:bg-black/5 hover:text-ink" @click="closeForm()" aria-label="Close">
+          <svg class="size-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="mt-6 space-y-5">
+        <!-- Photo -->
+        <div class="flex items-center gap-4">
+          <img x-show="avatarPreview" :src="avatarPreview" alt="" class="size-16 rounded-full object-cover ring-1 ring-black/10">
+          <span x-show="!avatarPreview" class="grid size-16 place-items-center rounded-full bg-copper/15 font-display text-2xl text-copper-dark" aria-hidden="true"
+                x-text="(form.name || form.email || '?').charAt(0).toUpperCase()"></span>
+          <div class="text-sm">
+            <label class="cursor-pointer font-semibold text-copper-dark hover:underline">
+              <span x-text="avatarPreview ? 'Change photo' : 'Add photo'"></span>
+              <input type="file" x-ref="avatarInput" accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml" class="sr-only" @change="pickAvatar($event)">
+            </label>
+            <button x-show="avatarPreview" type="button" class="ml-3 text-muted hover:text-ink hover:underline" @click="clearAvatar()">Remove</button>
+            <p class="field-hint">Optional. JPG, PNG, GIF, WebP or SVG, up to 5 MB.</p>
+            <p x-show="formErrors.avatar" x-text="formErrors.avatar" class="field-error"></p>
+          </div>
+        </div>
+
+        <div>
+          <label for="u-name" class="field-label">Full name</label>
+          <input id="u-name" type="text" x-model="form.name" maxlength="255" autocomplete="off" class="field" autofocus>
+          <p x-show="formErrors.name" x-text="formErrors.name" class="field-error"></p>
+        </div>
+
+        <div>
+          <label for="u-email" class="field-label">Email</label>
+          <input id="u-email" type="email" x-model="form.email" autocomplete="off" class="field disabled:bg-cream disabled:text-muted"
+                 :disabled="editing && !canEditEmail" :aria-invalid="!!formErrors.email">
+          <p x-show="formErrors.email" x-text="formErrors.email" class="field-error"></p>
+          <p x-show="editing && !canEditEmail" class="field-hint">Ask an admin to change your email address.</p>
+        </div>
+
+        <!-- Role: admins only, and not on their own account (so nobody locks themselves out) -->
+        <div x-show="isAdmin && !(editing && isSelf(editing))">
+          <span class="field-label">Role</span>
+          <div class="flex flex-wrap gap-2">
+            <template x-for="r in roles" :key="r.value">
+              <label class="pill"><input type="radio" class="accent-copper" :value="r.value" x-model="form.role"> <span x-text="r.label"></span></label>
+            </template>
+          </div>
+          <p class="field-hint">Admins can add, edit and remove users.</p>
+          <p x-show="formErrors.role" x-text="formErrors.role" class="field-error"></p>
+        </div>
+
+        <!-- Email verification -->
+        <div x-show="!editing">
+          <span class="field-label">Email verification</span>
+          <div class="space-y-2 text-sm">
+            <label class="flex items-start gap-2"><input type="radio" class="mt-0.5 accent-copper" value="send" x-model="form.confirmEmail"> Email them a verification link (they can sign in once they open it)</label>
+            <label class="flex items-start gap-2"><input type="radio" class="mt-0.5 accent-copper" value="verified" x-model="form.confirmEmail"> Mark as verified now</label>
+          </div>
+        </div>
+        <label x-show="editing && isAdmin && !isSelf(editing)" class="flex items-start gap-2 text-sm">
+          <input type="checkbox" class="mt-0.5 accent-copper" x-model="form.verified">
+          <span><span class="font-semibold">Email verified.</span> Unverified users can't sign in to the dashboard.</span>
+        </label>
+
+        <!-- Password -->
+        <fieldset class="space-y-4 rounded-md border border-black/10 p-4">
+          <legend class="px-1 text-sm font-semibold" x-text="editing ? 'Change password (optional)' : 'Password'"></legend>
+          <div x-show="needsOldPassword">
+            <label for="u-old" class="field-label">Current password</label>
+            <input id="u-old" type="password" x-model="form.oldPassword" autocomplete="current-password" class="field" :aria-invalid="!!formErrors.oldPassword">
+            <p x-show="formErrors.oldPassword" x-text="formErrors.oldPassword" class="field-error"></p>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label for="u-pass" class="field-label" x-text="editing ? 'New password' : 'Password'"></label>
+              <input id="u-pass" type="password" x-model="form.password" autocomplete="new-password" class="field" :aria-invalid="!!formErrors.password">
+              <p x-show="formErrors.password" x-text="formErrors.password" class="field-error"></p>
+            </div>
+            <div>
+              <label for="u-pass2" class="field-label">Confirm password</label>
+              <input id="u-pass2" type="password" x-model="form.passwordConfirm" autocomplete="new-password" class="field" :aria-invalid="!!formErrors.passwordConfirm">
+              <p x-show="formErrors.passwordConfirm" x-text="formErrors.passwordConfirm" class="field-error"></p>
+            </div>
+          </div>
+          <p class="field-hint">At least 8 characters.<span x-show="editing && isSelf(editing)"> You'll stay signed in here; other devices will be signed out.</span></p>
+        </fieldset>
+      </div>
+
+      <p x-show="formError" x-text="formError" role="alert" class="field-error mt-5"></p>
+      <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button type="button" class="btn btn-ghost text-ink" @click="closeForm()">Cancel</button>
+        <button type="submit" class="btn btn-primary" :disabled="saving"
+                x-text="saving ? 'Saving…' : (editing ? 'Save changes' : 'Add user')"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ================= Delete dialog ================= -->
+  <dialog x-ref="deleteDialog" aria-labelledby="delete-title"
+          class="m-auto w-[calc(100%-2rem)] max-w-md rounded-md bg-paper p-6 text-ink shadow-xl backdrop:bg-black/50 sm:p-8">
+    <h2 id="delete-title" class="text-2xl">Delete this user?</h2>
+    <p class="mt-3 leading-relaxed text-muted">
+      <strong class="text-ink" x-text="deleteTarget?.name || deleteTarget?.email"></strong>
+      won't be able to sign in any more. This can't be undone.
+    </p>
+    <p x-show="deleteError" x-text="deleteError" role="alert" class="field-error mt-4"></p>
+    <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+      <button type="button" class="btn btn-ghost text-ink" @click="$refs.deleteDialog.close()" autofocus>Cancel</button>
+      <button type="button" class="btn bg-red-700 text-white hover:bg-red-800" :disabled="deleting" @click="confirmDelete()"
+              x-text="deleting ? 'Deleting…' : 'Delete user'"></button>
+    </div>
+  </dialog>
+
+  <!-- Toast -->
+  <div x-show="toast" x-cloak x-transition.opacity role="status" aria-live="polite"
+       class="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-md bg-ink px-5 py-3 text-sm text-white shadow-lg sm:left-auto sm:right-6 sm:mx-0"
+       x-text="toast"></div>
+</body>
+</html>

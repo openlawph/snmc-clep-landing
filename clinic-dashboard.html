@@ -21,74 +21,28 @@
   <script src="assets/js/components/contact-info.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.28.1/dist/pocketbase.umd.js"></script><!-- page-specific: PocketBase SDK -->
   <script src="assets/js/auth.js"></script><!-- page-specific: checks the session before showing the page -->
+  <script src="assets/js/components/dashboard-sidebar.js" defer></script><!-- page-specific: staff sidebar -->
   <script src="assets/js/intake.js" defer></script><!-- page-specific: INTAKE_OPTIONS (practice areas, time slots) -->
   <script src="assets/js/dashboard.js" defer></script><!-- page-specific, must come before Alpine -->
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" defer></script>
   <!-- ===== /Shared head ===== -->
 </head>
-<body x-data="dashboard" @keydown.escape.window="sidebarOpen = false" class="bg-cream text-ink">
-
-  <!-- ================= Sidebar ================= -->
-  <!-- Backdrop for the mobile drawer -->
-  <div x-show="sidebarOpen" x-cloak x-transition.opacity @click="sidebarOpen = false"
-       class="fixed inset-0 z-40 bg-black/50 lg:hidden"></div>
-
-  <aside :class="sidebarOpen && 'max-lg:translate-x-0!'"
-         class="fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-ink text-white transition-transform duration-200 max-lg:-translate-x-full">
-    <a href="#dashboard" class="flex items-center gap-3 border-b border-white/10 px-5 py-5">
-      <img src="assets/img/snmc-legal-aid-logo.png" alt="" class="h-12 w-auto">
-      <span class="leading-tight">
-        <span class="block font-display text-lg">Legal Clinic</span>
-        <span class="block text-xs uppercase tracking-[0.2em] text-rose">Dashboard</span>
-      </span>
-    </a>
-
-    <nav class="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Dashboard">
-      <template x-for="item in views" :key="item.key">
-        <a :href="'#' + item.key"
-           :aria-current="view === item.key ? 'page' : null"
-           :class="view === item.key ? 'bg-white/10 text-white' : 'text-white/65 hover:bg-white/5 hover:text-white'"
-           class="flex items-center gap-3 rounded-sm px-3 py-2.5 text-[15px] transition">
-          <svg class="size-5 shrink-0" :class="view === item.key && 'text-copper'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path :d="item.icon"/></svg>
-          <span x-text="item.label"></span>
-        </a>
-      </template>
-    </nav>
-
-    <div class="border-t border-white/10 p-3">
-      <div class="flex items-center gap-3 px-3 py-2">
-        <span class="grid size-9 shrink-0 place-items-center rounded-full bg-copper/20 font-semibold text-copper" x-text="userInitial" aria-hidden="true"></span>
-        <span class="min-w-0 leading-tight">
-          <span class="block truncate text-sm text-white" x-text="userName"></span>
-          <span class="block truncate text-xs text-white/50" x-text="user?.email"></span>
-        </span>
-      </div>
-      <button type="button" @click="Auth.signOut()"
-              class="mt-1 flex w-full items-center gap-3 rounded-sm px-3 py-2.5 text-[15px] text-white/65 transition hover:bg-white/5 hover:text-white">
-        <svg class="size-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M15 12H3"/></svg>
-        Sign out
-      </button>
-      <a href="index.html" class="flex items-center gap-2 px-3 py-2 text-xs text-white/50 hover:text-white">
-        <span aria-hidden="true">←</span> Back to public site
-      </a>
-    </div>
-  </aside>
+<body x-data="dashboard" class="bg-cream text-ink">
+  <dashboard-sidebar active="dashboard"></dashboard-sidebar>
 
   <!-- ================= Main ================= -->
   <div class="lg:pl-64">
     <header class="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-black/10 bg-cream/95 px-4 backdrop-blur sm:px-6 lg:px-8">
-      <button type="button" class="-ml-2 rounded-sm p-2 lg:hidden" @click="sidebarOpen = true"
-              :aria-expanded="sidebarOpen" aria-label="Open menu">
+      <button type="button" class="-ml-2 rounded-sm p-2 lg:hidden" @click="$dispatch('open-sidebar')" aria-label="Open menu">
         <svg class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
-      <h1 class="text-2xl" x-text="currentView.label"></h1>
+      <h1 class="text-2xl">Dashboard</h1>
       <span class="ml-auto rounded-sm bg-amber/15 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-[#8a5a1c]">Sample data</span>
     </header>
 
     <main class="px-4 py-8 sm:px-6 lg:px-8">
 
-      <!-- ---------- Dashboard view ---------- -->
-      <div x-show="view === 'dashboard'" class="space-y-8">
+      <div class="space-y-8">
 
         <!-- Summary cards -->
         <div class="grid grid-cols-2 gap-4 xl:grid-cols-4">
@@ -202,16 +156,6 @@
             </nav>
           </div>
         </section>
-      </div>
-
-      <!-- ---------- Other views (not built yet) ---------- -->
-      <div x-show="view !== 'dashboard'" x-cloak class="grid place-items-center rounded-md border border-dashed border-black/20 px-6 py-24 text-center">
-        <div>
-          <p class="eyebrow">Coming soon</p>
-          <h2 class="mt-3 text-3xl" x-text="currentView.label"></h2>
-          <p class="mx-auto mt-3 max-w-md text-muted">This section hasn't been built yet.</p>
-          <a href="#dashboard" class="btn btn-ghost mt-8">Back to dashboard</a>
-        </div>
       </div>
     </main>
   </div>

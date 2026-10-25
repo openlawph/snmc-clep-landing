@@ -23,7 +23,8 @@ about.html          About Us (not linked in the nav for now)
 services.html       Our Services (not linked in the nav for now)
 team.html           Our Team (not linked in the nav for now)
 donate.html         Donate (not linked in the nav for now)
-clinic-dashboard.html  Staff dashboard: sidebar + upcoming-appointments data table (sign-in required, not linked publicly)
+clinic-dashboard.html  Staff dashboard: upcoming-appointments data table (sign-in required, not linked publicly)
+clinic-users.html   Staff: list, add, edit and delete user accounts (sign-in required)
 login.html          Staff sign-in (PocketBase), not linked publicly
 assets/
   js/theme.js       Colors, fonts and shared classes (.btn, .card, .field, .eyebrow…)
@@ -32,7 +33,8 @@ assets/
   js/intake.js      Logic for the booking wizard (Alpine component "intake")
   js/auth.js        PocketBase client (API URL) + sign-in helpers; guards pages marked data-auth-required
   js/login.js       Logic for the sign-in page (Alpine component "login")
-  js/dashboard.js   Logic for the clinic dashboard (Alpine component "dashboard"): views, sample data, table search/sort/paging
+  js/dashboard.js   Logic for the clinic dashboard (Alpine component "dashboard"): sample data, table search/sort/paging
+  js/users.js       Logic for the Users page (Alpine component "users"): PocketBase list/create/update/delete
   img/              Images (currently placeholders; see below) + snmc-legal-aid-logo.png
 ```
 
@@ -45,6 +47,7 @@ assets/
 | `<page-intro eyebrow="…" title="…" logo><p>intro</p></page-intro>` | Dark title band at the top of inner pages (`logo` shows the SNMC Legal Aid seal beside the title) |
 | `<legal-notice title="…" tone="dark"><p>…</p></legal-notice>` | Callout box for notices (defaults to the "no fees" notice) |
 | `<contact-info>` / `<contact-info variant="inline">` | Phone, email, address, hours (from `SITE`) |
+| `<dashboard-sidebar active="users">` | Staff pages only: sidebar menu, signed-in user, Sign out (open on mobile with `$dispatch('open-sidebar')`) |
 
 Page-specific content (cards, lists, paragraphs) stays as plain HTML in each page, so edit it right there.
 
@@ -95,16 +98,53 @@ The Tailwind CDN build compiles CSS in the browser, which is fine for a site thi
 
 ## Clinic dashboard
 
-`clinic-dashboard.html` is a staff page with a sidebar (Dashboard, Users, Lawyers, Appointments, Client Records). Only the Dashboard view is built: summary cards plus an **upcoming appointments** data table with search, status/lawyer filters, sortable columns and pagination, all in Alpine (no extra library). The other sidebar items show a "Coming soon" placeholder.
+Staff pages are named `clinic-*.html` and share `<dashboard-sidebar active="…">` (`assets/js/components/dashboard-sidebar.js`). Its menu is `DASHBOARD_NAV` in that file; items with `href: null` show as "Soon". Only load that component on staff pages, never on public ones (it names them).
+
+`clinic-dashboard.html` has summary cards plus an **upcoming appointments** data table with search, status/lawyer filters, sortable columns and pagination, all in Alpine (no extra library).
 
 The appointments are **sample data** generated in `sampleAppointments()` in `assets/js/dashboard.js`. Swap that for the real bookings once the intake form saves them somewhere. 
 ## Sign-in and the dashboard
 
 - `login.html` signs staff in with email + password against the PocketBase `users` collection. It also handles "forgot password" and re-sending the verification email (both links in those emails open PocketBase's own confirmation pages). There is no sign-up: create staff accounts in the PocketBase admin at https://capi.snmclaw.com/_/.
-- `clinic-dashboard.html` has `data-auth-required` on its `<html>` tag. `assets/js/auth.js` keeps the page hidden, confirms the saved session with the server (`authRefresh`), and sends anyone who isn't signed in, or whose email isn't verified, to `login.html` (then back again after signing in). Add the same attribute and the two `<script>` tags (PocketBase SDK + `auth.js`) to protect another page.
+- `clinic-dashboard.html` and `clinic-users.html` have `data-auth-required` on their `<html>` tag. `assets/js/auth.js` keeps the page hidden, confirms the saved session with the server (`authRefresh`), and sends anyone who isn't signed in, or whose email isn't verified, to `login.html` (then back again after signing in). Add the same attribute and the two `<script>` tags (PocketBase SDK + `auth.js`) to protect another page.
 - The session is kept in the browser's localStorage (`pocketbase_auth`) by the SDK. Sign out clears it.
 
 **Important:** the check in `auth.js` only hides the page. Anyone can still download the HTML, and the real protection for clinic data is PocketBase's **API rules**. In the PocketBase admin:
 
 - On every collection the dashboard reads (appointments, clients…), set the List/View rules to `@request.auth.id != "" && @request.auth.verified = true` (or tighter).
 - On the `users` collection, set the **Auth rule** to `verified = true` so unverified accounts can't get a token at all.
+
+## Users page: PocketBase setup
+
+`clinic-users.html` reads and writes the PocketBase `users` collection directly (paging, search and sorting run on the server). It needs a **role** on each user and API rules that let admins manage everyone. Until those are set, everyone (you included) only sees their own account there.
+
+1. **Add a role field.** PocketBase admin → Collections → `users` → New field → **Select**, name `role`, single choice, values `admin` and `staff`. (To add more roles later, add them here and to `USER_ROLES` in `assets/js/users.js`.)
+2. **Make yourself an admin.** Open your own record in `users`, set `role` to `admin` and tick **verified**.
+3. **Set the API rules** (`users` → API Rules). Copy each one exactly:
+
+| Rule | Value |
+|---|---|
+| List/Search | `@request.auth.verified = true && (id = @request.auth.id \|\| @request.auth.role = "admin")` |
+| View | `@request.auth.verified = true && (id = @request.auth.id \|\| @request.auth.role = "admin")` |
+| Create | `@request.auth.verified = true && @request.auth.role = "admin"` |
+| Update | `@request.auth.verified = true && (@request.auth.role = "admin" \|\| (id = @request.auth.id && @request.body.role:isset = false && @request.body.verified:isset = false && @request.body.email:isset = false))` |
+| Delete | `@request.auth.verified = true && @request.auth.role = "admin" && id != @request.auth.id` |
+| Manage (under Options) | `@request.auth.verified = true && @request.auth.role = "admin"` |
+| Auth rule (under Options) | `verified = true` |
+
+(In the table, `\|\|` is just `||`; type two plain pipe characters in PocketBase.)
+
+What that gives you: admins see every user and can add, edit (including email, password, role and verified, without the old password) and delete anyone except themselves. Everyone else sees only their own account and can change their name, photo and password (with their current password), but not their role, email or verified status.
+
+### Lost the PocketBase admin password?
+
+The admin login at https://capi.snmclaw.com/_/ is a PocketBase **superuser**, separate from the dashboard users.
+
+- **Email reset:** on that login page, click **Forgotten password?**. This only works if PocketBase's mail settings (SMTP) were set up.
+- **On the server (always works):** PocketBase runs on your own server behind Cloudflare. Sign in to that machine and, in the folder with the `pocketbase` program, run:
+
+  ```bash
+  ./pocketbase superuser upsert you@example.com 'a-new-strong-password'
+  ```
+
+  This creates the superuser or resets its password. If PocketBase runs in Docker, run the same command inside the container, e.g. `docker exec -it <container> /pb/pocketbase superuser upsert …` (the path depends on the image).
