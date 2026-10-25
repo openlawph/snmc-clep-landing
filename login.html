@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Sign In · SNMC Law Legal Clinic</title>
+  <meta name="robots" content="noindex, nofollow"><!-- staff page: keep it out of search results -->
+
+  <!-- ===== Shared head: keep identical on every page ===== -->
+  <link rel="icon" type="image/png" href="assets/img/snmc-legal-aid-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="assets/js/theme.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="assets/js/components.js" defer></script>
+  <script src="assets/js/components/site-header.js" defer></script>
+  <script src="assets/js/components/site-footer.js" defer></script>
+  <script src="assets/js/components/page-intro.js" defer></script>
+  <script src="assets/js/components/legal-notice.js" defer></script>
+  <script src="assets/js/components/contact-info.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.28.1/dist/pocketbase.umd.js"></script><!-- page-specific: PocketBase SDK -->
+  <script src="assets/js/auth.js"></script><!-- page-specific: PocketBase client + sign-in helpers -->
+  <script src="assets/js/login.js" defer></script><!-- page-specific, must come before Alpine -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" defer></script>
+  <!-- ===== /Shared head ===== -->
+</head>
+<body class="bg-cream text-ink">
+  <main class="grid min-h-dvh lg:grid-cols-[1fr_1.1fr]">
+
+    <!-- Brand panel -->
+    <section class="relative hidden overflow-hidden bg-ink text-white lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-12">
+      <div aria-hidden="true" class="pointer-events-none absolute -left-32 -top-32 size-96 rounded-full bg-copper/15 blur-3xl"></div>
+      <img src="assets/img/snmc-legal-aid-logo.png" alt="SNMC Legal Aid seal: “The law is for all.” Est. 2024" class="relative w-full max-w-sm">
+      <p class="relative mt-10 max-w-sm text-center text-white/60">Staff access for the SNMC Law Legal Clinic. Client information is confidential.</p>
+    </section>
+
+    <!-- Form panel -->
+    <section class="flex items-center justify-center px-4 py-12 sm:px-8">
+      <div x-data="login" class="w-full max-w-md">
+        <img src="assets/img/snmc-legal-aid-logo.png" alt="SNMC Legal Aid" class="mx-auto mb-8 w-36 lg:hidden">
+
+        <div class="card">
+          <!-- Notice from a redirect (signed out, session ended…) -->
+          <p x-show="notice" x-cloak x-text="notice" role="status"
+             class="mb-6 rounded-sm bg-cream px-4 py-3 text-sm text-ink ring-1 ring-black/10"></p>
+
+          <!-- ---------- Sign in ---------- -->
+          <form x-show="view === 'signin'" @submit.prevent="signIn()" novalidate>
+            <p class="eyebrow">Staff only</p>
+            <h1 class="mt-3 text-4xl">Sign in</h1>
+            <p class="mt-2 text-muted">Use your clinic account to open the dashboard.</p>
+
+            <div class="mt-8 space-y-5">
+              <div>
+                <label for="email" class="field-label">Email</label>
+                <input id="email" type="email" x-model="email" autocomplete="username" required data-autofocus autofocus class="field">
+              </div>
+              <div>
+                <div class="flex items-baseline justify-between">
+                  <label for="password" class="field-label">Password</label>
+                  <button type="button" class="text-sm font-semibold text-copper-dark hover:underline" @click="show('forgot')">Forgot password?</button>
+                </div>
+                <div class="relative">
+                  <input id="password" :type="showPassword ? 'text' : 'password'" x-model="password" autocomplete="current-password" required class="field pr-16">
+                  <button type="button" class="absolute inset-y-0 right-0 px-3 text-xs font-semibold uppercase tracking-wider text-muted hover:text-ink"
+                          @click="showPassword = !showPassword" :aria-pressed="showPassword" x-text="showPassword ? 'Hide' : 'Show'"></button>
+                </div>
+              </div>
+            </div>
+
+            <p x-show="error" x-cloak x-text="error" role="alert" class="field-error mt-5"></p>
+            <button type="submit" class="btn btn-primary mt-8 w-full" :disabled="busy">
+              <span x-text="busy ? 'Signing in…' : 'Sign in'"></span>
+            </button>
+          </form>
+
+          <!-- ---------- Forgot password ---------- -->
+          <form x-show="view === 'forgot'" x-cloak @submit.prevent="resetPassword()" novalidate>
+            <p class="eyebrow">Reset password</p>
+            <h1 class="mt-3 text-4xl">Forgot your password?</h1>
+            <p class="mt-2 text-muted">Enter your account email and we'll send you a link to set a new one.</p>
+            <div class="mt-8">
+              <label for="reset-email" class="field-label">Email</label>
+              <input id="reset-email" type="email" x-model="email" autocomplete="username" required data-autofocus class="field">
+            </div>
+            <p x-show="error" x-cloak x-text="error" role="alert" class="field-error mt-5"></p>
+            <button type="submit" class="btn btn-primary mt-8 w-full" :disabled="busy">
+              <span x-text="busy ? 'Sending…' : 'Send reset link'"></span>
+            </button>
+            <button type="button" class="mt-4 w-full text-sm font-semibold text-copper-dark hover:underline" @click="show('signin')">Back to sign in</button>
+          </form>
+
+          <!-- ---------- Email not verified ---------- -->
+          <div x-show="view === 'unverified'" x-cloak>
+            <p class="eyebrow">Verify your email</p>
+            <h1 class="mt-3 text-4xl">One more step</h1>
+            <p class="mt-2 leading-relaxed text-muted">
+              Your password is correct, but <strong class="text-ink" x-text="email"></strong> hasn't been verified yet.
+              Open the verification link we emailed you, then sign in again.
+            </p>
+            <p x-show="error" x-cloak x-text="error" role="alert" class="field-error mt-5"></p>
+            <button type="button" class="btn btn-primary mt-8 w-full" :disabled="busy" @click="resendVerification()" data-autofocus>
+              <span x-text="busy ? 'Sending…' : 'Resend verification email'"></span>
+            </button>
+            <button type="button" class="mt-4 w-full text-sm font-semibold text-copper-dark hover:underline" @click="show('signin')">Back to sign in</button>
+          </div>
+
+          <!-- ---------- Email sent ---------- -->
+          <div x-show="view === 'sent'" x-cloak class="text-center" role="status">
+            <div class="mx-auto grid size-14 place-items-center rounded-full bg-copper/15 text-copper">
+              <svg class="size-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4zM4 7l8 6 8-6"/></svg>
+            </div>
+            <h1 class="mt-5 text-3xl">Check your inbox</h1>
+            <p class="mt-3 leading-relaxed text-muted" x-text="sentMessage"></p>
+            <button type="button" class="btn btn-ghost mt-8" @click="show('signin')" data-autofocus>Back to sign in</button>
+          </div>
+        </div>
+
+        <p class="mt-6 text-center text-sm text-muted">Need an account? Ask the clinic administrator.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -13,24 +13,16 @@ window.SITE = {
   officeHours: 'Monday to Friday, 9:00 AM to 4:00 PM.',
   consultationHours: 'Consultations Tuesday and Thursday, 1:00 PM to 5:00 PM by appointment.',
 
+  // SNMC Legal Aid seal, used in the header, footer, booking intro and as the favicon.
+  logo: 'assets/img/snmc-legal-aid-logo.png',
+
   // Top navigation. `key` matches the `active` attribute on <site-header>.
+  // For now the booking page (index.html) is the only page linked. home.html, about.html,
+  // services.html, team.html and donate.html still exist; add them back here to relink them.
   nav: [
-    { key: 'home', label: 'Home', href: 'index.html' },
-    { key: 'about', label: 'About Us', href: 'about.html' },
-    { key: 'services', label: 'Our Services', href: 'services.html' },
-    { key: 'team', label: 'Our Team', href: 'team.html' },
-    { key: 'book', label: 'Book a Visit', href: 'book.html' },
-    { key: 'donate', label: 'Donate', href: 'donate.html' },
+    { key: 'book', label: 'Book a Visit', href: 'index.html' },
   ],
 };
-
-/* Scales-of-justice mark used in the header. */
-window.SITE.logoSvg = `
-<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-  <path d="M24 6v34M14 42h20M10 12h28M24 8l0 0"/>
-  <path d="M10 12 4 26h12L10 12zM38 12l-6 14h12L38 12z"/>
-  <path d="M4 26a6 4 0 0 0 12 0M32 26a6 4 0 0 0 12 0"/>
-</svg>`;
 
 /*
  * Scroll reveal: add `data-reveal` to any element to fade it up when it scrolls into view.

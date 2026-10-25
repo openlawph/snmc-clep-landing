@@ -1,5 +1,5 @@
 /*
- * Booking + client intake wizard (book.html).
+ * Booking + client intake wizard (index.html).
  * Usage: <form x-data="intake" …>. Must load BEFORE Alpine (it registers on `alpine:init`).
  *
  * Fields follow the clinic's Unified Client Intake Form (Form No. SNMC-CIF-001).
