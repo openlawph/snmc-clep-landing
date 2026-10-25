@@ -1,6 +1,6 @@
 /*
  * Users page (clinic-users.html): list, create, edit and delete accounts in the PocketBase
- * `users` collection. Usage: <body x-data="users">. Needs assets/js/auth.js; load BEFORE Alpine.
+ * `users` collection. Usage: <body x-data="users">. Needs auth.js and crud.js; load BEFORE Alpine.
  *
  * What each person may do is enforced by the collection's API rules in PocketBase, not here
  * (README → "Users page: PocketBase setup"). This page only hides actions that would fail:
@@ -26,23 +26,17 @@ const emptyUserForm = () => ({
 });
 
 document.addEventListener('alpine:init', () => {
-  Alpine.data('users', () => ({
-    roles: USER_ROLES,
-    me: Auth.user,
-
-    // Table (paging, search and sorting run on the server)
-    rows: [],
-    total: 0,
-    totalPages: 1,
-    page: 1,
-    perPage: 10,
-    search: '',
-    verifiedFilter: '', // '' | 'yes' | 'no'
-    roleFilter: '',
+  Alpine.data('users', () => crudPage({
+    collection: 'users',
+    singular: 'user',
+    plural: 'users',
+    searchFields: ['name', 'email'],
+    filters: { verifiedFilter: '', roleFilter: '' }, // verifiedFilter: '' | 'yes' | 'no'
     sortKey: 'created',
     sortDir: 'desc',
-    loading: true,
-    loadError: '',
+  }, {
+    roles: USER_ROLES,
+    me: Auth.user,
     columns: [
       { key: 'name', label: 'User', sortable: true },
       { key: 'role', label: 'Role', sortable: false },
@@ -58,17 +52,8 @@ document.addEventListener('alpine:init', () => {
     saving: false,
     avatarPreview: '',
 
-    // Delete dialog
-    deleteTarget: null,
-    deleting: false,
-    deleteError: '',
-
-    toast: '',
-
     init() {
       pb.authStore.onChange(() => (this.me = pb.authStore.record));
-      ['search', 'verifiedFilter', 'roleFilter', 'perPage'].forEach((k) => this.$watch(k, () => this.goTo(1)));
-      this.load();
     },
 
     get isAdmin() {
@@ -79,70 +64,11 @@ document.addEventListener('alpine:init', () => {
       return user?.id === this.me?.id;
     },
 
-    // ---------- Loading ----------
-
-    filterString() {
+    extraFilters() {
       const parts = [];
-      const q = this.search.trim();
-      if (q) parts.push(pb.filter('(name ~ {:q} || email ~ {:q})', { q }));
       if (this.verifiedFilter) parts.push(pb.filter('verified = {:v}', { v: this.verifiedFilter === 'yes' }));
       if (this.roleFilter) parts.push(pb.filter('role = {:r}', { r: this.roleFilter }));
-      return parts.join(' && ');
-    },
-
-    async load() {
-      this.loading = true;
-      this.loadError = '';
-      try {
-        const res = await pb.collection('users').getList(this.page, this.perPage, {
-          filter: this.filterString(),
-          sort: (this.sortDir === 'desc' ? '-' : '') + this.sortKey,
-        });
-        this.rows = res.items;
-        this.total = res.totalItems;
-        this.totalPages = Math.max(1, res.totalPages);
-        this.loading = false;
-        if (this.page > this.totalPages) this.goTo(this.totalPages); // e.g. after deleting the last row of a page
-      } catch (err) {
-        if (err.isAbort) return; // a newer request replaced this one (the SDK cancels duplicates)
-        this.rows = [];
-        this.loadError = this.messageFor(err, 'load');
-        this.loading = false;
-      }
-    },
-
-    // Several changes in one go (e.g. "Clear" resets three filters) still load only once.
-    goTo(page) {
-      this.page = page;
-      if (this._loadQueued) return;
-      this._loadQueued = true;
-      queueMicrotask(() => {
-        this._loadQueued = false;
-        this.load();
-      });
-    },
-
-    sortBy(key) {
-      if (this.sortKey === key) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
-      else { this.sortKey = key; this.sortDir = key === 'created' ? 'desc' : 'asc'; }
-      this.goTo(1);
-    },
-
-    ariaSort(key) {
-      if (this.sortKey !== key) return 'none';
-      return this.sortDir === 'asc' ? 'ascending' : 'descending';
-    },
-
-    clearFilters() {
-      this.search = '';
-      this.verifiedFilter = '';
-      this.roleFilter = '';
-    },
-
-    get rangeLabel() {
-      if (!this.total) return 'No users';
-      const start = (this.page - 1) * this.perPage + 1;
-      return `Showing ${start}–${Math.min(start + this.perPage - 1, this.total)} of ${this.total}`;
+      return parts;
     },
 
     // ---------- Display helpers ----------
@@ -157,27 +83,6 @@ document.addEventListener('alpine:init', () => {
 
     roleLabel(value) {
       return this.roles.find((r) => r.value === value)?.label || 'Staff';
-    },
-
-    formatDate(value) {
-      if (!value) return '';
-      return new Date(value.replace(' ', 'T')).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
-    },
-
-    flash(message) {
-      this.toast = message;
-      clearTimeout(this._toastTimer);
-      this._toastTimer = setTimeout(() => (this.toast = ''), 4000);
-    },
-
-    // Turns an SDK error into a sentence. Field errors from PocketBase go into formErrors.
-    messageFor(err, action) {
-      if (err?.status === 0) return 'Couldn\'t reach the server. Check your internet connection and try again.';
-      if (err?.status === 401) return 'Your session has ended. Please sign in again.';
-      if (err?.status === 403) return action === 'load' ? 'You don\'t have permission to see users.' : 'You don\'t have permission to do that.';
-      if (err?.status === 404) return 'That user no longer exists.';
-      if (err?.status === 400 && action === 'load') return 'The list couldn\'t be loaded with these filters.';
-      return err?.response?.message || 'Something went wrong. Please try again.';
     },
 
     // ---------- Add / edit ----------
@@ -305,7 +210,7 @@ document.addEventListener('alpine:init', () => {
               note = ' The verification email couldn\'t be sent; use "Send link" in the list to try again.';
             }
           }
-          this.flash(`${record.name || record.email} was added.${note}`);
+          this.flash(`${this.displayName(record)} was added.${note}`);
         } else {
           const self = this.isSelf(this.editing);
           const record = await users.update(this.editing.id, this.payload());
@@ -317,20 +222,13 @@ document.addEventListener('alpine:init', () => {
               return Auth.signOut();
             }
           }
-          this.flash(`Changes to ${record.name || record.email} were saved.`);
+          this.flash(`Changes to ${this.displayName(record)} were saved.`);
         }
         this.closeForm();
         this.load();
       } catch (err) {
-        const fields = err?.response?.data || {};
-        const errors = {};
-        for (const [key, value] of Object.entries(fields)) {
-          errors[key] = key === 'email' && value?.code === 'validation_not_unique'
-            ? 'A user with this email already exists.'
-            : value?.message || 'Check this field.';
-        }
-        this.formErrors = errors;
-        this.formError = Object.keys(errors).length ? 'Please fix the highlighted fields.' : this.messageFor(err, 'save');
+        this.formErrors = this.fieldErrorsFrom(err);
+        this.formError = Object.keys(this.formErrors).length ? 'Please fix the highlighted fields.' : this.messageFor(err, 'save');
       } finally {
         this.saving = false;
       }
@@ -344,29 +242,6 @@ document.addEventListener('alpine:init', () => {
         this.flash(`Sent a verification link to ${user.email}.`);
       } catch (err) {
         this.flash(this.messageFor(err, 'send'));
-      }
-    },
-
-    // ---------- Delete ----------
-
-    askDelete(user) {
-      this.deleteTarget = user;
-      this.deleteError = '';
-      this.$refs.deleteDialog.showModal();
-    },
-
-    async confirmDelete() {
-      this.deleting = true;
-      this.deleteError = '';
-      try {
-        await pb.collection('users').delete(this.deleteTarget.id);
-        this.flash(`${this.deleteTarget.name || this.deleteTarget.email} was deleted.`);
-        this.$refs.deleteDialog.close();
-        this.load();
-      } catch (err) {
-        this.deleteError = this.messageFor(err, 'delete');
-      } finally {
-        this.deleting = false;
       }
     },
   }));

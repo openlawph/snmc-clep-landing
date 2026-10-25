@@ -9,7 +9,8 @@ It's plain static HTML with no build step and no server-side code: upload the fi
 |---|---|---|
 | Styling | [Tailwind CSS v4](https://tailwindcss.com) browser build via CDN | Utility classes directly in the HTML |
 | Interactivity | [Alpine.js 3](https://alpinejs.dev) via CDN | Mobile menu and the booking wizard |
-| Database / sign-in | [PocketBase JS SDK](https://github.com/pocketbase/js-sdk) 0.28.1 via CDN (UMD build, global `PocketBase`) | Staff sign-in against https://capi.snmclaw.com (login + dashboard pages only) |
+| Database / sign-in | [PocketBase JS SDK](https://github.com/pocketbase/js-sdk) 0.28.1 via CDN (UMD build, global `PocketBase`) | Staff sign-in and data at https://capi.snmclaw.com (staff pages only; the booking form just reads its public settings with `fetch`) |
+| Languages | `assets/js/i18n.js` (no library) | Booking form in EN (English) or VS (Visayan / Bisaya) |
 | Components | Native **Web Components** (`customElements.define`) in `assets/js/components/` | Shared header/footer/etc. with no framework, no build, and no `fetch` (works on any static host, even when opened as a local file) |
 | Fonts | Google Fonts: DM Serif Display (headings), Public Sans (body) | |
 
@@ -25,16 +26,23 @@ team.html           Our Team (not linked in the nav for now)
 donate.html         Donate (not linked in the nav for now)
 clinic-dashboard.html  Staff dashboard: upcoming-appointments data table (sign-in required, not linked publicly)
 clinic-users.html   Staff: list, add, edit and delete user accounts (sign-in required)
+clinic-lawyers.html Staff: list, add, edit and delete lawyers (sign-in required)
+clinic-settings.html Staff: Intake Form Settings (open days, time slots, which questions the booking form asks)
 login.html          Staff sign-in (PocketBase), not linked publicly
 assets/
   js/theme.js       Colors, fonts and shared classes (.btn, .card, .field, .eyebrow…)
   js/components.js  SITE settings: phone, email, address, hours, NAV LINKS + scroll-reveal helper
   js/components/    One file per component (see below)
-  js/intake.js      Logic for the booking wizard (Alpine component "intake")
+  js/intake.js      Logic for the booking wizard (Alpine component "intake") + the field list, weekdays and default settings
+  js/i18n.js        EN / VS translation helpers (x-t, $t) for the booking form
+  js/i18n-vs.js     Bisaya wording, keyed by the English text
   js/auth.js        PocketBase client (API URL) + sign-in helpers; guards pages marked data-auth-required
   js/login.js       Logic for the sign-in page (Alpine component "login")
   js/dashboard.js   Logic for the clinic dashboard (Alpine component "dashboard"): sample data, table search/sort/paging
-  js/users.js       Logic for the Users page (Alpine component "users"): PocketBase list/create/update/delete
+  js/crud.js        Shared logic for staff list pages: server-side search/sort/paging, delete dialog, error messages
+  js/users.js       Logic for the Users page (Alpine component "users")
+  js/lawyers.js     Logic for the Lawyers page (Alpine component "lawyers")
+  js/settings.js    Logic for the Intake Form Settings page (Alpine component "intakeSettings")
   img/              Images (currently placeholders; see below) + snmc-legal-aid-logo.png
 ```
 
@@ -69,7 +77,7 @@ Add `data-reveal` to any element to fade it in on scroll (`data-reveal-delay="12
 
 | Step | Form sections |
 |---|---|
-| 1. Book a slot | Appointment date/time (Tue & Thu only) |
+| 1. Book a slot | Appointment date (calendar of open days) and time slot, set in Intake Settings |
 | 2. Personal information | B: applicant personal information |
 | 3. Household & sector | C: household composition & financial eligibility · D: sector classification |
 | 4. Legal issue | F: practice area, requested assistance, opposing party · E: conflict check & prior consultation |
@@ -77,7 +85,7 @@ Add `data-reveal` to any element to fade it in on scroll (`data-reveal-delay="12
 | 6. Consent & declaration | Review of all answers · H: data privacy consent · I: declaration + typed signature |
 
 Sections **A** (administrative) and **J** (staff assessment) are for clinic staff, so they are not on the public form.
-Checkbox and radio choices are in `INTAKE_OPTIONS` at the top of `assets/js/intake.js`. `toPayload()` there groups the answers by form section (`B_personal`, `C_household`, …).
+Checkbox and radio choices are in `INTAKE_OPTIONS` at the top of `assets/js/intake.js` (add the Bisaya wording to `assets/js/i18n-vs.js` too). `toPayload()` there groups the answers by form section (`B_personal`, `C_household`, …).
 
 The form validates each step, then shows a "Request received" screen with a reference number, but **it does not send the data anywhere yet**.
 To connect it, implement `sendRequest()` in `assets/js/intake.js` (for example, POST to Formspree, a Google Apps Script, or a PHP endpoint if the host supports PHP).
@@ -106,7 +114,7 @@ The appointments are **sample data** generated in `sampleAppointments()` in `ass
 ## Sign-in and the dashboard
 
 - `login.html` signs staff in with email + password against the PocketBase `users` collection. It also handles "forgot password" and re-sending the verification email (both links in those emails open PocketBase's own confirmation pages). There is no sign-up: create staff accounts in the PocketBase admin at https://capi.snmclaw.com/_/.
-- `clinic-dashboard.html` and `clinic-users.html` have `data-auth-required` on their `<html>` tag. `assets/js/auth.js` keeps the page hidden, confirms the saved session with the server (`authRefresh`), and sends anyone who isn't signed in, or whose email isn't verified, to `login.html` (then back again after signing in). Add the same attribute and the two `<script>` tags (PocketBase SDK + `auth.js`) to protect another page.
+- Every `clinic-*.html` page has `data-auth-required` on its `<html>` tag. `assets/js/auth.js` keeps the page hidden, confirms the saved session with the server (`authRefresh`), and sends anyone who isn't signed in, or whose email isn't verified, to `login.html` (then back again after signing in). Add the same attribute and the two `<script>` tags (PocketBase SDK + `auth.js`) to protect another page.
 - The session is kept in the browser's localStorage (`pocketbase_auth`) by the SDK. Sign out clears it.
 
 **Important:** the check in `auth.js` only hides the page. Anyone can still download the HTML, and the real protection for clinic data is PocketBase's **API rules**. In the PocketBase admin:
@@ -148,3 +156,26 @@ The admin login at https://capi.snmclaw.com/_/ is a PocketBase **superuser**, se
   ```
 
   This creates the superuser or resets its password. If PocketBase runs in Docker, run the same command inside the container, e.g. `docker exec -it <container> /pb/pocketbase superuser upsert …` (the path depends on the image).
+
+## Lawyers page
+
+`clinic-lawyers.html` manages the PocketBase `lawyers` collection: first and last name, email, contact number, active and archived case counts, ULAS creditable hours and a status (active / occupied / inactive). Search covers names, email and number; you can filter by status and sort by name, cases, hours or status. Verified staff can view the list; only admins can add, edit or delete (the collection's API rules enforce this).
+
+## Intake Form Settings
+
+`clinic-settings.html` (sidebar → Intake Settings) controls the public booking form. It saves to the single record in the PocketBase `intake_settings` collection, which anyone can read (the booking form needs it) and only admins can change.
+
+- **Consultation days:** any of Monday to Saturday. The booking calendar only lets clients pick these days, from today up to 90 days ahead (`INTAKE_BOOKING_DAYS_AHEAD` in `intake.js`).
+- **Time slots:** any times from 7:00 AM to 7:00 PM in 30-minute steps. On today's date, slots that have already started aren't offered.
+- **Form fields:** each optional question can be turned off. The ones needed to book, reach the client, understand the problem or record consent are locked on. If every question in a step is off, the form skips that step. The list is `INTAKE_FIELDS` in `assets/js/intake.js`; each key matches an `x-show="shown('…')"` in `index.html`.
+
+If the settings can't be loaded, the form falls back to `INTAKE_DEFAULT_SETTINGS` (Tuesdays and Thursdays, 1:00–4:00 PM, every question shown).
+
+## Languages (EN / VS)
+
+The first page of the booking form has a **Language / Pinulongan** menu: EN (English) or VS (Visayan / Bisaya). The choice is remembered in that browser. The header and footer stay in English.
+
+- Text on the page uses `x-t` (translate the element's English text), `x-t:placeholder` (an attribute) or `$t('…')` in Alpine expressions. See the top of `assets/js/i18n.js`.
+- The Bisaya wording is in `assets/js/i18n-vs.js`, keyed by the exact English text. Anything missing shows in English, so a changed English sentence needs its key updated there too.
+- Answers are always saved in English, and the payload records which language the client used (`language`).
+- **Please have a native Bisaya speaker on the team review `i18n-vs.js`**, especially the legal wording.

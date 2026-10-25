@@ -14,9 +14,10 @@
 const DASHBOARD_NAV = [
   { key: 'dashboard', label: 'Dashboard', href: 'clinic-dashboard.html', icon: 'M3 12 12 4l9 8M5 10v10h5v-6h4v6h5V10' },
   { key: 'users', label: 'Users', href: 'clinic-users.html', icon: 'M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM22 19v-1a4 4 0 0 0-3-3.87M16 4.13a3 3 0 0 1 0 5.74' },
-  { key: 'lawyers', label: 'Lawyers', href: null, icon: 'M12 3v18M7 21h10M4 7h16M4 7l-3 7h6L4 7zM20 7l-3 7h6l-3-7z' },
+  { key: 'lawyers', label: 'Lawyers', href: 'clinic-lawyers.html', icon: 'M12 3v18M7 21h10M4 7h16M4 7l-3 7h6L4 7zM20 7l-3 7h6l-3-7z' },
   { key: 'appointments', label: 'Appointments', href: null, icon: 'M8 2v4M16 2v4M3 9h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z' },
   { key: 'clients', label: 'Client Records', href: null, icon: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM14 2v6h6M8 13h8M8 17h5' },
+  { key: 'settings', label: 'Intake Settings', href: 'clinic-settings.html', icon: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6' },
 ];
 
 customElements.define('dashboard-sidebar', class extends HTMLElement {

@@ -13,7 +13,7 @@
  * API rules on each PocketBase collection (see README → "Sign-in and the dashboard").
  */
 
-const PB_URL = 'https://capi.snmclaw.com';
+const PB_URL = 'https://capi.snmclaw.com'; // keep in sync with SITE.apiUrl in components.js (loads later)
 const AUTH_COLLECTION = 'users';
 const LOGIN_PAGE = 'login.html';
 const DEFAULT_AFTER_LOGIN = 'clinic-dashboard.html';

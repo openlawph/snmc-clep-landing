@@ -13,6 +13,9 @@ window.SITE = {
   officeHours: 'Monday to Friday, 9:00 AM to 4:00 PM.',
   consultationHours: 'Consultations Tuesday and Thursday, 1:00 PM to 5:00 PM by appointment.',
 
+  // PocketBase server (the booking form reads its public settings from here; staff pages use assets/js/auth.js).
+  apiUrl: 'https://capi.snmclaw.com',
+
   // SNMC Legal Aid seal, used in the header, footer, booking intro and as the favicon.
   logo: 'assets/img/snmc-legal-aid-logo.png',
 

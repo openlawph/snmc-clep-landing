@@ -31,16 +31,16 @@ function sampleAppointments() {
   day.setHours(0, 0, 0, 0);
   for (let i = 0; i < 42; i++) {
     day.setDate(day.getDate() + 1);
-    if (![2, 4].includes(day.getDay())) continue; // Tuesday, Thursday
-    INTAKE_OPTIONS.timeSlots.forEach((time, slot) => {
+    if (![2, 4].includes(day.getDay())) continue; // Tuesday, Thursday (the default intake settings)
+    INTAKE_DEFAULT_SETTINGS.time_slots.forEach((hhmm) => {
       if (rand() > 0.6) return;
-      const hour = 13 + slot; // slots start at 1:00 PM
+      const [hour, minute] = hhmm.split(':').map(Number);
       const at = new Date(day);
-      at.setHours(hour);
+      at.setHours(hour, minute);
       rows.push({
         reference: `SNMC-${at.getFullYear()}-${String(Math.floor(rand() * 9000) + 1000)}`,
         at: at.getTime(),
-        time,
+        time: formatSlot(hhmm),
         client: pick(clients),
         area: pick(areas),
         lawyer: pick(lawyers),

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" data-auth-required><!-- protected: only signed-in, verified staff (see assets/js/auth.js) -->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intake Form Settings · SNMC Law Legal Clinic</title>
+  <meta name="robots" content="noindex, nofollow"><!-- staff page: keep it out of search results -->
+
+  <!-- ===== Shared head: keep identical on every page ===== -->
+  <link rel="icon" type="image/png" href="assets/img/snmc-legal-aid-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="assets/js/theme.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="assets/js/components.js" defer></script>
+  <script src="assets/js/components/site-header.js" defer></script>
+  <script src="assets/js/components/site-footer.js" defer></script>
+  <script src="assets/js/components/page-intro.js" defer></script>
+  <script src="assets/js/components/legal-notice.js" defer></script>
+  <script src="assets/js/components/contact-info.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.28.1/dist/pocketbase.umd.js"></script><!-- page-specific: PocketBase SDK -->
+  <script src="assets/js/auth.js"></script><!-- page-specific: checks the session before showing the page -->
+  <script src="assets/js/components/dashboard-sidebar.js" defer></script><!-- page-specific: staff sidebar -->
+  <script src="assets/js/intake.js" defer></script><!-- page-specific: form field list, weekdays, formatSlot() -->
+  <script src="assets/js/settings.js" defer></script><!-- page-specific, must come before Alpine -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" defer></script>
+  <!-- ===== /Shared head ===== -->
+</head>
+<body x-data="intakeSettings" class="bg-cream text-ink">
+  <dashboard-sidebar active="settings"></dashboard-sidebar>
+
+  <div class="lg:pl-64">
+    <header class="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-black/10 bg-cream/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+      <button type="button" class="-ml-2 rounded-sm p-2 lg:hidden" @click="$dispatch('open-sidebar')" aria-label="Open menu">
+        <svg class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <h1 class="truncate text-2xl">Intake Form Settings</h1>
+      <a href="index.html" target="_blank" rel="noopener" class="ml-auto hidden shrink-0 text-sm font-semibold text-copper-dark hover:underline sm:inline">View booking form ↗</a>
+    </header>
+
+    <main class="space-y-6 px-4 py-8 pb-32 sm:px-6 lg:px-8">
+
+      <p x-show="!isAdmin" x-cloak class="rounded-md bg-paper px-5 py-4 text-sm leading-relaxed text-muted ring-1 ring-black/5">
+        You can see the booking form settings here. Only admins can change them.
+      </p>
+
+      <p x-show="loading" class="text-muted">Loading settings…</p>
+      <div x-show="loadError" x-cloak class="rounded-md bg-red-50 px-5 py-4 text-sm text-red-800 ring-1 ring-red-200">
+        <span x-text="loadError"></span>
+        <button type="button" class="ml-2 font-semibold underline" @click="load()">Try again</button>
+      </div>
+
+      <template x-if="!loading && !loadError">
+        <div class="space-y-6">
+          <p class="text-sm text-muted">
+            These control what clients see on the public booking form. Changes apply as soon as you save.
+            <span class="block sm:inline"><strong class="text-ink">Now:</strong> <span x-text="summary"></span></span>
+          </p>
+
+          <!-- ---------- Days ---------- -->
+          <section class="card" aria-labelledby="days-title">
+            <h2 id="days-title" class="text-2xl">Consultation days</h2>
+            <p class="mt-1 text-sm text-muted">Clients can only pick these days on the booking calendar. Sundays are never offered.</p>
+            <div class="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-6">
+              <template x-for="w in weekdays" :key="w.key">
+                <button type="button" @click="toggleDay(w.key)" :disabled="!isAdmin" :aria-pressed="days.includes(w.key)"
+                        class="rounded-md px-3 py-3 text-sm font-semibold ring-1 transition disabled:cursor-not-allowed"
+                        :class="days.includes(w.key) ? 'bg-copper text-white ring-copper' : 'bg-white text-ink ring-black/15 enabled:hover:ring-copper/60'">
+                  <span class="block" x-text="w.label.slice(0, 3)"></span>
+                  <span class="block text-[11px] font-normal opacity-80" x-text="days.includes(w.key) ? 'Open' : 'Closed'"></span>
+                </button>
+              </template>
+            </div>
+          </section>
+
+          <!-- ---------- Time slots ---------- -->
+          <section class="card" aria-labelledby="slots-title">
+            <div class="flex flex-wrap items-baseline justify-between gap-3">
+              <div>
+                <h2 id="slots-title" class="text-2xl">Time slots</h2>
+                <p class="mt-1 text-sm text-muted">The appointment times clients can choose on every open day. Tap a time to turn it on or off.</p>
+              </div>
+              <div class="flex flex-wrap gap-2" x-show="isAdmin">
+                <button type="button" class="btn btn-ghost px-3 py-1.5 text-xs text-ink" @click="useHourly(8, 16)">Hourly 8 AM–4 PM</button>
+                <button type="button" class="btn btn-ghost px-3 py-1.5 text-xs text-ink" @click="useHourly(13, 16)">Hourly 1–4 PM</button>
+                <button type="button" class="btn btn-ghost px-3 py-1.5 text-xs text-ink" @click="slots = []" :disabled="!slots.length">Clear</button>
+              </div>
+            </div>
+            <div class="mt-5 space-y-5">
+              <template x-for="group in slotGroups" :key="group.label">
+                <div>
+                  <h3 class="form-section mb-3" x-text="group.label"></h3>
+                  <div class="grid grid-cols-3 gap-2 sm:grid-cols-5 xl:grid-cols-10">
+                    <template x-for="slot in group.slots" :key="slot">
+                      <button type="button" @click="toggleSlot(slot)" :disabled="!isAdmin" :aria-pressed="slots.includes(slot)"
+                              class="rounded-sm px-2 py-2 text-sm tabular-nums ring-1 transition disabled:cursor-not-allowed"
+                              :class="slots.includes(slot) ? 'bg-copper font-semibold text-white ring-copper' : 'bg-white text-ink ring-black/15 enabled:hover:ring-copper/60'"
+                              x-text="formatSlot(slot)"></button>
+                    </template>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </section>
+
+          <!-- ---------- Fields ---------- -->
+          <section class="card" aria-labelledby="fields-title">
+            <h2 id="fields-title" class="text-2xl">Form fields</h2>
+            <p class="mt-1 text-sm text-muted">Turn off questions you don't need. Locked ones are always asked: they're needed to book, to reach the client, or for consent. A step with every question turned off is skipped.</p>
+
+            <div class="mt-6 grid gap-4 xl:grid-cols-2">
+              <template x-for="(stepName, i) in steps" :key="i">
+                <div class="rounded-md bg-white ring-1 ring-black/10">
+                  <div class="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3">
+                    <div class="min-w-0">
+                      <p class="text-xs font-semibold uppercase tracking-wider text-muted" x-text="`Step ${i + 1}`"></p>
+                      <h3 class="truncate font-sans text-base font-semibold" x-text="stepName"></h3>
+                    </div>
+                    <div class="flex shrink-0 items-center gap-2 text-xs">
+                      <span x-show="stepSkipped(i + 1)" class="rounded-full bg-amber/15 px-2 py-0.5 font-semibold text-[#8a5a1c]">Step skipped</span>
+                      <span x-show="!stepSkipped(i + 1) && hiddenCount(i + 1)" class="rounded-full bg-black/5 px-2 py-0.5 font-semibold text-muted" x-text="`${hiddenCount(i + 1)} off`"></span>
+                      <template x-if="isAdmin && fieldsFor(i + 1).some((f) => !f.locked)">
+                        <span class="flex gap-1">
+                          <button type="button" class="rounded-sm px-2 py-1 font-semibold text-copper-dark hover:bg-black/5" @click="setStep(i + 1, true)">All on</button>
+                          <button type="button" class="rounded-sm px-2 py-1 font-semibold text-copper-dark hover:bg-black/5" @click="setStep(i + 1, false)">All off</button>
+                        </span>
+                      </template>
+                    </div>
+                  </div>
+                  <ul class="divide-y divide-black/5">
+                    <template x-for="field in fieldsFor(i + 1)" :key="field.key">
+                      <li class="flex items-center justify-between gap-4 px-4 py-2.5">
+                        <span class="text-sm" :class="!isShown(field) && 'text-muted line-through decoration-black/30'" x-text="field.label" :id="'f-' + field.key"></span>
+                        <span x-show="field.locked" class="flex shrink-0 items-center gap-1 text-xs text-muted">
+                          <svg class="size-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                          Always asked
+                        </span>
+                        <button x-show="!field.locked" type="button" role="switch" :aria-checked="isShown(field)" :aria-labelledby="'f-' + field.key"
+                                @click="toggleField(field)" :disabled="!isAdmin"
+                                class="relative h-6 w-11 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-60"
+                                :class="isShown(field) ? 'bg-copper' : 'bg-black/20'">
+                          <span class="absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow transition" :class="isShown(field) && 'translate-x-5'"></span>
+                        </button>
+                      </li>
+                    </template>
+                  </ul>
+                </div>
+              </template>
+            </div>
+          </section>
+        </div>
+      </template>
+    </main>
+
+    <!-- Save bar: shows when there are unsaved changes -->
+    <div x-show="isAdmin && (dirty || saveError)" x-cloak x-transition.opacity
+         class="fixed inset-x-0 bottom-0 z-30 border-t border-black/10 bg-paper/95 backdrop-blur lg:left-64">
+      <div class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+        <div class="text-sm">
+          <p class="font-semibold">You have unsaved changes.</p>
+          <template x-for="p in problems" :key="p"><p class="text-red-700" x-text="p"></p></template>
+          <p x-show="saveError" class="text-red-700" x-text="saveError"></p>
+        </div>
+        <div class="flex gap-3">
+          <button type="button" class="btn btn-ghost text-ink" @click="discard()" :disabled="saving">Discard</button>
+          <button type="button" class="btn btn-primary" @click="save()" :disabled="saving || problems.length" x-text="saving ? 'Saving…' : 'Save changes'"></button>
+        </div>
+      </div>
+    </div>
+    <p x-show="!dirty && updatedLabel" class="px-4 pb-8 text-xs text-muted sm:px-6 lg:px-8" x-text="`Last saved ${updatedLabel}`"></p>
+  </div>
+
+  <!-- Toast -->
+  <div x-show="toast" x-cloak x-transition.opacity role="status" aria-live="polite"
+       class="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-md bg-ink px-5 py-3 text-sm text-white shadow-lg sm:left-auto sm:right-6 sm:mx-0"
+       x-text="toast"></div>
+</body>
+</html>

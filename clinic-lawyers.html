@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en" data-auth-required><!-- protected: only signed-in, verified staff (see assets/js/auth.js) -->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lawyers · SNMC Law Legal Clinic</title>
+  <meta name="robots" content="noindex, nofollow"><!-- staff page: keep it out of search results -->
+
+  <!-- ===== Shared head: keep identical on every page ===== -->
+  <link rel="icon" type="image/png" href="assets/img/snmc-legal-aid-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="assets/js/theme.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="assets/js/components.js" defer></script>
+  <script src="assets/js/components/site-header.js" defer></script>
+  <script src="assets/js/components/site-footer.js" defer></script>
+  <script src="assets/js/components/page-intro.js" defer></script>
+  <script src="assets/js/components/legal-notice.js" defer></script>
+  <script src="assets/js/components/contact-info.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.28.1/dist/pocketbase.umd.js"></script><!-- page-specific: PocketBase SDK -->
+  <script src="assets/js/auth.js"></script><!-- page-specific: checks the session before showing the page -->
+  <script src="assets/js/components/dashboard-sidebar.js" defer></script><!-- page-specific: staff sidebar -->
+  <script src="assets/js/crud.js" defer></script><!-- page-specific: shared table / delete logic -->
+  <script src="assets/js/lawyers.js" defer></script><!-- page-specific, must come before Alpine -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" defer></script>
+  <!-- ===== /Shared head ===== -->
+</head>
+<body x-data="lawyers" class="bg-cream text-ink">
+  <dashboard-sidebar active="lawyers"></dashboard-sidebar>
+
+  <div class="lg:pl-64">
+    <header class="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-black/10 bg-cream/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+      <button type="button" class="-ml-2 rounded-sm p-2 lg:hidden" @click="$dispatch('open-sidebar')" aria-label="Open menu">
+        <svg class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <h1 class="text-2xl">Lawyers</h1>
+      <button type="button" x-show="isAdmin" x-cloak class="btn btn-primary ml-auto px-4 py-2" @click="openCreate()">
+        <svg class="size-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        New lawyer
+      </button>
+    </header>
+
+    <main class="space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+
+      <p x-show="!isAdmin" x-cloak class="rounded-md bg-paper px-5 py-4 text-sm leading-relaxed text-muted ring-1 ring-black/5">
+        You can view the lawyers here. Only admins can add, change or remove them.
+      </p>
+
+      <section class="rounded-md bg-paper shadow-sm ring-1 ring-black/5" aria-labelledby="lawyers-title">
+        <div class="flex flex-col gap-4 border-b border-black/10 p-5 sm:p-6">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="lawyers-title" class="text-2xl">Lawyers</h2>
+            <p class="text-sm text-muted">Supervising attorneys and their caseload</p>
+          </div>
+
+          <!-- Controls -->
+          <div class="grid gap-3 sm:grid-cols-[2fr_1fr_auto]">
+            <label class="relative block">
+              <span class="sr-only">Search lawyers</span>
+              <svg class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input type="search" x-model.debounce.300ms="search" placeholder="Search name, email or number…" class="field pl-9">
+            </label>
+            <label>
+              <span class="sr-only">Filter by status</span>
+              <select x-model="statusFilter" class="field">
+                <option value="">All statuses</option>
+                <template x-for="s in statuses" :key="s.value"><option :value="s.value" x-text="s.label"></option></template>
+              </select>
+            </label>
+            <button type="button" class="btn btn-ghost py-2.5 text-ink" @click="clearFilters()" :disabled="!hasFilters">Clear</button>
+          </div>
+        </div>
+
+        <!-- Table (scrolls sideways inside the card on small screens) -->
+        <div class="relative overflow-x-auto"><!-- relative: keeps the sr-only "Actions" label inside the scroll box -->
+          <table class="w-full min-w-[820px] text-left text-sm" :aria-busy="loading">
+            <thead class="bg-cream/60 text-xs uppercase tracking-wider text-muted">
+              <tr>
+                <template x-for="col in columns" :key="col.key">
+                  <th scope="col" class="px-5 py-3 font-semibold" :class="col.numeric && 'text-right'" :aria-sort="col.sortable ? ariaSort(col.key) : null">
+                    <button x-show="col.sortable" type="button" @click="sortBy(col.key)" class="inline-flex items-center gap-1.5 uppercase tracking-wider hover:text-ink"
+                            :class="sortKey === col.key && 'text-ink'">
+                      <span x-text="col.label"></span>
+                      <svg class="size-3.5 transition" :class="sortKey !== col.key ? 'opacity-30' : (sortDir === 'desc' ? 'rotate-180' : '')"
+                           fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
+                    </button>
+                    <span x-show="!col.sortable" x-text="col.label"></span>
+                  </th>
+                </template>
+                <th scope="col" class="px-5 py-3 text-right font-semibold" x-show="isAdmin"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-black/5" :class="loading && rows.length && 'opacity-50'">
+              <template x-for="lawyer in rows" :key="lawyer.id">
+                <tr class="hover:bg-cream/50">
+                  <td class="px-5 py-3">
+                    <div class="flex items-center gap-3">
+                      <span class="grid size-9 shrink-0 place-items-center rounded-full bg-copper/15 text-xs font-semibold text-copper-dark" x-text="initials(lawyer)" aria-hidden="true"></span>
+                      <span class="min-w-0">
+                        <span class="block truncate font-semibold" x-text="displayName(lawyer)"></span>
+                        <a x-show="lawyer.email" :href="'mailto:' + lawyer.email" class="block truncate text-muted hover:text-copper-dark hover:underline" x-text="lawyer.email"></a>
+                      </span>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-5 py-3">
+                    <a x-show="lawyer.contactno" :href="'tel:' + (lawyer.contactno || '').replace(/[^0-9+]/g, '')" class="hover:text-copper-dark hover:underline" x-text="lawyer.contactno"></a>
+                    <span x-show="!lawyer.contactno" class="text-muted">—</span>
+                  </td>
+                  <td class="px-5 py-3 text-right font-semibold tabular-nums" x-text="lawyer.active_cases ?? 0"></td>
+                  <td class="px-5 py-3 text-right tabular-nums text-muted" x-text="lawyer.archived_cases ?? 0"></td>
+                  <td class="px-5 py-3 text-right tabular-nums" x-text="formatHours(lawyer.ulas_creditable_hrs)"></td>
+                  <td class="whitespace-nowrap px-5 py-3">
+                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1" :class="statusClass(lawyer.status)" x-text="statusLabel(lawyer.status)"></span>
+                  </td>
+                  <td class="whitespace-nowrap px-5 py-3 text-right" x-show="isAdmin">
+                    <div class="inline-flex items-center gap-1">
+                      <button type="button" @click="openEdit(lawyer)" class="rounded-sm px-2.5 py-1.5 font-semibold text-ink hover:bg-black/5"
+                              :aria-label="'Edit ' + displayName(lawyer)">Edit</button>
+                      <button type="button" @click="askDelete(lawyer)" class="rounded-sm px-2.5 py-1.5 font-semibold text-red-700 hover:bg-red-50"
+                              :aria-label="'Delete ' + displayName(lawyer)">Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+
+              <tr x-show="loading && !rows.length">
+                <td :colspan="columns.length + 1" class="px-5 py-12 text-center text-muted">Loading lawyers…</td>
+              </tr>
+              <tr x-show="!loading && loadError" x-cloak>
+                <td :colspan="columns.length + 1" class="px-5 py-12 text-center">
+                  <span class="text-red-700" x-text="loadError"></span>
+                  <button type="button" class="ml-2 font-semibold text-copper-dark hover:underline" @click="load()">Try again</button>
+                </td>
+              </tr>
+              <tr x-show="!loading && !loadError && !rows.length" x-cloak>
+                <td :colspan="columns.length + 1" class="px-5 py-12 text-center text-muted">
+                  <span x-show="hasFilters">No lawyers match these filters. <button type="button" class="ml-1 font-semibold text-copper-dark hover:underline" @click="clearFilters()">Clear filters</button></span>
+                  <span x-show="!hasFilters">No lawyers yet.<span x-show="isAdmin"> Add the first one with <strong class="text-ink">New lawyer</strong>.</span></span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex flex-col gap-3 border-t border-black/10 px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-center gap-3 text-muted">
+            <span x-text="rangeLabel" aria-live="polite"></span>
+            <label class="flex items-center gap-2">
+              <span class="sr-only sm:not-sr-only">Rows</span>
+              <select x-model.number="perPage" class="rounded-sm border border-black/15 bg-white px-2 py-1 text-ink focus:border-copper focus:outline-none">
+                <option>10</option><option>25</option><option>50</option>
+              </select>
+            </label>
+          </div>
+          <nav class="flex items-center gap-1" aria-label="Table pages">
+            <button type="button" class="rounded-sm px-3 py-1.5 hover:bg-black/5 disabled:opacity-30 disabled:hover:bg-transparent" @click="goTo(page - 1)" :disabled="page === 1">Previous</button>
+            <template x-for="n in totalPages" :key="n">
+              <button type="button" @click="goTo(n)" :aria-current="page === n ? 'page' : null"
+                      :class="page === n ? 'bg-copper text-white' : 'hover:bg-black/5'"
+                      class="min-w-8 rounded-sm px-2 py-1.5 font-semibold" x-text="n"></button>
+            </template>
+            <button type="button" class="rounded-sm px-3 py-1.5 hover:bg-black/5 disabled:opacity-30 disabled:hover:bg-transparent" @click="goTo(page + 1)" :disabled="page === totalPages">Next</button>
+          </nav>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ================= Add / edit dialog ================= -->
+  <dialog x-ref="formDialog" aria-labelledby="form-title"
+          class="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-md bg-paper p-0 text-ink shadow-xl backdrop:bg-black/50">
+    <form @submit.prevent="save()" novalidate class="p-6 sm:p-8">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="eyebrow" x-text="editing ? 'Edit lawyer' : 'New lawyer'"></p>
+          <h2 id="form-title" class="mt-2 text-3xl" x-text="editing ? displayName(editing) : 'Add a lawyer'"></h2>
+        </div>
+        <button type="button" class="-mr-2 -mt-2 rounded-sm p-2 text-muted hover:bg-black/5 hover:text-ink" @click="closeForm()" aria-label="Close">
+          <svg class="size-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="mt-6 grid gap-5 sm:grid-cols-2">
+        <div>
+          <label for="l-fname" class="field-label">First name</label>
+          <input id="l-fname" type="text" x-model="form.fname" maxlength="100" autocomplete="off" class="field" :aria-invalid="!!formErrors.fname" autofocus>
+          <p x-show="formErrors.fname" x-text="formErrors.fname" class="field-error"></p>
+        </div>
+        <div>
+          <label for="l-lname" class="field-label">Last name</label>
+          <input id="l-lname" type="text" x-model="form.lname" maxlength="100" autocomplete="off" class="field" :aria-invalid="!!formErrors.lname">
+          <p x-show="formErrors.lname" x-text="formErrors.lname" class="field-error"></p>
+        </div>
+        <div>
+          <label for="l-email" class="field-label">Email <span class="font-normal text-muted">(optional)</span></label>
+          <input id="l-email" type="email" x-model="form.email" autocomplete="off" class="field" :aria-invalid="!!formErrors.email">
+          <p x-show="formErrors.email" x-text="formErrors.email" class="field-error"></p>
+        </div>
+        <div>
+          <label for="l-contact" class="field-label">Contact number <span class="font-normal text-muted">(optional)</span></label>
+          <input id="l-contact" type="tel" x-model="form.contactno" maxlength="30" placeholder="0917 000 0000" autocomplete="off" class="field" :aria-invalid="!!formErrors.contactno">
+          <p x-show="formErrors.contactno" x-text="formErrors.contactno" class="field-error"></p>
+        </div>
+
+        <div>
+          <label for="l-active" class="field-label">Active cases</label>
+          <input id="l-active" type="number" inputmode="numeric" min="0" step="1" x-model="form.active_cases" placeholder="0" class="field" :aria-invalid="!!formErrors.active_cases">
+          <p x-show="formErrors.active_cases" x-text="formErrors.active_cases" class="field-error"></p>
+        </div>
+        <div>
+          <label for="l-archived" class="field-label">Archived cases</label>
+          <input id="l-archived" type="number" inputmode="numeric" min="0" step="1" x-model="form.archived_cases" placeholder="0" class="field" :aria-invalid="!!formErrors.archived_cases">
+          <p x-show="formErrors.archived_cases" x-text="formErrors.archived_cases" class="field-error"></p>
+        </div>
+        <div class="sm:col-span-2">
+          <label for="l-ulas" class="field-label">ULAS creditable hours</label>
+          <input id="l-ulas" type="number" inputmode="decimal" min="0" step="any" x-model="form.ulas_creditable_hrs" placeholder="0" class="field sm:max-w-[calc(50%-0.625rem)]" :aria-invalid="!!formErrors.ulas_creditable_hrs">
+          <p class="field-hint">Decimals are fine, e.g. 12.5.</p>
+          <p x-show="formErrors.ulas_creditable_hrs" x-text="formErrors.ulas_creditable_hrs" class="field-error"></p>
+        </div>
+
+        <div class="sm:col-span-2">
+          <span class="field-label">Status</span>
+          <div class="flex flex-wrap gap-2">
+            <template x-for="s in statuses" :key="s.value">
+              <label class="pill"><input type="radio" class="accent-copper" :value="s.value" x-model="form.status"> <span x-text="s.label"></span></label>
+            </template>
+          </div>
+          <p x-show="formErrors.status" x-text="formErrors.status" class="field-error"></p>
+        </div>
+      </div>
+
+      <p x-show="formError" x-text="formError" role="alert" class="field-error mt-5"></p>
+      <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button type="button" class="btn btn-ghost text-ink" @click="closeForm()">Cancel</button>
+        <button type="submit" class="btn btn-primary" :disabled="saving"
+                x-text="saving ? 'Saving…' : (editing ? 'Save changes' : 'Add lawyer')"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ================= Delete dialog ================= -->
+  <dialog x-ref="deleteDialog" aria-labelledby="delete-title"
+          class="m-auto w-[calc(100%-2rem)] max-w-md rounded-md bg-paper p-6 text-ink shadow-xl backdrop:bg-black/50 sm:p-8">
+    <h2 id="delete-title" class="text-2xl">Delete this lawyer?</h2>
+    <p class="mt-3 leading-relaxed text-muted">
+      <strong class="text-ink" x-text="displayName(deleteTarget)"></strong>
+      will be removed from the list. This can't be undone.
+    </p>
+    <p x-show="deleteError" x-text="deleteError" role="alert" class="field-error mt-4"></p>
+    <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+      <button type="button" class="btn btn-ghost text-ink" @click="$refs.deleteDialog.close()" autofocus>Cancel</button>
+      <button type="button" class="btn bg-red-700 text-white hover:bg-red-800" :disabled="deleting" @click="confirmDelete()"
+              x-text="deleting ? 'Deleting…' : 'Delete lawyer'"></button>
+    </div>
+  </dialog>
+
+  <!-- Toast -->
+  <div x-show="toast" x-cloak x-transition.opacity role="status" aria-live="polite"
+       class="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-md bg-ink px-5 py-3 text-sm text-white shadow-lg sm:left-auto sm:right-6 sm:mx-0"
+       x-text="toast"></div>
+</body>
+</html>

@@ -4,11 +4,13 @@
  * <legal-notice tone="dark">                    -> for use on dark backgrounds
  *
  * Callout box for fee/confidentiality notices. Child HTML replaces the default text.
+ * Add `i18n` to translate the title with x-t (assets/js/i18n.js; needs an x-data around it).
  */
 customElements.define('legal-notice', class extends HTMLElement {
   connectedCallback() {
     const title = this.getAttribute('title') || 'Important notice';
     const dark = this.getAttribute('tone') === 'dark';
+    const t = this.hasAttribute('i18n') ? ' x-t' : '';
     const body = this.innerHTML.trim() || `
       <p>The clinic charges no fees at any stage. If anyone asks you for payment in the clinic's name,
       report it to the Clinical Program Director immediately.</p>`;
@@ -20,7 +22,7 @@ customElements.define('legal-notice', class extends HTMLElement {
           <path d="M12 3 2.5 20h19L12 3z"/><path d="M12 10v4M12 17.5v.01"/>
         </svg>
         <div class="space-y-3 text-sm leading-relaxed">
-          <p class="text-xs font-semibold uppercase tracking-[0.2em] ${dark ? 'text-rose' : 'text-copper-dark'}">${title}</p>
+          <p class="text-xs font-semibold uppercase tracking-[0.2em] ${dark ? 'text-rose' : 'text-copper-dark'}"${t}>${title}</p>
           ${body}
         </div>
       </aside>`;

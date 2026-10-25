@@ -22,6 +22,7 @@
   <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.28.1/dist/pocketbase.umd.js"></script><!-- page-specific: PocketBase SDK -->
   <script src="assets/js/auth.js"></script><!-- page-specific: checks the session before showing the page -->
   <script src="assets/js/components/dashboard-sidebar.js" defer></script><!-- page-specific: staff sidebar -->
+  <script src="assets/js/crud.js" defer></script><!-- page-specific: shared table / delete logic -->
   <script src="assets/js/users.js" defer></script><!-- page-specific, must come before Alpine -->
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" defer></script>
   <!-- ===== /Shared head ===== -->
@@ -78,12 +79,12 @@
               </select>
             </label>
             <button type="button" class="btn btn-ghost py-2.5 text-ink" @click="clearFilters()"
-                    :disabled="!search && !verifiedFilter && !roleFilter">Clear</button>
+                    :disabled="!hasFilters">Clear</button>
           </div>
         </div>
 
         <!-- Table (scrolls sideways inside the card on small screens) -->
-        <div class="overflow-x-auto">
+        <div class="relative overflow-x-auto"><!-- relative: keeps the sr-only "Actions" label inside the scroll box -->
           <table class="w-full min-w-[720px] text-left text-sm" :aria-busy="loading">
             <thead class="bg-cream/60 text-xs uppercase tracking-wider text-muted">
               <tr>
