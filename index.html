@@ -28,6 +28,13 @@
 </head>
 <body class="bg-cream text-ink">
   <site-header active="book"></site-header>
+  <!-- Without JavaScript the booking form can't work (plain styles: Tailwind needs JavaScript too) -->
+  <noscript>
+    <div style="background:#0d1216;color:#fff;padding:24px 16px;text-align:center;font-family:system-ui,sans-serif;line-height:1.5">
+      <strong>The booking form needs JavaScript.</strong> Please turn it on in your browser, or email legal-clinic@snmclaw.com or visit the clinic.<br>
+      <span lang="ceb" style="opacity:.75">Kinahanglan ang JavaScript sa booking form. Palihug i-on kini, o mag-email sa legal-clinic@snmclaw.com o bisitaha ang klinika.</span>
+    </div>
+  </noscript>
 
   <!-- x-data here so the translated intro (x-t) is processed too -->
   <main x-data>

@@ -19,6 +19,7 @@ It's plain static HTML with no build step and no server-side code: upload the fi
 ```
 index.html          Book a Visit (6-step intake wizard): the main page for now
 book.html           Redirects to index.html so old links keep working
+404.html            "Page not found" (GitHub Pages shows it for any address that doesn't exist)
 home.html           Former home page (not linked in the nav for now)
 about.html          About Us (not linked in the nav for now)
 services.html       Our Services (not linked in the nav for now)
@@ -246,3 +247,9 @@ Do step 2 before step 3: once the secret is set, bookings without a token are re
 - **Staff can still see the site:** anyone signed in to the dashboard in that browser sees the normal site with a yellow notice at the top. **Preview the maintenance page** (or add `?maintenance-preview` to a public page's address) shows the maintenance page anyway.
 - If the setting can't be loaded within about 2 seconds (e.g. PocketBase is down), the public site is shown as normal.
 - Adding a new public page: put `<script src="assets/js/maintenance.js"></script>` right after `theme.js` in its `<head>` (not deferred). Never add it to staff pages.
+
+## Error pages
+
+- **404:** GitHub Pages serves `404.html` for any address that doesn't exist, at that address (e.g. `/old/page.html`). It has `<base href="/">` so its styles and links work however deep the address is, says "We can't find that page" in English and Bisaya, and links to the booking page. It's a public page, so maintenance mode applies to it too.
+- **No JavaScript:** the booking page shows a plain notice (English and Bisaya, with the clinic email) to anyone with JavaScript turned off, since the form can't work without it.
+- **Other errors (500 and so on):** GitHub Pages only supports a custom 404; anything else (e.g. GitHub being down) shows GitHub's own page and can't be changed. Problems reaching PocketBase are handled on the pages themselves: the booking form shows a message and keeps the answers, the settings fall back to defaults, and staff pages send you to sign-in with an explanation.
