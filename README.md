@@ -53,8 +53,10 @@ assets/
   js/maintenance.js Public pages only: shows "We'll be back soon" while maintenance mode is on
   js/preloader.js   Every page: the logo preloader shown while the page gets ready (see "Preloader")
   img/              Images (currently placeholders; see below)
-  img/snmc-legal-aid.svg           SNMC Legal Aid logo (brick): sidebar, sign-in page, favicon, SITE.logo
+  img/snmc-legal-aid.svg           SNMC Legal Aid logo (brick, full colour): sidebar, sign-in page, favicon, SITE.logo
+  img/snmc-legal-aid-white.svg     Same logo in plain white, for dark backgrounds: booking page hero (SITE.logoWhite)
   img/snmc-legal-aid-animated.svg  Same logo drawing itself in (~3.5 s, plays once), used by the preloader
+  img/snmc-legal-aid-emblem-white.svg  White emblem (no lettering) for dark backgrounds: header, footer, maintenance page
   img/favicon-32.png, img/apple-touch-icon.png  PNG copies of the logo for browsers that can't use an SVG icon (Safari, iPhone home screen)
   img/snmc-legal-aid-logo.png      Old low-res seal: no longer used by the site (kept for the Annex B branch)
 ```
@@ -75,7 +77,7 @@ assets/
 |---|---|
 | `<site-header active="home">` | Sticky top nav + mobile menu. `active` = the `key` of the current page in `SITE.nav` |
 | `<site-footer>` | Footer |
-| `<page-intro eyebrow="…" title="…" logo><p>intro</p></page-intro>` | Dark title band at the top of inner pages (`logo` shows the SNMC Legal Aid seal beside the title) |
+| `<page-intro eyebrow="…" title="…" logo><p>intro</p></page-intro>` | Dark title band at the top of inner pages (`logo` shows the SNMC Legal Aid seal beside the title, in white; above the title on phones) |
 | `<legal-notice title="…" tone="dark"><p>…</p></legal-notice>` | Callout box for notices (defaults to the "no fees" notice) |
 | `<contact-info>` / `<contact-info variant="inline">` | Phone, email, address, hours (from `SITE`) |
 | `<dashboard-sidebar active="users">` | Staff pages only: sidebar menu, signed-in user, Sign out (open on mobile with `$dispatch('open-sidebar')`) |
@@ -88,7 +90,7 @@ Add `data-reveal` to any element to fade it in on scroll (`data-reveal-delay="12
 
 - **Phone number, email, address, hours:** `assets/js/components.js` → `window.SITE` (the phone is still `[add clinic number]`).
 - **Nav links:** `SITE.nav` in the same file. Only Book a Visit is linked for now; add the other pages back there to relink them in the header and footer.
-- **Logo:** the SNMC Legal Aid seal is `assets/img/snmc-legal-aid.svg` (`SITE.logo`): header, maintenance page, staff sidebar, sign-in page, favicon and preloader. It's designed for light backgrounds, so on dark ones it sits on a cream medallion: `<span class="seal size-12"><img src="assets/img/snmc-legal-aid.svg" alt=""></span>` (`.seal` in `theme.js`; set the size with `size-*`). To show it on the booking page intro too, add `logo` to its `<page-intro>`. If the logo changes, re-export `favicon-32.png` (32 × 32, transparent) and `apple-touch-icon.png` (180 × 180, on `#fbf9f4`) from the new SVG too.
+- **Logo:** the full-colour SNMC Legal Aid seal is `assets/img/snmc-legal-aid.svg` (`SITE.logo`): staff sidebar, sign-in page, favicon and preloader. The booking page hero shows the same seal in plain white (`assets/img/snmc-legal-aid-white.svg`, `SITE.logoWhite`). The public header, footer and maintenance page use the plain white emblem instead (`assets/img/snmc-legal-aid-emblem-white.svg`, `SITE.emblem`: the seal's artwork without the lettering, for dark backgrounds). It's designed for light backgrounds, so on dark ones it sits on a cream medallion: `<span class="seal size-12"><img src="assets/img/snmc-legal-aid.svg" alt=""></span>` (`.seal` in `theme.js`; set the size with `size-*`). To show it on the booking page intro too, add `logo` to its `<page-intro>`. If the logo changes, re-export `favicon-32.png` (32 × 32, transparent) and `apple-touch-icon.png` (180 × 180, on `#fbf9f4`) from the new SVG too.
 - **Colors / fonts:** the `@theme` block in `assets/js/theme.js`. For example, `--color-copper` becomes the `bg-copper` / `text-copper` classes.
 - **Add a page:** copy an existing page (e.g. `about.html`), keep the `<head>` "Shared head" block as it is, set `<site-header active="…">`, and add the page to `SITE.nav`.
 - **Images:** the files in `assets/img/` are labelled placeholders. Export the real photos from the Canva design and save them over these files with the same names:

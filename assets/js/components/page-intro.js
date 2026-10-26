@@ -24,7 +24,7 @@ customElements.define('page-intro', class extends HTMLElement {
             <h1 class="mt-4 max-w-3xl text-4xl leading-tight sm:text-5xl"${t}>${title}</h1>
             ${body ? `<div class="mt-6 max-w-3xl space-y-4 text-lg leading-relaxed text-white/75">${body}</div>` : ''}
           </div>
-          ${showLogo ? `<img src="${window.SITE.logo}" alt="SNMC Legal Aid seal: “The law is for all.” Est. 2024" class="order-first w-40 shrink-0 md:order-none md:w-64 lg:w-80">` : ''}
+          ${showLogo ? `<img src="${window.SITE.logoWhite}" alt="SNMC Legal Aid seal: “The law is for all.” Est. 2024" class="order-first h-auto w-32 shrink-0 self-start sm:w-44 md:order-none md:mr-6 md:w-56 md:self-center lg:w-66">` : ''}
         </div>
       </section>`;
   }

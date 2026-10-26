@@ -20,9 +20,13 @@ window.SITE = {
   // the SECRET key goes on the PocketBase server only (README → "Spam protection"). Empty = no check shown.
   turnstileSiteKey: '',
 
-  // SNMC Legal Aid seal (SVG): header, maintenance page and <page-intro logo>. The staff sidebar, sign-in
-  // page, favicon and preloader point at the same file.
+  // SNMC Legal Aid seal in full colour (SVG), for light backgrounds. The staff sidebar, sign-in page, favicon and
+  // preloader point at the same file.
   logo: 'assets/img/snmc-legal-aid.svg',
+  // The full seal (with lettering) in plain white, for dark backgrounds: <page-intro logo>.
+  logoWhite: 'assets/img/snmc-legal-aid-white.svg',
+  // The same emblem in plain white (no lettering), for dark backgrounds: header, footer and maintenance page.
+  emblem: 'assets/img/snmc-legal-aid-emblem-white.svg',
 
   // Top navigation. `key` matches the `active` attribute on <site-header>.
   // For now the booking page (index.html) is the only page linked. home.html, about.html,
