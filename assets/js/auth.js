@@ -2,7 +2,7 @@
  * PocketBase connection + sign-in helpers, shared by login.html and protected pages.
  *
  * Load order (in <head>, NOT deferred, so a protected page stays hidden until checked):
- *   <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.28.1/dist/pocketbase.umd.js"></script>
+ *   <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.28.1/dist/pocketbase.umd.js" integrity="…" crossorigin="anonymous"></script>
  *   <script src="assets/js/auth.js"></script>
  *
  * Protect a page by adding `data-auth-required` to its <html> tag. The page stays hidden

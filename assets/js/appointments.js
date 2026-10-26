@@ -200,6 +200,8 @@ document.addEventListener('alpine:init', () => {
     // ---------- Detail ----------
 
     async open(id) {
+      // Only the most recently opened appointment may fill the dialog (an earlier, slower load is dropped).
+      const ticket = (this._openTicket = (this._openTicket || 0) + 1);
       this.current = null;
       this.booking = null;
       this.history = [];
@@ -217,14 +219,16 @@ document.addEventListener('alpine:init', () => {
             filter: pb.filter('app_id = {:id}', { id }), sort: '-created', expand: 'user_id,lsp_id,sl_id', requestKey: null,
           }),
         ]);
+        if (ticket !== this._openTicket) return;
         this.current = row;
         this.booking = booking;
         this.history = log;
         this.update = { app_status: row.app_status || 'PENDING', lsp_id: row.lsp_id || '', sl_id: row.sl_id || '', remarks: '' };
       } catch (err) {
+        if (ticket !== this._openTicket) return;
         this.detailError = err?.status === 404 ? 'This appointment no longer exists.' : this.messageFor(err, 'open');
       } finally {
-        this.detailLoading = false;
+        if (ticket === this._openTicket) this.detailLoading = false;
       }
     },
 
@@ -341,9 +345,10 @@ document.addEventListener('alpine:init', () => {
       if (Object.keys(e).length) return;
       this.creating = true;
       this.createError = '';
+      const reference = makeAppointmentReference();
+      let record;
       try {
-        const reference = makeAppointmentReference();
-        const record = await pb.collection('appointments').create({
+        record = await pb.collection('appointments').create({
           reference,
           title: [f.name.trim(), f.concern.trim()].filter(Boolean).join(' — '),
           email: f.email.trim(),
@@ -351,22 +356,31 @@ document.addEventListener('alpine:init', () => {
           scheduled_at: f.date ? manilaToUTC(f.date, f.time) : '',
           json: { source: 'staff', addedBy: this.me?.name || this.me?.email || '', addedAt: new Date().toISOString(), concern: f.concern.trim() },
         });
-        if (f.app_status !== 'PENDING' || f.lsp_id || f.sl_id || f.remarks.trim()) {
+      } catch (err) {
+        // PocketBase names the fields title / mobile_no; this form calls them name / mobile.
+        const { title: name, mobile_no: mobile, email } = this.fieldErrorsFrom(err);
+        this.newErrors = Object.fromEntries(Object.entries({ name, mobile, email }).filter(([, message]) => message));
+        this.createError = Object.keys(this.newErrors).length ? 'Please fix the highlighted fields.' : this.messageFor(err, 'save');
+        this.creating = false;
+        return;
+      }
+      // The appointment exists from here on: close the dialog whatever happens, so it isn't added twice.
+      let note = '';
+      if (f.app_status !== 'PENDING' || f.lsp_id || f.sl_id || f.remarks.trim()) {
+        try {
           await pb.collection('appointments_status').create({
             app_id: record.id, user_id: this.me.id, app_status: f.app_status,
             lsp_id: f.lsp_id, sl_id: f.sl_id, remarks: f.remarks.trim(),
           });
+        } catch {
+          note = ' Its status and assignment couldn\'t be saved: set them again below.';
         }
-        this.$refs.newDialog.close();
-        this.flash(`${reference} was added.`);
-        this.load();
-        this.open(record.id);
-      } catch (err) {
-        this.newErrors = this.fieldErrorsFrom(err);
-        this.createError = Object.keys(this.newErrors).length ? 'Please fix the highlighted fields.' : this.messageFor(err, 'save');
-      } finally {
-        this.creating = false;
       }
+      this.creating = false;
+      this.$refs.newDialog.close();
+      this.flash(`${reference} was added.${note}`);
+      this.load();
+      this.open(record.id);
     },
   }));
 });

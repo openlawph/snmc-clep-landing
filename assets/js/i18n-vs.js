@@ -239,7 +239,7 @@ window.I18N_STRINGS.vs = {
   'Contracts / Affidavits / Certificates': 'Kontrata / Apidabit / Sertipiko',
   'Additional documents': 'Dugang nga mga dokumento',
   'Attach copies': 'Ilakip ang mga kopya',
-  'Photos or scans. Please still bring the originals to your appointment.': 'Litrato o scan. Palihug dad-a gihapon ang mga orihinal sa imong appointment.',
+  "Files aren't uploaded online yet: the clinic only receives their names. Please bring copies and the originals to your appointment.": 'Dili pa ma-upload online ang mga file: ang ilang mga ngalan lang ang madawat sa klinika. Palihug dad-a ang mga kopya ug ang mga orihinal sa imong appointment.',
 
   // ---------- Step 6 ----------
   'Appointment': 'Appointment',

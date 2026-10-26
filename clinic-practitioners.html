@@ -7,24 +7,26 @@
   <meta name="robots" content="noindex, nofollow"><!-- staff page: keep it out of search results -->
 
   <!-- ===== Shared head: keep identical on every page ===== -->
+  <!-- Where this page may load scripts, styles, images and data from. Add a host here when you add a CDN library or API (README → "Security"). -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://capi.snmclaw.com; connect-src 'self' https://capi.snmclaw.com; frame-src https://challenges.cloudflare.com https://maps.google.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <link rel="icon" type="image/png" href="assets/img/snmc-legal-aid-logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="assets/js/theme.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3/dist/index.global.js" integrity="sha384-2ql948lIdLcGEE0/qxNiudyTjgauA3RDJERu5xW75kFCvSl5a9odyQYCb6tEjnmB" crossorigin="anonymous"></script>
   <script src="assets/js/components.js" defer></script>
   <script src="assets/js/components/site-header.js" defer></script>
   <script src="assets/js/components/site-footer.js" defer></script>
   <script src="assets/js/components/page-intro.js" defer></script>
   <script src="assets/js/components/legal-notice.js" defer></script>
   <script src="assets/js/components/contact-info.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.28.1/dist/pocketbase.umd.js"></script><!-- page-specific: PocketBase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.28.1/dist/pocketbase.umd.js" integrity="sha384-Pr74Q4nJqBcqXYMrsOS8tSw8t8N0Nayn7pWqFRdz9MsePI7uo55HNdxwrCcIRD8e" crossorigin="anonymous"></script><!-- page-specific: PocketBase SDK -->
   <script src="assets/js/auth.js"></script><!-- page-specific: checks the session before showing the page -->
   <script src="assets/js/components/dashboard-sidebar.js" defer></script><!-- page-specific: staff sidebar -->
   <script src="assets/js/crud.js" defer></script><!-- page-specific: shared table / delete logic -->
   <script src="assets/js/practitioners.js" defer></script><!-- page-specific, must come before Alpine -->
-  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.5/dist/cdn.min.js" integrity="sha384-FYLKjwG3aohNhNZoVG8sY/5ntunm+MqylL90Q+rT3OM7AwV9/BKFjk/RjoIpIgsI" crossorigin="anonymous" defer></script>
   <!-- ===== /Shared head ===== -->
 </head>
 <body x-data="practitioners" class="bg-cream text-ink">

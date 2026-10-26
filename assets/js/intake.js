@@ -144,6 +144,16 @@ function ymdOf(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+// Today's date and the time now at the clinic (Manila), whatever time zone the client's device is set to,
+// e.g. { date: '2026-10-27', time: '13:05' }. Slots are clinic times, so "today" and "already started" are too.
+const CLINIC_CLOCK = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+});
+function clinicNow() {
+  const p = Object.fromEntries(CLINIC_CLOCK.formatToParts(new Date()).map((part) => [part.type, part.value]));
+  return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}` };
+}
+
 // Loads Cloudflare Turnstile once (only when SITE.turnstileSiteKey is set).
 function loadTurnstile() {
   if (window.turnstile) return Promise.resolve();
@@ -351,13 +361,12 @@ document.addEventListener('alpine:init', () => {
     // ---------- Date picker ----------
 
     get today() {
-      return ymdOf(new Date());
+      return clinicNow().date;
     },
 
     get maxDate() {
-      const d = new Date();
-      d.setDate(d.getDate() + INTAKE_BOOKING_DAYS_AHEAD);
-      return ymdOf(d);
+      const [y, m, d] = this.today.split('-').map(Number);
+      return ymdOf(new Date(y, m - 1, d + INTAKE_BOOKING_DAYS_AHEAD));
     },
 
     get openDays() {
@@ -386,10 +395,9 @@ document.addEventListener('alpine:init', () => {
 
     // Today only offers slots that haven't started yet.
     slotsFor(ymd) {
-      if (ymd !== this.today) return this.settings.time_slots;
-      const now = new Date();
-      const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      return this.settings.time_slots.filter((s) => s > nowHHMM);
+      const now = clinicNow();
+      if (ymd !== now.date) return this.settings.time_slots;
+      return this.settings.time_slots.filter((s) => s > now.time);
     },
 
     get availableSlots() {
@@ -636,6 +644,9 @@ document.addEventListener('alpine:init', () => {
     },
 
     async submit() {
+      // Enter in a text field submits the form even while the Submit button is disabled:
+      // never send a second request (a second booking) while one is on its way or done.
+      if (this.submitting || this.submitted) return;
       for (const s of this.activeSteps) {
         const errs = this.validate(s);
         if (Object.keys(errs).length) {
@@ -643,6 +654,10 @@ document.addEventListener('alpine:init', () => {
           this.errors = errs;
           return this.focusFirstError();
         }
+      }
+      if (this.captchaOn && !this.captchaToken) {
+        this.captchaError = this.tr('Complete the security check to submit.');
+        return;
       }
       this.submitting = true;
       this.submitError = '';

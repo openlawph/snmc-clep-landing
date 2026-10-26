@@ -30,7 +30,6 @@
   html { scroll-behavior: smooth; }
   body { @apply font-sans antialiased; }
   h1, h2, h3, h4 { @apply font-display font-normal; }
-  [x-cloak] { display: none !important; }
 }
 
 @layer components {
@@ -57,4 +56,9 @@
   style.type = 'text/tailwindcss';
   style.textContent = css;
   document.head.appendChild(style);
+
+  // Plain CSS (not Tailwind), so x-cloak hides things from the very first paint, before Tailwind has built its styles.
+  const cloak = document.createElement('style');
+  cloak.textContent = '[x-cloak] { display: none !important; }';
+  document.head.appendChild(cloak);
 })();

@@ -7,8 +7,8 @@ It's plain static HTML with no build step and no server-side code: upload the fi
 
 | What | How | Why |
 |---|---|---|
-| Styling | [Tailwind CSS v4](https://tailwindcss.com) browser build via CDN | Utility classes directly in the HTML |
-| Interactivity | [Alpine.js 3](https://alpinejs.dev) via CDN | Mobile menu and the booking wizard |
+| Styling | [Tailwind CSS v4](https://tailwindcss.com) browser build 4.3.3 via CDN | Utility classes directly in the HTML |
+| Interactivity | [Alpine.js](https://alpinejs.dev) 3.17.5 via CDN | Mobile menu and the booking wizard |
 | Database / sign-in | [PocketBase JS SDK](https://github.com/pocketbase/js-sdk) 0.28.1 via CDN (UMD build, global `PocketBase`) | Staff sign-in and data at https://capi.snmclaw.com (staff pages only; the booking form just reads its public settings with `fetch`) |
 | Languages | `assets/js/i18n.js` (no library) | Booking form in EN (English) or VS (Visayan / Bisaya) |
 | Components | Native **Web Components** (`customElements.define`) in `assets/js/components/` | Shared header/footer/etc. with no framework, no build, and no `fetch` (works on any static host, even when opened as a local file) |
@@ -89,7 +89,7 @@ Add `data-reveal` to any element to fade it in on scroll (`data-reveal-delay="12
 | 2. Personal information | B: applicant personal information |
 | 3. Household & sector | C: household composition & financial eligibility · D: sector classification |
 | 4. Legal issue | F: practice area, requested assistance, opposing party · E: conflict check & prior consultation |
-| 5. Case facts | G: narrative & case facts · K: documents checklist + optional uploads |
+| 5. Case facts | G: narrative & case facts · K: documents checklist + file picker (only file names are sent for now) |
 | 6. Consent & declaration | Review of all answers · H: data privacy consent · I: declaration + typed signature |
 
 Sections **A** (administrative) and **J** (staff assessment) are for clinic staff, so they are not on the public form.
@@ -236,7 +236,7 @@ Anyone can create an `appointments` record (that's how the public form books), s
 
 Do step 2 before step 3: once the secret is set, bookings without a token are refused. Until the secret is set, the hook lets bookings through and logs a warning. Signed-in staff adding walk-ins never need the check. To test locally, Cloudflare's test site key `1x00000000000000000000AA` always passes (it shows "For testing only").
 
-**2. Booking limit per connection (PocketBase).** PocketBase admin → **Settings** → **Rate limits** → add a rule: label `appointments:create`, audience **Guest only**, max **5** requests per **600** seconds. That's at most 5 online bookings per 10 minutes from one internet connection; staff aren't affected.
+**2. Booking limit per connection (PocketBase).** PocketBase admin → **Settings** → **Rate limits** → add a rule: label `appointments:create`, audience **Guest only**, max **10** requests per **600** seconds. That's at most 10 online bookings per 10 minutes from one internet address; staff aren't affected. (Mobile networks often put many phones behind one address, so don't go much lower.) Without this rule only PocketBase's general `*:create` limit applies: 20 per 5 seconds, which a bot can easily live with.
 
 ## Site Settings: maintenance mode
 
@@ -253,3 +253,29 @@ Do step 2 before step 3: once the secret is set, bookings without a token are re
 - **404:** GitHub Pages serves `404.html` for any address that doesn't exist, at that address (e.g. `/old/page.html`). It has `<base href="/">` so its styles and links work however deep the address is, says "We can't find that page" in English and Bisaya, and links to the booking page. It's a public page, so maintenance mode applies to it too.
 - **No JavaScript:** the booking page shows a plain notice (English and Bisaya, with the clinic email) to anyone with JavaScript turned off, since the form can't work without it.
 - **Other errors (500 and so on):** GitHub Pages only supports a custom 404; anything else (e.g. GitHub being down) shows GitHub's own page and can't be changed. Problems reaching PocketBase are handled on the pages themselves: the booking form shows a message and keeps the answers, the settings fall back to defaults, and staff pages send you to sign-in with an explanation.
+
+## Security
+
+- **Libraries are pinned.** Tailwind, Alpine and the PocketBase SDK load from jsDelivr at an exact version with an `integrity` hash, so a new release can't change the site without anyone noticing, and the browser refuses a file that doesn't match. To upgrade one, change the version in the `<script>` tag on **every** page and replace its hash with the new file's, e.g.:
+
+  ```bash
+  curl -s https://cdn.jsdelivr.net/npm/alpinejs@3.17.5/dist/cdn.min.js | openssl dgst -sha384 -binary | openssl base64 -A
+  ```
+
+  (prefix the result with `sha384-`). Use the file's full path (`dist/…`), not the short package URL: jsDelivr re-minifies short URLs, so their hash can change.
+- **Content Security Policy.** Each page's shared head has a `Content-Security-Policy` meta tag: scripts only from this site, jsDelivr and Cloudflare Turnstile; data only to this site and `capi.snmclaw.com`. A new CDN library, font, image host or API won't load until its host is added there, on every page. (`'unsafe-eval'` is needed by Alpine; there are no inline `<script>`s, so keep it that way.)
+- **Client data stays out of the HTML.** Pages show it with `x-text` / `textContent`, never as HTML; keep it that way (no `x-html` / `innerHTML` with anything from PocketBase or a visitor).
+- **Staff pages** have `noindex` and aren't linked from public pages, but anyone can still open them; the PocketBase API rules ("Database") are what keep the data private.
+
+## Beta launch checklist
+
+Things only an admin can do (outside this repo), in rough order of importance:
+
+1. **GitHub → Settings → Pages → tick "Enforce HTTPS".** Right now `http://clinic.snmclaw.com` loads without encryption, so on public Wi-Fi the page (and what's typed into it) could be read or changed.
+2. **PocketBase superuser:** change the password (it was shared in a chat), and turn on **MFA** (`_superusers` collection → Options → Multi-factor authentication; it uses the email OTP, and mail is already set up).
+3. **Lock the `testing` collection:** its Create rule is empty, which means *anyone on the internet* can add records to it. Nothing on the site uses it: set its rules to superusers only (lock icon) or delete it.
+4. **Spam protection** (see above): the `appointments:create` rate limit, and the Turnstile keys + hook. Until both are done, the public booking form is protected only by PocketBase's general limits.
+5. **Backups:** PocketBase admin → Settings → Backups → turn on automatic backups (e.g. cron `0 3 * * *`, keep 7). They're currently off, so a broken server or a bad delete means lost bookings. Store them on S3 if you can (S3 is already set up for files) so a dead server doesn't take the backups with it.
+6. **Cloudflare:** make sure the PocketBase server only accepts connections from Cloudflare (firewall). PocketBase trusts the `CF-Connecting-IP` header for rate limits, so anyone who can reach the server directly could fake their address and get around the limits.
+7. **Maintenance mode:** turn it **off** in Site Settings when the beta starts (it's on now).
+8. **Content:** have a native Bisaya speaker review `assets/js/i18n-vs.js`; the attach-files box on step 5 tells clients that only file names are sent, so turn that question off in Intake Settings if you'd rather not show it until uploads work.
