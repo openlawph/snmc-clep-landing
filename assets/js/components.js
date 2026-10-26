@@ -20,8 +20,8 @@ window.SITE = {
   // the SECRET key goes on the PocketBase server only (README → "Spam protection"). Empty = no check shown.
   turnstileSiteKey: '',
 
-  // SNMC Legal Aid seal (SVG). Used by <page-intro logo>; the staff sidebar, sign-in page, favicon and
-  // preloader point at the same file. The public header still shows the scales icon (logoSvg below).
+  // SNMC Legal Aid seal (SVG): header, maintenance page and <page-intro logo>. The staff sidebar, sign-in
+  // page, favicon and preloader point at the same file.
   logo: 'assets/img/snmc-legal-aid.svg',
 
   // Top navigation. `key` matches the `active` attribute on <site-header>.
@@ -31,14 +31,6 @@ window.SITE = {
     { key: 'book', label: 'Book a Visit', href: 'index.html' },
   ],
 };
-
-/* Scales-of-justice mark used in the header (in place of the seal for now). */
-window.SITE.logoSvg = `
-<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-  <path d="M24 6v34M14 42h20M10 12h28M24 8l0 0"/>
-  <path d="M10 12 4 26h12L10 12zM38 12l-6 14h12L38 12z"/>
-  <path d="M4 26a6 4 0 0 0 12 0M32 26a6 4 0 0 0 12 0"/>
-</svg>`;
 
 /*
  * Scroll reveal: add `data-reveal` to any element to fade it up when it scrolls into view.

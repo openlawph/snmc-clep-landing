@@ -36,7 +36,7 @@
     document.body.innerHTML = `
       <main class="grid min-h-dvh place-items-center bg-ink px-4 py-16 text-white">
         <div class="w-full max-w-xl text-center">
-          <span class="mx-auto block size-12 text-copper">${site.logoSvg}</span>
+          <span class="seal mx-auto size-44 shadow-2xl shadow-black/40 sm:size-52"><img src="${site.logo}" alt=""></span>
           <p class="eyebrow mt-8">${site.name}</p>
           <h1 class="mt-4 text-4xl leading-tight sm:text-5xl">We'll be back soon</h1>
           <p class="mt-2 font-display text-2xl text-white/60" lang="ceb">Mobalik mi dayon</p>

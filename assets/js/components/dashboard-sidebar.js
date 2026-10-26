@@ -50,7 +50,7 @@ customElements.define('dashboard-sidebar', class extends HTMLElement {
         <aside :class="open && 'max-lg:translate-x-0!'"
                class="fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-ink text-white transition-transform duration-200 max-lg:-translate-x-full">
           <a href="clinic-dashboard.html" class="flex items-center gap-3 border-b border-white/10 px-5 py-5">
-            <img src="assets/img/snmc-legal-aid.svg" alt="" class="h-12 w-auto">
+            <span class="seal size-12"><img src="assets/img/snmc-legal-aid.svg" alt=""></span>
             <span class="leading-tight">
               <span class="block font-display text-lg">Legal Clinic</span>
               <span class="block text-xs uppercase tracking-[0.2em] text-rose">Dashboard</span>
