@@ -306,6 +306,18 @@ window.I18N_STRINGS.vs = {
   'Enter a valid email address.': 'Isulat ang sakto nga email.',
   'Enter a name for each household member.': 'Isulat ang ngalan sa matag kauban sa panimalay.',
 
+  // ---------- Sending ----------
+  "We couldn't reach the clinic's server. Check your internet connection and try again.": 'Dili maabot ang server sa klinika. Susiha ang imong internet ug sulayi pag-usab.',
+  'Something went wrong sending your request. Please try again, or call or visit the clinic.': 'Adunay problema sa pagpadala sa imong hangyo. Palihug sulayi pag-usab, o tawagi o bisitaha ang klinika.',
+
+  // ---------- Security check ----------
+  'Security check': 'Pagsusi sa seguridad',
+  "This keeps automated spam out of the clinic's bookings.": 'Kini aron dili makasulod ang awtomatikong spam sa mga booking sa klinika.',
+  'Complete the security check to submit.': 'Kompletoha ang pagsusi sa seguridad aron makapadala.',
+  "The security check couldn't load. Check your connection, or refresh the page.": 'Dili ma-load ang pagsusi sa seguridad. Susiha ang imong koneksyon, o i-refresh ang panid.',
+  "The security check didn't go through. Please complete it again, then submit.": 'Wala molampos ang pagsusi sa seguridad. Palihug kompletoha kini pag-usab, unya ipadala.',
+  'Too many requests from your connection. Please wait a few minutes and try again.': 'Daghan kaayo og hangyo gikan sa imong koneksyon. Palihug paghulat og pipila ka minuto ug sulayi pag-usab.',
+
   // ---------- Error messages ----------
   'Pick a preferred date.': 'Pilia ang imong gusto nga petsa.',
   'Pick an available date on the calendar.': 'Pilia ang usa ka bakanteng petsa sa kalendaryo.',

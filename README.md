@@ -24,9 +24,11 @@ about.html          About Us (not linked in the nav for now)
 services.html       Our Services (not linked in the nav for now)
 team.html           Our Team (not linked in the nav for now)
 donate.html         Donate (not linked in the nav for now)
-clinic-dashboard.html  Staff dashboard: upcoming-appointments data table (sign-in required, not linked publicly)
+clinic-dashboard.html  Staff dashboard: counts + upcoming appointments (sign-in required, not linked publicly)
+clinic-appointments.html Staff: all appointments; open one to change status, assign LSP + supervising lawyer, edit, delete
 clinic-users.html   Staff: list, add, edit and delete user accounts (sign-in required)
 clinic-lawyers.html Staff: list, add, edit and delete lawyers (sign-in required)
+clinic-practitioners.html Staff: list, add, edit and delete law student practitioners (LSP)
 clinic-settings.html Staff: Intake Form Settings (open days, time slots, which questions the booking form asks)
 login.html          Staff sign-in (PocketBase), not linked publicly
 assets/
@@ -38,10 +40,12 @@ assets/
   js/i18n-vs.js     Bisaya wording, keyed by the English text
   js/auth.js        PocketBase client (API URL) + sign-in helpers; guards pages marked data-auth-required
   js/login.js       Logic for the sign-in page (Alpine component "login")
-  js/dashboard.js   Logic for the clinic dashboard (Alpine component "dashboard"): sample data, table search/sort/paging
+  js/dashboard.js   Logic for the clinic dashboard (Alpine component "dashboard")
+  js/appointments.js Logic for the Appointments page (Alpine component "appointments") + shared appointment helpers
   js/crud.js        Shared logic for staff list pages: server-side search/sort/paging, delete dialog, error messages
   js/users.js       Logic for the Users page (Alpine component "users")
   js/lawyers.js     Logic for the Lawyers page (Alpine component "lawyers")
+  js/practitioners.js Logic for the Practitioners page (Alpine component "practitioners")
   js/settings.js    Logic for the Intake Form Settings page (Alpine component "intakeSettings")
   img/              Images (currently placeholders; see below) + snmc-legal-aid-logo.png
 ```
@@ -87,8 +91,7 @@ Add `data-reveal` to any element to fade it in on scroll (`data-reveal-delay="12
 Sections **A** (administrative) and **J** (staff assessment) are for clinic staff, so they are not on the public form.
 Checkbox and radio choices are in `INTAKE_OPTIONS` at the top of `assets/js/intake.js` (add the Bisaya wording to `assets/js/i18n-vs.js` too). `toPayload()` there groups the answers by form section (`B_personal`, `C_household`, …).
 
-The form checks each step (required questions, mobile/email format), then shows a "Request received" screen with a reference number, but **it does not send the data anywhere yet**.
-To connect it, implement `sendRequest()` in `assets/js/intake.js` (for example, POST to Formspree, a Google Apps Script, or a PHP endpoint if the host supports PHP).
+The form checks each step (required questions, mobile/email format), then `sendRequest()` in `assets/js/intake.js` saves it as a record in the PocketBase `appointments` collection: a reference (e.g. SNMC-2026-4K7Q2D), a title (name + concern), mobile, email, the chosen date and time (`scheduled_at`, Manila time) and every answer in `json`. The client sees the reference on the "Request received" screen; staff see the booking on the Appointments page as **Pending**. If it can't be sent, the client gets a message and their answers stay on screen. Uploaded files aren't sent yet (only their names are). See "Spam protection" for the security check before Submit.
 
 ## Preview locally
 
@@ -108,9 +111,19 @@ The Tailwind CDN build compiles CSS in the browser, which is fine for a site thi
 
 Staff pages are named `clinic-*.html` and share `<dashboard-sidebar active="…">` (`assets/js/components/dashboard-sidebar.js`). Its menu is `DASHBOARD_NAV` in that file; items with `href: null` show as "Soon". Only load that component on staff pages, never on public ones (it names them).
 
-`clinic-dashboard.html` has summary cards plus an **upcoming appointments** data table with search, status/lawyer filters, sortable columns and pagination, all in Alpine (no extra library).
+`clinic-dashboard.html` shows counts (next 7 days, upcoming, pending, needing an LSP or lawyer) and the upcoming appointments; clicking one opens it on the Appointments page.
 
-The appointments are **sample data** generated in `sampleAppointments()` in `assets/js/dashboard.js`. Swap that for the real bookings once the intake form saves them somewhere. 
+### Appointments
+
+`clinic-appointments.html` lists every booking (online and walk-in) from the `appointments_overview` view: search, filters (upcoming / past / no date, status, LSP, supervising lawyer), sorting and paging run on the server. Opening one (or linking to `clinic-appointments.html#<id>`) shows:
+
+- **Status & assignment:** pick the status, the LSP and the supervising lawyer, add remarks, **Save update**. Each save adds an `appointments_status` row with your name, so the history shows who changed what and when.
+- **History:** every update, newest first.
+- **Booking details:** reference, date and time, mobile, email; **Edit** changes them (the client isn't notified).
+- **Form answers:** everything the client entered online, by form section.
+- **Delete** (admins only) removes the booking and its history. To keep a record, set the status to **Cancelled** instead.
+
+**New appointment** adds a walk-in or phone booking (name, concern, contact, date and time, and optionally the status, LSP and lawyer).
 ## Sign-in and the dashboard
 
 - `login.html` signs staff in with email + password against the PocketBase `users` collection. It also handles "forgot password" and re-sending the verification email (both links in those emails open PocketBase's own confirmation pages). There is no sign-up: create staff accounts in the PocketBase admin at https://capi.snmclaw.com/_/.
@@ -195,12 +208,27 @@ All at https://capi.snmclaw.com. "Staff" = signed-in user with a verified email;
 | `users` | Staff accounts: name, email, photo, `role` (admin / staff) | Admins: everyone. Staff: only themselves (see "Users page") |
 | `lawyers` | Supervising lawyers (SL): name, email, contact no., active / archived cases, ULAS hours, status | Staff read, admins write |
 | `practitioners` | Law student practitioners (LSP): name, email, contact no., `level` (Level 1 / Level 2 under Rule 138-A), active / archived cases, status | Staff read, admins write |
-| `appointments` | A booking: `title`, `email`, `mobile_no`, `json` (the full form) | Anyone can create; staff read |
-| `appointments_status` | History log, one row per change: `app_id` → appointment, `user_id` → who made the change, `app_status` (PENDING / SCHEDULED / WIP / DONE), `remarks`, **`lsp_id` → practitioners**, **`sl_id` → lawyers** | Superuser only for now |
-| `appointments_view` (view) | Each appointment's **latest** status row, with `lsp_id`, `sl_id`, `lsp_name`, `sl_name` | Superuser only for now |
-| `appointments_pending` (view) | Appointments with no status row yet | Superuser only for now |
+| `appointments` | A booking: `reference`, `title`, `email`, `mobile_no` (digits only), `scheduled_at`, `json` (the full form) | Anyone can create (the booking form); staff read and edit; admins delete |
+| `appointments_status` | History log, one row per change: `app_id` → appointment (deleted with it), `user_id` → who made the change, `app_status` (PENDING / SCHEDULED / WIP / DONE / CANCELLED), `remarks`, **`lsp_id` → practitioners**, **`sl_id` → lawyers** | Staff read and add rows (only in their own name); admins edit and delete |
+| `appointments_overview` (view) | **Every** appointment with its latest status (PENDING if none), `lsp_id` / `lsp_name`, `sl_id` / `sl_name` | Staff read |
+| `appointments_view` (view) | Each appointment's **latest** status row, with `lsp_id`, `sl_id`, `lsp_name`, `sl_name` | Staff read |
+| `appointments_pending` (view) | Appointments with no status row yet | Staff read |
 | `intake_settings` | One record: booking days, time slots, hidden / required / always-asked questions | Anyone reads, admins update |
 
 **Assigning an LSP and a Supervising Lawyer:** add an `appointments_status` row for the appointment with `lsp_id` and `sl_id` set (along with the status). The newest row is the current assignment, so reassigning is just a new row, and the log keeps who changed it and when. When adding a row for any other reason (e.g. SCHEDULED → WIP), copy the current `lsp_id` / `sl_id` across so the assignment carries forward.
 
-Before staff can do this from the dashboard, `appointments_status` and the two views need API rules (they're superuser-only today), e.g. List/View `@request.auth.verified = true`, Create `@request.auth.verified = true && @request.body.user_id = @request.auth.id`.
+The Appointments page does this for you: **Save update** adds the row (with the current LSP and lawyer carried over), so nobody has to copy IDs by hand.
+
+## Spam protection
+
+Anyone can create an `appointments` record (that's how the public form books), so there are two layers against bots:
+
+**1. Security check (Cloudflare Turnstile).** The booking form shows a check above Submit (usually one tick, sometimes nothing). It only appears once a site key is set, and only protects you once the server checks it too:
+
+1. **Create the widget:** Cloudflare dashboard → **Turnstile** → **Add widget**. Name it e.g. "SNMC booking", add the hostname `clinic.snmclaw.com` (and `localhost` if you test locally), keep the mode **Managed**. Copy the **Site key** and the **Secret key**.
+2. **Site key → website:** put the site key in `turnstileSiteKey` in `assets/js/components.js` and push. The check now shows on the form. (The site key is public; never put the secret key in this repo.)
+3. **Secret key → PocketBase server:** copy `pocketbase/pb_hooks/turnstile.pb.js` into the `pb_hooks` folder next to PocketBase's `pb_data`, set the environment variable `TURNSTILE_SECRET` to the secret key (e.g. `Environment=TURNSTILE_SECRET=…` in the systemd service, or `-e TURNSTILE_SECRET=…` for Docker), and restart PocketBase. From then on, online bookings without a valid check are refused.
+
+Do step 2 before step 3: once the secret is set, bookings without a token are refused. Until the secret is set, the hook lets bookings through and logs a warning. Signed-in staff adding walk-ins never need the check. To test locally, Cloudflare's test site key `1x00000000000000000000AA` always passes (it shows "For testing only").
+
+**2. Booking limit per connection (PocketBase).** PocketBase admin → **Settings** → **Rate limits** → add a rule: label `appointments:create`, audience **Guest only**, max **5** requests per **600** seconds. That's at most 5 online bookings per 10 minutes from one internet connection; staff aren't affected.

@@ -16,6 +16,10 @@ window.SITE = {
   // PocketBase server (the booking form reads its public settings from here; staff pages use assets/js/auth.js).
   apiUrl: 'https://capi.snmclaw.com',
 
+  // Cloudflare Turnstile "security check" on the booking form. Paste the widget's SITE key here (it's public);
+  // the SECRET key goes on the PocketBase server only (README → "Spam protection"). Empty = no check shown.
+  turnstileSiteKey: '',
+
   // SNMC Legal Aid seal (low-res PNG for now). Off the public pages until there's a high-res SVG;
   // still used as the favicon, on the staff pages and by <page-intro logo>.
   logo: 'assets/img/snmc-legal-aid-logo.png',

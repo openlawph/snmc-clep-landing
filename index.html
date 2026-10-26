@@ -584,6 +584,14 @@
                 </div>
                 <p class="field-hint mt-2" x-t>You will sign the printed form in front of clinic staff at your intake interview.</p>
               </fieldset>
+
+              <!-- Security check (Cloudflare Turnstile); only when SITE.turnstileSiteKey is set -->
+              <fieldset x-show="captchaOn" x-cloak>
+                <legend class="form-section mb-4 w-full" x-t>Security check</legend>
+                <p class="mb-3 text-sm text-muted" x-t>This keeps automated spam out of the clinic's bookings.</p>
+                <div x-ref="captcha" class="min-h-[65px]"></div>
+                <p class="field-error" x-show="captchaError" x-text="captchaError"></p>
+              </fieldset>
             </div>
 
             <!-- ---------- Navigation ---------- -->
@@ -595,6 +603,8 @@
                 <span x-text="submitting ? $t('Submitting…') : $t('Submit request')"></span>
               </button>
             </div>
+            <p x-show="captchaOn && step === lastStep && !captchaToken && !captchaError" x-cloak class="mt-3 text-right text-sm text-muted" x-t>Complete the security check to submit.</p>
+            <p x-show="submitError" x-cloak x-text="submitError" role="alert" class="mt-4 rounded-sm bg-red-50 p-3 text-sm text-red-800 ring-1 ring-red-200"></p>
           </div>
         </div>
 

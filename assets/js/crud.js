@@ -15,6 +15,8 @@
  *   }));
  *
  * Paging, search and sorting run on the server. The page's own init() runs after the shared one.
+ * If the list reads a view, set `writeCollection` to the collection deletes go to, and define
+ * `afterDelete(record)` on the page to do more after a delete (e.g. close a detail dialog).
  */
 function crudPage(config, page = {}) {
   const base = {
@@ -160,9 +162,10 @@ function crudPage(config, page = {}) {
       this.deleting = true;
       this.deleteError = '';
       try {
-        await pb.collection(config.collection).delete(this.deleteTarget.id);
+        await pb.collection(config.writeCollection || config.collection).delete(this.deleteTarget.id);
         this.flash(`${this.displayName(this.deleteTarget)} was deleted.`);
         this.$refs.deleteDialog.close();
+        this.afterDelete?.(this.deleteTarget);
         this.load();
       } catch (err) {
         this.deleteError = this.messageFor(err, 'delete');

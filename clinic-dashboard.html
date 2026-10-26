@@ -22,7 +22,9 @@
   <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.28.1/dist/pocketbase.umd.js"></script><!-- page-specific: PocketBase SDK -->
   <script src="assets/js/auth.js"></script><!-- page-specific: checks the session before showing the page -->
   <script src="assets/js/components/dashboard-sidebar.js" defer></script><!-- page-specific: staff sidebar -->
-  <script src="assets/js/intake.js" defer></script><!-- page-specific: INTAKE_OPTIONS (practice areas, time slots) -->
+  <script src="assets/js/crud.js" defer></script><!-- page-specific: shared table logic -->
+  <script src="assets/js/intake.js" defer></script><!-- page-specific: shared booking helpers -->
+  <script src="assets/js/appointments.js" defer></script><!-- page-specific: statuses, Manila time helpers -->
   <script src="assets/js/dashboard.js" defer></script><!-- page-specific, must come before Alpine -->
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" defer></script>
   <!-- ===== /Shared head ===== -->
@@ -30,23 +32,21 @@
 <body x-data="dashboard" class="bg-cream text-ink">
   <dashboard-sidebar active="dashboard"></dashboard-sidebar>
 
-  <!-- ================= Main ================= -->
   <div class="lg:pl-64">
     <header class="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-black/10 bg-cream/95 px-4 backdrop-blur sm:px-6 lg:px-8">
       <button type="button" class="-ml-2 rounded-sm p-2 lg:hidden" @click="$dispatch('open-sidebar')" aria-label="Open menu">
         <svg class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
       <h1 class="text-2xl">Dashboard</h1>
-      <span class="ml-auto rounded-sm bg-amber/15 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-[#8a5a1c]">Sample data</span>
+      <a href="clinic-appointments.html" class="ml-auto text-sm font-semibold text-copper-dark hover:underline">All appointments →</a>
     </header>
 
     <main class="px-4 py-8 sm:px-6 lg:px-8">
-
       <div class="space-y-8">
 
         <!-- Summary cards -->
         <div class="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          <template x-for="stat in stats" :key="stat.label">
+          <template x-for="stat in stats" :key="stat.key">
             <div class="rounded-md bg-paper p-5 shadow-sm ring-1 ring-black/5">
               <p class="text-sm text-muted" x-text="stat.label"></p>
               <p class="mt-2 font-display text-4xl text-ink" x-text="stat.value"></p>
@@ -54,12 +54,12 @@
           </template>
         </div>
 
-        <!-- Upcoming appointments data table -->
+        <!-- Upcoming appointments -->
         <section class="rounded-md bg-paper shadow-sm ring-1 ring-black/5" aria-labelledby="upcoming-title">
           <div class="flex flex-col gap-4 border-b border-black/10 p-5 sm:p-6">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
               <h2 id="upcoming-title" class="text-2xl">Upcoming appointments</h2>
-              <p class="text-sm text-muted">Consultations Tuesday &amp; Thursday, 1:00–5:00 PM</p>
+              <p class="text-sm text-muted">From today, soonest first. Click one to open it.</p>
             </div>
 
             <!-- Controls -->
@@ -67,67 +67,68 @@
               <label class="relative block">
                 <span class="sr-only">Search appointments</span>
                 <svg class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-                <input type="search" x-model.debounce.150ms="search" placeholder="Search client, reference, concern…" class="field pl-9">
+                <input type="search" x-model.debounce.300ms="search" placeholder="Search client, reference, LSP, lawyer…" class="field pl-9">
               </label>
               <label>
                 <span class="sr-only">Filter by status</span>
                 <select x-model="statusFilter" class="field">
+                  <option value="open">Open (not done or cancelled)</option>
                   <option value="">All statuses</option>
-                  <template x-for="s in statuses" :key="s"><option :value="s" x-text="s"></option></template>
+                  <template x-for="s in statuses" :key="s.value"><option :value="s.value" x-text="s.label"></option></template>
                 </select>
               </label>
               <label>
-                <span class="sr-only">Filter by assigned lawyer</span>
-                <select x-model="lawyerFilter" class="field">
-                  <option value="">All lawyers</option>
-                  <template x-for="l in lawyers" :key="l"><option :value="l" x-text="l"></option></template>
+                <span class="sr-only">Filter by assignment</span>
+                <select x-model="assignFilter" class="field">
+                  <option value="">Assigned or not</option>
+                  <option value="unassigned">Needs an LSP or lawyer</option>
                 </select>
               </label>
-              <button type="button" class="btn btn-ghost py-2.5 text-ink" @click="clearFilters()"
-                      :disabled="!search && !statusFilter && !lawyerFilter">Clear</button>
+              <button type="button" class="btn btn-ghost py-2.5 text-ink" @click="clearFilters()" :disabled="!hasFilters">Reset</button>
             </div>
           </div>
 
           <!-- Table (scrolls sideways inside the card on small screens) -->
-          <div class="overflow-x-auto">
-            <table class="w-full min-w-[760px] text-left text-sm">
+          <div class="relative overflow-x-auto">
+            <table class="w-full min-w-[760px] text-left text-sm" :aria-busy="loading">
               <thead class="bg-cream/60 text-xs uppercase tracking-wider text-muted">
                 <tr>
                   <template x-for="col in columns" :key="col.key">
-                    <th scope="col" class="px-5 py-3 font-semibold" :aria-sort="ariaSort(col.key)">
-                      <button type="button" @click="sortBy(col.key)" class="inline-flex items-center gap-1.5 uppercase tracking-wider hover:text-ink"
-                              :class="sortKey === col.key && 'text-ink'">
-                        <span x-text="col.label"></span>
-                        <svg class="size-3.5 transition" :class="sortKey !== col.key ? 'opacity-30' : (sortDir === 'desc' ? 'rotate-180' : '')"
-                             fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
-                      </button>
-                    </th>
+                    <th scope="col" class="px-5 py-3 font-semibold" x-text="col.label"></th>
                   </template>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-black/5">
-                <template x-for="row in rows" :key="row.reference + row.at">
-                  <tr class="hover:bg-cream/50">
+              <tbody class="divide-y divide-black/5" :class="loading && rows.length && 'opacity-50'">
+                <template x-for="row in rows" :key="row.id">
+                  <tr class="cursor-pointer hover:bg-cream/50" @click="openRow(row)">
                     <td class="whitespace-nowrap px-5 py-3.5">
-                      <span class="block font-semibold" x-text="formatDate(row.at)"></span>
-                      <span class="text-muted" x-text="row.time"></span>
+                      <a :href="'clinic-appointments.html#' + row.id" class="block font-semibold hover:underline" @click.stop x-text="formatSchedule(row.scheduled_at, { time: false })"></a>
+                      <span class="text-muted" x-text="formatSchedule(row.scheduled_at).split(' · ')[1]"></span>
                     </td>
-                    <td class="whitespace-nowrap px-5 py-3.5 font-mono text-xs" x-text="row.reference"></td>
-                    <td class="whitespace-nowrap px-5 py-3.5">
-                      <span class="block" x-text="row.client"></span>
-                      <span x-show="row.firstTime" class="text-xs text-muted">First visit</span>
-                    </td>
-                    <td class="px-5 py-3.5" x-text="row.area"></td>
-                    <td class="whitespace-nowrap px-5 py-3.5" :class="row.lawyer === 'Unassigned' && 'italic text-muted'" x-text="row.lawyer"></td>
                     <td class="px-5 py-3.5">
-                      <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1" :class="statusClass(row.status)" x-text="row.status"></span>
+                      <span class="block max-w-xs truncate" x-text="row.title"></span>
+                      <span class="block font-mono text-xs text-muted" x-text="row.reference"></span>
                     </td>
+                    <td class="whitespace-nowrap px-5 py-3.5">
+                      <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1" :class="statusClass(row.app_status)" x-text="statusLabel(row.app_status)"></span>
+                    </td>
+                    <td class="whitespace-nowrap px-5 py-3.5" :class="!row.lsp_name && 'italic text-muted'" x-text="row.lsp_name || 'Not assigned'"></td>
+                    <td class="whitespace-nowrap px-5 py-3.5" :class="!row.sl_name && 'italic text-muted'" x-text="row.sl_name || 'Not assigned'"></td>
                   </tr>
                 </template>
-                <tr x-show="!rows.length">
+                <tr x-show="loading && !rows.length">
+                  <td :colspan="columns.length" class="px-5 py-12 text-center text-muted">Loading appointments…</td>
+                </tr>
+                <tr x-show="!loading && loadError" x-cloak>
+                  <td :colspan="columns.length" class="px-5 py-12 text-center">
+                    <span class="text-red-700" x-text="loadError"></span>
+                    <button type="button" class="ml-2 font-semibold text-copper-dark hover:underline" @click="load()">Try again</button>
+                  </td>
+                </tr>
+                <tr x-show="!loading && !loadError && !rows.length" x-cloak>
                   <td :colspan="columns.length" class="px-5 py-12 text-center text-muted">
-                    No appointments match these filters.
-                    <button type="button" class="ml-1 font-semibold text-copper-dark hover:underline" @click="clearFilters()">Clear filters</button>
+                    <span x-show="hasFilters">Nothing upcoming matches these filters. <button type="button" class="ml-1 font-semibold text-copper-dark hover:underline" @click="clearFilters()">Reset</button></span>
+                    <span x-show="!hasFilters">No upcoming appointments yet.</span>
                   </td>
                 </tr>
               </tbody>
@@ -141,18 +142,18 @@
               <label class="flex items-center gap-2">
                 <span class="sr-only sm:not-sr-only">Rows</span>
                 <select x-model.number="perPage" class="rounded-sm border border-black/15 bg-white px-2 py-1 text-ink focus:border-copper focus:outline-none">
-                  <option>5</option><option>10</option><option>25</option><option>50</option>
+                  <option>10</option><option>25</option><option>50</option>
                 </select>
               </label>
             </div>
             <nav class="flex items-center gap-1" aria-label="Table pages">
-              <button type="button" class="rounded-sm px-3 py-1.5 hover:bg-black/5 disabled:opacity-30 disabled:hover:bg-transparent" @click="page--" :disabled="page === 1">Previous</button>
-              <template x-for="n in pageCount" :key="n">
-                <button type="button" @click="page = n" :aria-current="page === n ? 'page' : null"
+              <button type="button" class="rounded-sm px-3 py-1.5 hover:bg-black/5 disabled:opacity-30 disabled:hover:bg-transparent" @click="goTo(page - 1)" :disabled="page === 1">Previous</button>
+              <template x-for="n in totalPages" :key="n">
+                <button type="button" @click="goTo(n)" :aria-current="page === n ? 'page' : null"
                         :class="page === n ? 'bg-copper text-white' : 'hover:bg-black/5'"
                         class="min-w-8 rounded-sm px-2 py-1.5 font-semibold" x-text="n"></button>
               </template>
-              <button type="button" class="rounded-sm px-3 py-1.5 hover:bg-black/5 disabled:opacity-30 disabled:hover:bg-transparent" @click="page++" :disabled="page === pageCount">Next</button>
+              <button type="button" class="rounded-sm px-3 py-1.5 hover:bg-black/5 disabled:opacity-30 disabled:hover:bg-transparent" @click="goTo(page + 1)" :disabled="page === totalPages">Next</button>
             </nav>
           </div>
         </section>

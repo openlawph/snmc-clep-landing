@@ -11,8 +11,8 @@
  * the public PocketBase `intake_settings` record, which admins edit in the staff area (see README).
  * In the markup, x-field="key" on a question shows/hides it, marks it required (*) and shows its error.
  *
- * The form is UI-only for now: submit() validates, builds the payload (toPayload) and
- * shows the "Request received" screen. Wire the real submission up in sendRequest() below.
+ * submit() validates, builds the payload (toPayload) and saves it as a record in the PocketBase
+ * `appointments` collection (sendRequest), then shows the "Request received" screen with the reference.
  */
 
 // Checkbox/radio choices, copied from the paper form. Edit here to change the options
@@ -124,9 +124,38 @@ function formatSlot(hhmm) {
   return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
 }
 
+// Phone number as PocketBase stores it (digits only, optional leading +):
+// '0917 123-4567' → '09171234567', '+63 917 123 4567' → '09171234567', '(032) 123 4567' → '0321234567'.
+function normalizeMobile(value) {
+  const compact = String(value || '').replace(/[^\d+]/g, '');
+  if (/^\+639\d{9}$/.test(compact)) return '0' + compact.slice(3);
+  return compact;
+}
+
+// e.g. 'SNMC-2026-4K7Q2D': year + 6 random letters/digits (no 0/O/1/I). Unique in PocketBase.
+function makeAppointmentReference() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  return `SNMC-${new Date().getFullYear()}-${[...bytes].map((b) => chars[b % chars.length]).join('')}`;
+}
+
 // Local date as 'YYYY-MM-DD' (same format as <input type="date">).
 function ymdOf(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+// Loads Cloudflare Turnstile once (only when SITE.turnstileSiteKey is set).
+function loadTurnstile() {
+  if (window.turnstile) return Promise.resolve();
+  loadTurnstile.promise ||= new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => { loadTurnstile.promise = null; reject(new Error('Turnstile could not load')); };
+    document.head.appendChild(script);
+  });
+  return loadTurnstile.promise;
 }
 
 // Reads the public intake_settings record (SITE.apiUrl in components.js). Falls back to the defaults.
@@ -189,6 +218,10 @@ document.addEventListener('alpine:init', () => {
     calendarMonth: '', // 'YYYY-MM' shown in the date picker
     submitting: false,
     submitted: false,
+    submitError: '',
+    // Security check (Cloudflare Turnstile) on the last step; the token is checked by PocketBase.
+    captchaToken: '',
+    captchaError: '',
     reference: '',
     errors: {},
 
@@ -245,6 +278,38 @@ document.addEventListener('alpine:init', () => {
         if (this.form.time && !this.availableSlots.includes(this.form.time)) this.form.time = '';
         this.jumpToFirstOpenMonth();
       });
+      // Show the security check when the client reaches the last step.
+      this.$watch('step', (step) => { if (step === this.lastStep) this.mountCaptcha(); });
+    },
+
+    // ---------- Security check ----------
+
+    get captchaOn() {
+      return !!window.SITE.turnstileSiteKey;
+    },
+
+    async mountCaptcha() {
+      if (!this.captchaOn || this._captchaId !== undefined) return;
+      try {
+        await loadTurnstile();
+        await new Promise((r) => requestAnimationFrame(r)); // the step is visible by now
+        this._captchaId = window.turnstile.render(this.$refs.captcha, {
+          sitekey: window.SITE.turnstileSiteKey,
+          size: 'flexible',
+          theme: 'light',
+          callback: (token) => { this.captchaToken = token; this.captchaError = ''; },
+          'expired-callback': () => { this.captchaToken = ''; },
+          'error-callback': () => { this.captchaToken = ''; this.captchaError = this.tr('The security check couldn\'t load. Check your connection, or refresh the page.'); },
+        });
+      } catch {
+        this.captchaError = this.tr('The security check couldn\'t load. Check your connection, or refresh the page.');
+      }
+    },
+
+    // Each token works once: get a fresh one after a failed submission.
+    resetCaptcha() {
+      this.captchaToken = '';
+      if (window.turnstile && this._captchaId !== undefined) window.turnstile.reset(this._captchaId);
     },
 
     // Text in the current language (assets/js/i18n.js).
@@ -399,10 +464,11 @@ document.addEventListener('alpine:init', () => {
       return this.form.household.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
     },
 
-    // Consent, both declarations and the typed signature are always needed.
+    // Consent, both declarations, the typed signature and (when on) the security check are always needed.
     get canSubmit() {
       const f = this.form;
-      return f.privacyConsent === 'agree' && f.declarationTrue && f.declarationNoRelationship && f.signature.trim().length >= 3;
+      return f.privacyConsent === 'agree' && f.declarationTrue && f.declarationNoRelationship && f.signature.trim().length >= 3
+        && (!this.captchaOn || !!this.captchaToken);
     },
 
     // Review on the last step: one block per visible step, rows for visible fields only.
@@ -579,10 +645,19 @@ document.addEventListener('alpine:init', () => {
         }
       }
       this.submitting = true;
+      this.submitError = '';
       try {
         this.reference = await this.sendRequest(this.toPayload());
         this.submitted = true;
         this.scrollTop();
+      } catch (err) {
+        console.error('[intake] could not send the request:', err);
+        this.resetCaptcha();
+        this.submitError = this.tr(err.offline
+          ? 'We couldn\'t reach the clinic\'s server. Check your internet connection and try again.'
+          : err.captcha ? 'The security check didn\'t go through. Please complete it again, then submit.'
+          : err.status === 429 ? 'Too many requests from your connection. Please wait a few minutes and try again.'
+          : 'Something went wrong sending your request. Please try again, or call or visit the clinic.');
       } finally {
         this.submitting = false;
       }
@@ -637,15 +712,41 @@ document.addEventListener('alpine:init', () => {
     },
 
     /*
-     * TODO: send the request somewhere real (e.g. Formspree, Google Apps Script, or a PHP
-     * endpoint on the host). Return the reference number shown to the client.
-     * Note: `attachedFiles` only holds file NAMES; uploading files needs a FormData POST.
+     * Saves the request in PocketBase (`appointments`: anyone may create, only staff can read).
+     * Returns the reference number shown to the client.
+     * Note: `attachedFiles` only holds file NAMES; the files themselves aren't uploaded yet.
      */
     async sendRequest(payload) {
-      console.info('[intake] submission (not sent anywhere yet):', payload);
-      await new Promise((r) => setTimeout(r, 600));
-      const n = String(Math.floor(Math.random() * 9000) + 1000);
-      return `SNMC-${new Date().getFullYear()}-${n}`;
+      const f = this.form;
+      const areas = [...f.practiceAreas, f.practiceOther.trim()].filter(Boolean).join(', ');
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const reference = makeAppointmentReference();
+        let res;
+        try {
+          res = await fetch(`${window.SITE.apiUrl}/api/collections/appointments/records`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              reference,
+              title: [this.fullName || 'Online booking', areas || 'Legal consultation'].join(' — '),
+              email: f.email.trim(),
+              mobile_no: normalizeMobile(f.mobile),
+              scheduled_at: new Date(`${f.date}T${f.time}:00+08:00`).toISOString(), // clinic (Manila) time
+              json: { ...payload, reference },
+              turnstile_token: this.captchaToken, // read (not stored) by the PocketBase hook
+            }),
+          });
+        } catch (err) {
+          throw Object.assign(new Error('offline'), { offline: true, cause: err });
+        }
+        if (res.ok) return reference;
+        const body = await res.json().catch(() => ({}));
+        if (body?.data?.reference?.code !== 'validation_not_unique') {
+          throw Object.assign(new Error(`HTTP ${res.status}: ${JSON.stringify(body)}`), { status: res.status, captcha: /security check/i.test(body?.message || '') });
+        }
+        // That reference is already taken (very unlikely): try another.
+      }
+      throw new Error('no free reference number');
     },
 
     focusFirstError() {
