@@ -9,12 +9,15 @@
   <!-- ===== Shared head: keep identical on every page ===== -->
   <!-- Where this page may load scripts, styles, images and data from. Add a host here when you add a CDN library or API (README → "Security"). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://capi.snmclaw.com; connect-src 'self' https://capi.snmclaw.com; frame-src https://challenges.cloudflare.com https://maps.google.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'">
-  <link rel="icon" type="image/png" href="assets/img/snmc-legal-aid-logo.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
+  <link rel="icon" type="image/svg+xml" href="assets/img/snmc-legal-aid.svg">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="assets/js/theme.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3/dist/index.global.js" integrity="sha384-2ql948lIdLcGEE0/qxNiudyTjgauA3RDJERu5xW75kFCvSl5a9odyQYCb6tEjnmB" crossorigin="anonymous"></script>
+  <script src="assets/js/preloader.js"></script><!-- logo preloader: not deferred, it covers the first paint -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3/dist/index.global.js" integrity="sha384-2ql948lIdLcGEE0/qxNiudyTjgauA3RDJERu5xW75kFCvSl5a9odyQYCb6tEjnmB" crossorigin="anonymous" defer></script><!-- deferred: the preloader covers the page until the styles are built -->
   <script src="assets/js/components.js" defer></script>
   <script src="assets/js/components/site-header.js" defer></script>
   <script src="assets/js/components/site-footer.js" defer></script>
@@ -33,14 +36,14 @@
     <!-- Brand panel -->
     <section class="relative hidden overflow-hidden bg-ink text-white lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-12">
       <div aria-hidden="true" class="pointer-events-none absolute -left-32 -top-32 size-96 rounded-full bg-copper/15 blur-3xl"></div>
-      <img src="assets/img/snmc-legal-aid-logo.png" alt="SNMC Legal Aid seal: “The law is for all.” Est. 2024" class="relative w-full max-w-sm">
+      <img src="assets/img/snmc-legal-aid.svg" alt="SNMC Legal Aid seal: “The law is for all.” Est. 2024" class="relative w-full max-w-sm">
       <p class="relative mt-10 max-w-sm text-center text-white/60">Staff access for the SNMC Law Legal Clinic. Client information is confidential.</p>
     </section>
 
     <!-- Form panel -->
     <section class="flex items-center justify-center px-4 py-12 sm:px-8">
       <div x-data="login" class="w-full max-w-md">
-        <img src="assets/img/snmc-legal-aid-logo.png" alt="SNMC Legal Aid" class="mx-auto mb-8 w-36 lg:hidden">
+        <img src="assets/img/snmc-legal-aid.svg" alt="SNMC Legal Aid" class="mx-auto mb-8 w-36 lg:hidden">
 
         <div class="card">
           <!-- Notice from a redirect (signed out, session ended…) -->

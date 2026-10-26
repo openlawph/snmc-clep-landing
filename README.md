@@ -51,8 +51,23 @@ assets/
   js/settings.js    Logic for the Intake Form Settings page (Alpine component "intakeSettings")
   js/site-settings.js Logic for the Site Settings page (Alpine component "siteSettings")
   js/maintenance.js Public pages only: shows "We'll be back soon" while maintenance mode is on
-  img/              Images (currently placeholders; see below) + snmc-legal-aid-logo.png
+  js/preloader.js   Every page: the logo preloader shown while the page gets ready (see "Preloader")
+  img/              Images (currently placeholders; see below)
+  img/snmc-legal-aid.svg           SNMC Legal Aid logo (brick): sidebar, sign-in page, favicon, SITE.logo
+  img/snmc-legal-aid-animated.svg  Same logo drawing itself in (~3.5 s, plays once), used by the preloader
+  img/favicon-32.png, img/apple-touch-icon.png  PNG copies of the logo for browsers that can't use an SVG icon (Safari, iPhone home screen)
+  img/snmc-legal-aid-logo.png      Old low-res seal: no longer used by the site (kept for the Annex B branch)
 ```
+
+### Preloader
+
+`assets/js/preloader.js` loads in every page's shared head (right after `theme.js`, not deferred) and covers the page with the SNMC Legal Aid logo on a warm off-white backdrop until the page is ready: Alpine has started, Tailwind's styles and the fonts are in, and the maintenance check (public pages) or sign-in check (staff pages) is done. Then it fades out.
+
+- **First page of a visit** (per browser tab): the animated logo draws itself once, then the page fades in. If the page still isn't ready, a thin gold bar shows under the logo.
+- **Every page after that:** quick pages simply fade in; the still logo and bar only appear if loading takes more than about a third of a second, so moving around the staff pages doesn't replay the intro.
+- Visitors who ask their device for **reduced motion** get the still logo without the drawing or the sliding bar.
+- It never stays more than 10 seconds. Because it covers the page while Tailwind builds its styles, Tailwind loads `defer`red, so on a slow phone the logo appears right away instead of a blank screen.
+- The timings are at the top of `preloader.js`, the backdrop and bar colors in its CSS. To use another color of the logo (maroon, wine), replace the two SVG files with the matching pair.
 
 ### Components
 
@@ -73,7 +88,7 @@ Add `data-reveal` to any element to fade it in on scroll (`data-reveal-delay="12
 
 - **Phone number, email, address, hours:** `assets/js/components.js` → `window.SITE` (the phone is still `[add clinic number]`).
 - **Nav links:** `SITE.nav` in the same file. Only Book a Visit is linked for now; add the other pages back there to relink them in the header and footer.
-- **Logo:** the SNMC Legal Aid seal (`assets/img/snmc-legal-aid-logo.png`, `SITE.logo`) is **off the public pages for now** until there's a high-res SVG; the header shows the small scales icon (`SITE.logoSvg`) instead. The seal is still the favicon and appears on the staff pages. To put it back on the booking page, add `logo` to its `<page-intro>`; for the header/footer, see git history.
+- **Logo:** the SNMC Legal Aid seal is `assets/img/snmc-legal-aid.svg` (`SITE.logo`), used for the favicon, the staff sidebar and the sign-in page. It's designed for light backgrounds. The public header still shows the small scales icon (`SITE.logoSvg`); to show the seal on the booking page, add `logo` to its `<page-intro>`. If the logo changes, re-export `favicon-32.png` (32 × 32, transparent) and `apple-touch-icon.png` (180 × 180, on `#fbf9f4`) from the new SVG too.
 - **Colors / fonts:** the `@theme` block in `assets/js/theme.js`. For example, `--color-copper` becomes the `bg-copper` / `text-copper` classes.
 - **Add a page:** copy an existing page (e.g. `about.html`), keep the `<head>` "Shared head" block as it is, set `<site-header active="…">`, and add the page to `SITE.nav`.
 - **Images:** the files in `assets/img/` are labelled placeholders. Export the real photos from the Canva design and save them over these files with the same names:
