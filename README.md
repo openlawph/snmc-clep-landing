@@ -30,6 +30,7 @@ clinic-users.html   Staff: list, add, edit and delete user accounts (sign-in req
 clinic-lawyers.html Staff: list, add, edit and delete lawyers (sign-in required)
 clinic-practitioners.html Staff: list, add, edit and delete law student practitioners (LSP)
 clinic-settings.html Staff: Intake Form Settings (open days, time slots, which questions the booking form asks)
+clinic-site-settings.html Staff: Site Settings (maintenance mode)
 login.html          Staff sign-in (PocketBase), not linked publicly
 assets/
   js/theme.js       Colors, fonts and shared classes (.btn, .card, .field, .eyebrow…)
@@ -47,6 +48,8 @@ assets/
   js/lawyers.js     Logic for the Lawyers page (Alpine component "lawyers")
   js/practitioners.js Logic for the Practitioners page (Alpine component "practitioners")
   js/settings.js    Logic for the Intake Form Settings page (Alpine component "intakeSettings")
+  js/site-settings.js Logic for the Site Settings page (Alpine component "siteSettings")
+  js/maintenance.js Public pages only: shows "We'll be back soon" while maintenance mode is on
   img/              Images (currently placeholders; see below) + snmc-legal-aid-logo.png
 ```
 
@@ -208,12 +211,13 @@ All at https://capi.snmclaw.com. "Staff" = signed-in user with a verified email;
 | `users` | Staff accounts: name, email, photo, `role` (admin / staff) | Admins: everyone. Staff: only themselves (see "Users page") |
 | `lawyers` | Supervising lawyers (SL): name, email, contact no., active / archived cases, ULAS hours, status | Staff read, admins write |
 | `practitioners` | Law student practitioners (LSP): name, email, contact no., `level` (Level 1 / Level 2 under Rule 138-A), active / archived cases, status | Staff read, admins write |
-| `appointments` | A booking: `reference`, `title`, `email`, `mobile_no` (digits only), `scheduled_at`, `json` (the full form) | Anyone can create (the booking form); staff read and edit; admins delete |
+| `appointments` | A booking: `reference`, `title`, `email`, `mobile_no` (digits only), `scheduled_at`, `json` (the full form) | Anyone can create (the booking form) **unless maintenance mode is on**; staff read, edit and always create; admins delete |
 | `appointments_status` | History log, one row per change: `app_id` → appointment (deleted with it), `user_id` → who made the change, `app_status` (PENDING / SCHEDULED / WIP / DONE / CANCELLED), `remarks`, **`lsp_id` → practitioners**, **`sl_id` → lawyers** | Staff read and add rows (only in their own name); admins edit and delete |
 | `appointments_overview` (view) | **Every** appointment with its latest status (PENDING if none), `lsp_id` / `lsp_name`, `sl_id` / `sl_name` | Staff read |
 | `appointments_view` (view) | Each appointment's **latest** status row, with `lsp_id`, `sl_id`, `lsp_name`, `sl_name` | Staff read |
 | `appointments_pending` (view) | Appointments with no status row yet | Staff read |
 | `intake_settings` | One record: booking days, time slots, hidden / required / always-asked questions | Anyone reads, admins update |
+| `site_settings` | One record: `maintenance` (on/off), `maintenance_message`, `maintenance_until` | Anyone reads, admins update |
 
 **Assigning an LSP and a Supervising Lawyer:** add an `appointments_status` row for the appointment with `lsp_id` and `sl_id` set (along with the status). The newest row is the current assignment, so reassigning is just a new row, and the log keeps who changed it and when. When adding a row for any other reason (e.g. SCHEDULED → WIP), copy the current `lsp_id` / `sl_id` across so the assignment carries forward.
 
@@ -232,3 +236,13 @@ Anyone can create an `appointments` record (that's how the public form books), s
 Do step 2 before step 3: once the secret is set, bookings without a token are refused. Until the secret is set, the hook lets bookings through and logs a warning. Signed-in staff adding walk-ins never need the check. To test locally, Cloudflare's test site key `1x00000000000000000000AA` always passes (it shows "For testing only").
 
 **2. Booking limit per connection (PocketBase).** PocketBase admin → **Settings** → **Rate limits** → add a rule: label `appointments:create`, audience **Guest only**, max **5** requests per **600** seconds. That's at most 5 online bookings per 10 minutes from one internet connection; staff aren't affected.
+
+## Site Settings: maintenance mode
+
+`clinic-site-settings.html` (sidebar → Site Settings). Admins can change it; other staff can only look.
+
+- **Maintenance mode on:** every public page (anything that loads `assets/js/maintenance.js`) shows a "We'll be back soon / Mobalik mi dayon" page with the clinic's email, and PocketBase refuses new online bookings (the `appointments` create rule checks `site_settings.maintenance`). Staff pages and walk-in bookings keep working. Turning it on asks for confirmation.
+- **Message** (optional): replaces the default English + Bisaya text. **Expected back** (optional): shown on the page in Manila time; it doesn't switch the site back on by itself.
+- **Staff can still see the site:** anyone signed in to the dashboard in that browser sees the normal site with a yellow notice at the top. **Preview the maintenance page** (or add `?maintenance-preview` to a public page's address) shows the maintenance page anyway.
+- If the setting can't be loaded within about 2 seconds (e.g. PocketBase is down), the public site is shown as normal.
+- Adding a new public page: put `<script src="assets/js/maintenance.js"></script>` right after `theme.js` in its `<head>` (not deferred). Never add it to staff pages.

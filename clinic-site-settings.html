@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en" data-auth-required><!-- protected: only signed-in, verified staff (see assets/js/auth.js) -->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Site Settings · SNMC Law Legal Clinic</title>
+  <meta name="robots" content="noindex, nofollow"><!-- staff page: keep it out of search results -->
+
+  <!-- ===== Shared head: keep identical on every page ===== -->
+  <link rel="icon" type="image/png" href="assets/img/snmc-legal-aid-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="assets/js/theme.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="assets/js/components.js" defer></script>
+  <script src="assets/js/components/site-header.js" defer></script>
+  <script src="assets/js/components/site-footer.js" defer></script>
+  <script src="assets/js/components/page-intro.js" defer></script>
+  <script src="assets/js/components/legal-notice.js" defer></script>
+  <script src="assets/js/components/contact-info.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.28.1/dist/pocketbase.umd.js"></script><!-- page-specific: PocketBase SDK -->
+  <script src="assets/js/auth.js"></script><!-- page-specific: checks the session before showing the page -->
+  <script src="assets/js/components/dashboard-sidebar.js" defer></script><!-- page-specific: staff sidebar -->
+  <script src="assets/js/appointments.js" defer></script><!-- page-specific: Manila time helpers -->
+  <script src="assets/js/site-settings.js" defer></script><!-- page-specific, must come before Alpine -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" defer></script>
+  <!-- ===== /Shared head ===== -->
+</head>
+<body x-data="siteSettings" class="bg-cream text-ink">
+  <dashboard-sidebar active="site"></dashboard-sidebar>
+
+  <div class="lg:pl-64">
+    <header class="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-black/10 bg-cream/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+      <button type="button" class="-ml-2 rounded-sm p-2 lg:hidden" @click="$dispatch('open-sidebar')" aria-label="Open menu">
+        <svg class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <h1 class="truncate text-2xl">Site Settings</h1>
+      <span x-show="!loading && !loadError" x-cloak class="ml-auto inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ring-1"
+            :class="saved.maintenance ? 'bg-amber/15 text-[#8a5a1c] ring-amber/30' : 'bg-emerald-600/10 text-emerald-800 ring-emerald-600/25'">
+        <span class="size-2 rounded-full" :class="saved.maintenance ? 'bg-amber' : 'bg-emerald-600'"></span>
+        <span x-text="liveLabel"></span>
+      </span>
+    </header>
+
+    <main class="space-y-6 px-4 py-8 pb-32 sm:px-6 lg:px-8">
+      <p x-show="!isAdmin" x-cloak class="rounded-md bg-paper px-5 py-4 text-sm leading-relaxed text-muted ring-1 ring-black/5">
+        You can see the site settings here. Only admins can change them.
+      </p>
+
+      <p x-show="loading" class="text-muted">Loading settings…</p>
+      <div x-show="loadError" x-cloak class="rounded-md bg-red-50 px-5 py-4 text-sm text-red-800 ring-1 ring-red-200">
+        <span x-text="loadError"></span>
+        <button type="button" class="ml-2 font-semibold underline" @click="load()">Try again</button>
+      </div>
+
+      <template x-if="!loading && !loadError">
+        <section class="card max-w-3xl" aria-labelledby="maint-title">
+          <div class="flex items-start justify-between gap-6">
+            <div>
+              <h2 id="maint-title" class="text-2xl">Maintenance mode</h2>
+              <p class="mt-1 text-sm leading-relaxed text-muted">
+                Takes the public website offline: visitors see a "We'll be back soon" page and online booking stops
+                (PocketBase refuses new online bookings too). Staff pages keep working, and if you're signed in here you'll still see the site, with a notice at the top.
+              </p>
+            </div>
+            <button type="button" role="switch" :aria-checked="form.maintenance" aria-labelledby="maint-title"
+                    @click="form.maintenance = !form.maintenance" :disabled="!isAdmin"
+                    class="relative mt-1 h-8 w-14 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-60"
+                    :class="form.maintenance ? 'bg-amber' : 'bg-black/20'">
+              <span class="absolute left-1 top-1 size-6 rounded-full bg-white shadow transition" :class="form.maintenance && 'translate-x-6'"></span>
+            </button>
+          </div>
+
+          <p x-show="form.maintenance !== saved.maintenance" class="mt-4 rounded-sm bg-cream px-4 py-2 text-sm"
+             x-text="form.maintenance ? 'The site will go into maintenance mode when you save.' : 'The site will go live again when you save.'"></p>
+
+          <div class="mt-6 space-y-5 border-t border-black/10 pt-6">
+            <div>
+              <label for="m-message" class="field-label">Message for visitors <span class="font-normal text-muted">(optional)</span></label>
+              <textarea id="m-message" rows="3" maxlength="1000" x-model="form.message" :disabled="!isAdmin" class="field disabled:bg-cream"
+                        placeholder="The clinic's website and online booking are being updated. Please check back later."></textarea>
+              <p class="field-hint">Leave empty to show the default message in English and Bisaya. <span x-text="`${form.message.length}/1000`"></span></p>
+            </div>
+            <div>
+              <span class="field-label">Expected back <span class="font-normal text-muted">(optional)</span></span>
+              <div class="flex flex-wrap items-center gap-3">
+                <input type="date" x-model="form.untilDate" :disabled="!isAdmin" class="field w-auto disabled:bg-cream" aria-label="Expected back: date">
+                <input type="time" x-model="form.untilTime" :disabled="!isAdmin || !form.untilDate" class="field w-auto disabled:bg-cream" aria-label="Expected back: time">
+                <button x-show="isAdmin && form.untilDate" type="button" class="text-sm font-semibold text-copper-dark hover:underline" @click="clearUntil()">Clear</button>
+              </div>
+              <p class="field-hint">Shown on the maintenance page, in Manila time. It doesn't switch the site back on by itself.</p>
+            </div>
+            <a href="index.html?maintenance-preview" target="_blank" rel="noopener" class="inline-flex text-sm font-semibold text-copper-dark hover:underline">Preview the maintenance page ↗</a>
+            <p class="field-hint -mt-3">The preview shows the last saved message.</p>
+          </div>
+        </section>
+      </template>
+
+      <p x-show="!dirty && updatedLabel" class="text-xs text-muted" x-text="`Last saved ${updatedLabel}`"></p>
+    </main>
+
+    <!-- Save bar: shows when there are unsaved changes -->
+    <div x-show="isAdmin && (dirty || saveError)" x-cloak x-transition.opacity
+         class="fixed inset-x-0 bottom-0 z-30 border-t border-black/10 bg-paper/95 backdrop-blur lg:left-64">
+      <div class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+        <div class="text-sm">
+          <p class="font-semibold">You have unsaved changes.</p>
+          <p x-show="saveError" class="text-red-700" x-text="saveError"></p>
+        </div>
+        <div class="flex gap-3">
+          <button type="button" class="btn btn-ghost text-ink" @click="discard()" :disabled="saving">Discard</button>
+          <button type="button" class="btn btn-primary" @click="requestSave()" :disabled="saving" x-text="saving ? 'Saving…' : 'Save changes'"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm turning maintenance on -->
+  <dialog x-ref="confirmDialog" aria-labelledby="confirm-title"
+          class="m-auto w-[calc(100%-2rem)] max-w-md rounded-md bg-paper p-6 text-ink shadow-xl backdrop:bg-black/50 sm:p-8">
+    <h2 id="confirm-title" class="text-2xl">Put the site in maintenance mode?</h2>
+    <p class="mt-3 leading-relaxed text-muted">
+      Visitors will see the "We'll be back soon" page and won't be able to book online until you switch it off here.
+      Appointments already booked aren't affected.
+    </p>
+    <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+      <button type="button" class="btn btn-ghost text-ink" @click="$refs.confirmDialog.close()" autofocus>Cancel</button>
+      <button type="button" class="btn bg-amber text-ink hover:brightness-95" @click="save()">Turn on maintenance mode</button>
+    </div>
+  </dialog>
+
+  <!-- Toast -->
+  <div x-show="toast" x-cloak x-transition.opacity role="status" aria-live="polite"
+       class="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-md bg-ink px-5 py-3 text-sm text-white shadow-lg sm:left-auto sm:right-6 sm:mx-0"
+       x-text="toast"></div>
+</body>
+</html>
