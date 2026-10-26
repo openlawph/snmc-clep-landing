@@ -1,7 +1,11 @@
 /*
- * Intake Form Settings (clinic-settings.html): which days, time slots and fields the public booking
+ * Intake Form Settings (clinic-settings.html): which days, time slots and questions the public booking
  * form (index.html) offers. Usage: <body x-data="intakeSettings">. Needs auth.js and intake.js
- * (INTAKE_WEEKDAYS, INTAKE_STEPS, INTAKE_FIELDS, formatSlot); load BEFORE Alpine.
+ * (INTAKE_WEEKDAYS, INTAKE_STEPS, INTAKE_FIELDS, INTAKE_DEFAULT_SETTINGS, formatSlot); load BEFORE Alpine.
+ *
+ * Each question can be asked or not, required or not, and locked as "Always ask" (then neither can be
+ * changed until someone unlocks it, which asks for confirmation). Core questions (INTAKE_FIELDS
+ * `core: true`) are always asked and required.
  *
  * Everything is saved to the single record in the PocketBase `intake_settings` collection.
  * Anyone can read it (the booking form needs it); only admins (role = "admin") can change it.
@@ -13,6 +17,7 @@ const SETTINGS_LAST_SLOT = 19 * 60;
 const SETTINGS_SLOT_MINUTES = 30;
 
 const hhmm = (minutes) => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+const toggled = (list, item) => (list.includes(item) ? list.filter((x) => x !== item) : [...list, item]);
 
 document.addEventListener('alpine:init', () => {
   Alpine.data('intakeSettings', () => ({
@@ -25,6 +30,8 @@ document.addEventListener('alpine:init', () => {
     days: [],
     slots: [],
     hidden: [],
+    required: [],
+    locked: [],
     savedJSON: '', // what's in PocketBase, to spot unsaved changes
     updated: '',
     loading: true,
@@ -32,6 +39,7 @@ document.addEventListener('alpine:init', () => {
     saving: false,
     saveError: '',
     toast: '',
+    unlockTarget: null, // question waiting for "Unlock?" confirmation
 
     init() {
       pb.authStore.onChange(() => (this.me = pb.authStore.record));
@@ -63,9 +71,12 @@ document.addEventListener('alpine:init', () => {
     },
 
     apply(record) {
-      this.days = Array.isArray(record.days) ? [...record.days] : [];
-      this.slots = Array.isArray(record.time_slots) ? [...record.time_slots] : [];
-      this.hidden = Array.isArray(record.hidden_fields) ? [...record.hidden_fields] : [];
+      const list = (value, fallback) => (Array.isArray(value) ? [...value] : [...fallback]);
+      this.days = list(record.days, []);
+      this.slots = list(record.time_slots, []);
+      this.hidden = list(record.hidden_fields, []);
+      this.required = list(record.required_fields, INTAKE_DEFAULT_SETTINGS.required_fields);
+      this.locked = list(record.locked_fields, INTAKE_DEFAULT_SETTINGS.locked_fields);
       this.updated = record.updated || '';
       this.savedJSON = JSON.stringify(this.payload());
     },
@@ -77,6 +88,8 @@ document.addEventListener('alpine:init', () => {
         days: [...this.days].sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b)),
         time_slots: [...this.slots].sort(),
         hidden_fields: [...this.hidden].sort(),
+        required_fields: [...this.required].sort(),
+        locked_fields: [...this.locked].sort(),
       };
     },
 
@@ -89,13 +102,15 @@ document.addEventListener('alpine:init', () => {
       this.days = saved.days;
       this.slots = saved.time_slots;
       this.hidden = saved.hidden_fields;
+      this.required = saved.required_fields;
+      this.locked = saved.locked_fields;
       this.saveError = '';
     },
 
     // ---------- Days ----------
 
     toggleDay(key) {
-      this.days = this.days.includes(key) ? this.days.filter((d) => d !== key) : [...this.days, key];
+      this.days = toggled(this.days, key);
     },
 
     // ---------- Time slots ----------
@@ -111,7 +126,7 @@ document.addEventListener('alpine:init', () => {
     },
 
     toggleSlot(slot) {
-      this.slots = this.slots.includes(slot) ? this.slots.filter((s) => s !== slot) : [...this.slots, slot];
+      this.slots = toggled(this.slots, slot);
     },
 
     // Every hour from `from` to `to` (inclusive), e.g. useHourly(8, 16) → 8:00 AM … 4:00 PM.
@@ -119,33 +134,79 @@ document.addEventListener('alpine:init', () => {
       this.slots = Array.from({ length: to - from + 1 }, (_, i) => hhmm((from + i) * 60));
     },
 
-    // ---------- Fields ----------
+    // ---------- Questions ----------
 
     fieldsFor(step) {
       return this.fields.filter((f) => f.step === step);
     },
 
-    isShown(field) {
-      return field.locked || !this.hidden.includes(field.key);
+    isLocked(field) {
+      return !!field.core || this.locked.includes(field.key);
     },
 
-    toggleField(field) {
-      if (field.locked) return;
-      this.hidden = this.hidden.includes(field.key) ? this.hidden.filter((k) => k !== field.key) : [...this.hidden, field.key];
+    isShown(field) {
+      return this.isLocked(field) || !this.hidden.includes(field.key);
+    },
+
+    isRequired(field) {
+      if (field.core) return true;
+      return field.canRequire !== false && this.isShown(field) && this.required.includes(field.key);
+    },
+
+    canChangeAsk(field) {
+      return this.isAdmin && !this.isLocked(field);
+    },
+
+    canChangeRequired(field) {
+      return this.isAdmin && !this.isLocked(field) && field.canRequire !== false && this.isShown(field);
+    },
+
+    toggleAsk(field) {
+      if (this.canChangeAsk(field)) this.hidden = toggled(this.hidden, field.key);
+    },
+
+    toggleRequired(field) {
+      if (this.canChangeRequired(field)) this.required = toggled(this.required, field.key);
+    },
+
+    // Locking makes sure the question is asked; unlocking asks for confirmation first.
+    toggleLock(field) {
+      if (!this.isAdmin || field.core) return;
+      if (this.locked.includes(field.key)) {
+        this.unlockTarget = field;
+        this.$refs.unlockDialog.showModal();
+      } else {
+        this.locked = [...this.locked, field.key];
+        this.hidden = this.hidden.filter((k) => k !== field.key);
+      }
+    },
+
+    confirmUnlock() {
+      this.locked = this.locked.filter((k) => k !== this.unlockTarget.key);
+      this.$refs.unlockDialog.close();
     },
 
     hiddenCount(step) {
       return this.fieldsFor(step).filter((f) => !this.isShown(f)).length;
     },
 
-    // The booking form skips a step when none of its fields are shown.
+    requiredCount(step) {
+      return this.fieldsFor(step).filter((f) => this.isRequired(f)).length;
+    },
+
+    // The booking form skips a step when none of its questions are asked.
     stepSkipped(step) {
       return this.fieldsFor(step).every((f) => !this.isShown(f));
     },
 
+    // "All on" / "All off" for a step; locked questions stay as they are.
     setStep(step, shown) {
-      const keys = this.fieldsFor(step).filter((f) => !f.locked).map((f) => f.key);
+      const keys = this.fieldsFor(step).filter((f) => !this.isLocked(f)).map((f) => f.key);
       this.hidden = shown ? this.hidden.filter((k) => !keys.includes(k)) : [...new Set([...this.hidden, ...keys])];
+    },
+
+    canChangeStep(step) {
+      return this.isAdmin && this.fieldsFor(step).some((f) => !this.isLocked(f));
     },
 
     // ---------- Summary and saving ----------
@@ -157,7 +218,11 @@ document.addEventListener('alpine:init', () => {
       const slots = p.time_slots;
       const slotText = !slots.length ? 'no time slots'
         : `${slots.length} time slot${slots.length === 1 ? '' : 's'} (${formatSlot(slots[0])}${slots.length > 1 ? ` – ${formatSlot(slots[slots.length - 1])}` : ''})`;
-      return `${dayText} · ${slotText} · ${p.hidden_fields.length} field${p.hidden_fields.length === 1 ? '' : 's'} hidden`;
+      const count = (fn) => this.fields.filter(fn).length;
+      const off = count((f) => !this.isShown(f));
+      const required = count((f) => this.isRequired(f));
+      const always = count((f) => this.isLocked(f));
+      return `${dayText} · ${slotText} · ${off} question${off === 1 ? '' : 's'} off · ${required} required · ${always} always asked`;
     },
 
     get problems() {

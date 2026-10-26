@@ -16,7 +16,8 @@ window.SITE = {
   // PocketBase server (the booking form reads its public settings from here; staff pages use assets/js/auth.js).
   apiUrl: 'https://capi.snmclaw.com',
 
-  // SNMC Legal Aid seal, used in the header, footer, booking intro and as the favicon.
+  // SNMC Legal Aid seal (low-res PNG for now). Off the public pages until there's a high-res SVG;
+  // still used as the favicon, on the staff pages and by <page-intro logo>.
   logo: 'assets/img/snmc-legal-aid-logo.png',
 
   // Top navigation. `key` matches the `active` attribute on <site-header>.
@@ -26,6 +27,14 @@ window.SITE = {
     { key: 'book', label: 'Book a Visit', href: 'index.html' },
   ],
 };
+
+/* Scales-of-justice mark used in the header (in place of the seal for now). */
+window.SITE.logoSvg = `
+<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <path d="M24 6v34M14 42h20M10 12h28M24 8l0 0"/>
+  <path d="M10 12 4 26h12L10 12zM38 12l-6 14h12L38 12z"/>
+  <path d="M4 26a6 4 0 0 0 12 0M32 26a6 4 0 0 0 12 0"/>
+</svg>`;
 
 /*
  * Scroll reveal: add `data-reveal` to any element to fade it up when it scrolls into view.

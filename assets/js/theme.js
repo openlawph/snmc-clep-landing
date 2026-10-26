@@ -49,6 +49,8 @@
   .pill { @apply inline-flex cursor-pointer items-center gap-2 rounded-sm border border-black/15 bg-white px-3.5 py-2 text-sm transition hover:border-copper/60 has-checked:border-copper has-checked:bg-copper/10; }
   /* Sub-heading that groups fields inside a form step */
   .form-section { @apply border-b border-black/10 pb-2 font-sans text-xs font-bold uppercase tracking-[0.15em] text-copper-dark; }
+  /* Booking form: x-field adds .is-required to a question the settings make required */
+  .is-required > .field-label::after, .is-required > legend::after { content: " *"; @apply text-red-700; }
 }
 `;
   const style = document.createElement('style');

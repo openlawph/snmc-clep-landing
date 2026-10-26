@@ -30,7 +30,7 @@
 
   <!-- x-data here so the translated intro (x-t) is processed too -->
   <main x-data>
-    <page-intro eyebrow="Book an appointment" title="Start with a slot. Eligibility is confirmed later, at intake." logo i18n>
+    <page-intro eyebrow="Book an appointment" title="Start with a slot. Eligibility is confirmed later, at intake." i18n>
       <p class="text-base" x-t>Online version of the clinic's Unified Client Intake Form (SNMC-CIF-001). Please answer completely and honestly. If you need help filling it in, call or visit the clinic and our staff or student practitioners will assist you.</p>
     </page-intro>
 
@@ -39,7 +39,7 @@
         1 Appointment · 2 Section B · 3 Sections C + D · 4 Sections F + E · 5 Sections G + K · 6 Review + Sections H + I
       Sections A and J are filled in by clinic staff at the intake interview.
       Choice lists (checkboxes/radios) live in INTAKE_OPTIONS in assets/js/intake.js.
-      Fields with x-show="shown('…')" can be hidden by admins (see INTAKE_FIELDS in intake.js).
+      x-field="key" ties a question to its settings (asked or not, required or not) and shows its error; keys are INTAKE_FIELDS in intake.js.
       Text: x-t / $t() (assets/js/i18n.js); Bisaya wording in assets/js/i18n-vs.js.
     -->
     <section class="py-16 sm:py-20">
@@ -93,6 +93,7 @@
 
             <p class="eyebrow" x-text="`${$t('Step {n} of {total}', { n: position, total: activeSteps.length })} · ${$t(steps[step - 1])}`"></p>
             <h2 class="mt-2 text-3xl sm:text-4xl" x-text="$t(headings[step - 1])"></h2>
+            <p class="mt-2 text-sm text-muted" x-show="stepHasRequired(step)" x-t>Questions marked * are required.</p>
 
             <!-- ================= Step 1: Appointment ================= -->
             <fieldset x-show="step === 1" class="mt-8 space-y-8">
@@ -100,7 +101,7 @@
 
               <div class="grid gap-8 md:grid-cols-[minmax(0,20rem)_1fr]">
                 <!-- Date: a month calendar where only open days can be picked -->
-                <div>
+                <div x-field="date">
                   <span id="date-label" class="field-label" x-t>Preferred date</span>
                   <p class="field-hint -mt-0.5 mb-3" x-text="$t('Consultations are on {days}.', { days: daysText })"></p>
                   <div class="rounded-md bg-white p-3 ring-1 ring-black/10" role="group" aria-labelledby="date-label" :aria-invalid="!!errors.date">
@@ -133,11 +134,10 @@
                   </div>
                   <p x-show="!settingsLoaded" class="field-hint" x-t>Loading available dates…</p>
                   <p x-show="form.date" class="mt-2 text-sm"><span class="text-muted" x-t>Selected:</span> <strong x-text="formatDate(form.date)"></strong></p>
-                  <p class="field-error" x-show="errors.date" x-text="errors.date"></p>
                 </div>
 
                 <!-- Time -->
-                <div>
+                <div x-field="time">
                   <span id="time-label" class="field-label" x-t>Time slot</span>
                   <p x-show="!form.date" class="field-hint" x-t>Pick a date first.</p>
                   <div x-show="form.date" class="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-labelledby="time-label">
@@ -146,11 +146,10 @@
                     </template>
                   </div>
                   <p x-show="form.date && !availableSlots.length" class="field-hint" x-t>No more slots on this day. Please pick another date.</p>
-                  <p class="field-error" x-show="errors.time" x-text="errors.time"></p>
                 </div>
               </div>
 
-              <div x-show="shown('firstTime')">
+              <div x-field="firstTime">
                 <span class="field-label" x-t>First time with the clinic?</span>
                 <div class="flex flex-wrap gap-2">
                   <template x-for="o in ['Yes', 'No']" :key="o">
@@ -164,108 +163,98 @@
             <fieldset x-show="step === 2" x-cloak class="mt-8 grid gap-6 sm:grid-cols-6">
               <legend class="sr-only" x-t>Applicant personal information</legend>
 
-              <div class="sm:col-span-2">
+              <div class="sm:col-span-2" x-field="lastName">
                 <label for="lastName" class="field-label" x-t>Last name</label>
                 <input id="lastName" type="text" x-model="form.lastName" autocomplete="family-name" class="field" :aria-invalid="!!errors.lastName">
-                <p class="field-error" x-show="errors.lastName" x-text="errors.lastName"></p>
               </div>
-              <div class="sm:col-span-2">
+              <div class="sm:col-span-2" x-field="firstName">
                 <label for="firstName" class="field-label" x-t>First name</label>
                 <input id="firstName" type="text" x-model="form.firstName" autocomplete="given-name" class="field" :aria-invalid="!!errors.firstName">
-                <p class="field-error" x-show="errors.firstName" x-text="errors.firstName"></p>
               </div>
-              <div class="sm:col-span-2" x-show="shown('middleName')">
+              <div class="sm:col-span-2" x-field="middleName">
                 <label for="middleName" class="field-label" x-t>Middle name</label>
                 <input id="middleName" type="text" x-model="form.middleName" autocomplete="additional-name" class="field">
               </div>
               <p class="field-hint -mt-4 sm:col-span-6" x-t>As it appears on your valid ID.</p>
 
-              <div class="sm:col-span-3" x-show="shown('nickname')">
-                <label for="nickname" class="field-label"><span x-t>Nickname / alias</span> <span class="font-normal text-muted" x-t>(optional)</span></label>
+              <div class="sm:col-span-3" x-field="nickname">
+                <label for="nickname" class="field-label"><span x-t>Nickname / alias</span> <span class="font-normal text-muted" x-show="!isRequired('nickname')" x-t>(optional)</span></label>
                 <input id="nickname" type="text" x-model="form.nickname" class="field">
               </div>
-              <div class="sm:col-span-3" x-show="shown('dob')">
+              <div class="sm:col-span-3" x-field="dob">
                 <label for="dob" class="field-label" x-t>Date of birth</label>
                 <input id="dob" type="date" x-model="form.dob" :max="today" class="field" :aria-invalid="!!errors.dob">
                 <p class="field-hint" x-show="age !== ''" x-text="$t('Age: {age}', { age })"></p>
-                <p class="field-error" x-show="errors.dob" x-text="errors.dob"></p>
               </div>
 
-              <div class="sm:col-span-2" x-show="shown('sex')">
+              <div class="sm:col-span-2" x-field="sex">
                 <span class="field-label" x-t>Sex</span>
                 <div class="flex flex-wrap gap-2">
                   <template x-for="o in opt.sex" :key="o">
                     <label class="pill"><input type="radio" name="sex" :value="o" x-model="form.sex" class="accent-copper" :aria-invalid="!!errors.sex"><span x-text="$t(o)"></span></label>
                   </template>
                 </div>
-                <p class="field-error" x-show="errors.sex" x-text="errors.sex"></p>
               </div>
-              <div class="sm:col-span-4" x-show="shown('civilStatus')">
+              <div class="sm:col-span-4" x-field="civilStatus">
                 <span class="field-label" x-t>Civil status</span>
                 <div class="flex flex-wrap gap-2">
                   <template x-for="o in opt.civilStatus" :key="o">
                     <label class="pill"><input type="radio" name="civilStatus" :value="o" x-model="form.civilStatus" class="accent-copper" :aria-invalid="!!errors.civilStatus"><span x-text="$t(o)"></span></label>
                   </template>
                 </div>
-                <p class="field-error" x-show="errors.civilStatus" x-text="errors.civilStatus"></p>
               </div>
 
-              <div class="sm:col-span-3" x-show="shown('citizenship')">
+              <div class="sm:col-span-3" x-field="citizenship">
                 <label for="citizenship" class="field-label" x-t>Citizenship</label>
                 <input id="citizenship" type="text" x-model="form.citizenship" class="field">
               </div>
-              <div class="sm:col-span-3" x-show="shown('religion')">
-                <label for="religion" class="field-label"><span x-t>Religion</span> <span class="font-normal text-muted" x-t>(optional)</span></label>
+              <div class="sm:col-span-3" x-field="religion">
+                <label for="religion" class="field-label"><span x-t>Religion</span> <span class="font-normal text-muted" x-show="!isRequired('religion')" x-t>(optional)</span></label>
                 <input id="religion" type="text" x-model="form.religion" class="field">
               </div>
-              <div class="sm:col-span-3" x-show="shown('education')">
+              <div class="sm:col-span-3" x-field="education">
                 <label for="education" class="field-label" x-t>Educational attainment</label>
                 <select id="education" x-model="form.education" class="field">
                   <option value="" x-t>Choose…</option>
                   <template x-for="o in opt.education" :key="o"><option :value="o" x-text="$t(o)"></option></template>
                 </select>
               </div>
-              <div class="sm:col-span-3" x-show="shown('language')">
+              <div class="sm:col-span-3" x-field="language">
                 <label for="language" class="field-label" x-t>Language / dialect</label>
                 <input id="language" type="text" x-model="form.language" list="languages" placeholder="Cebuano, Filipino, English…" x-t:placeholder class="field">
                 <datalist id="languages"><option>Cebuano</option><option>Filipino</option><option>English</option></datalist>
               </div>
-              <div class="sm:col-span-3" x-show="shown('occupation')">
+              <div class="sm:col-span-3" x-field="occupation">
                 <label for="occupation" class="field-label" x-t>Occupation / employment</label>
                 <input id="occupation" type="text" x-model="form.occupation" placeholder="e.g. Vendor, Unemployed" x-t:placeholder class="field">
               </div>
-              <div class="sm:col-span-3" x-show="shown('disability')">
+              <div class="sm:col-span-3" x-field="disability">
                 <label for="disability" class="field-label"><span x-t>Disability</span> <span class="font-normal text-muted" x-t>(if any)</span></label>
                 <input id="disability" type="text" x-model="form.disability" class="field">
               </div>
 
               <h3 class="form-section mt-2 sm:col-span-6" x-t>Contact and address</h3>
-              <div class="sm:col-span-3">
+              <div class="sm:col-span-3" x-field="mobile">
                 <label for="mobile" class="field-label" x-t>Contact number</label>
                 <input id="mobile" type="tel" x-model="form.mobile" autocomplete="tel" placeholder="0917 000 0000" class="field" :aria-invalid="!!errors.mobile">
-                <p class="field-error" x-show="errors.mobile" x-text="errors.mobile"></p>
               </div>
-              <div class="sm:col-span-3" x-show="shown('email')">
-                <label for="email" class="field-label"><span x-t>Email</span> <span class="font-normal text-muted" x-t>(optional)</span></label>
+              <div class="sm:col-span-3" x-field="email">
+                <label for="email" class="field-label"><span x-t>Email</span> <span class="font-normal text-muted" x-show="!isRequired('email')" x-t>(optional)</span></label>
                 <input id="email" type="email" x-model="form.email" autocomplete="email" placeholder="you@email.com" class="field" :aria-invalid="!!errors.email">
-                <p class="field-error" x-show="errors.email" x-text="errors.email"></p>
               </div>
-              <div class="sm:col-span-6" x-show="shown('address')">
+              <div class="sm:col-span-6" x-field="address">
                 <label for="address" class="field-label" x-t>Complete address</label>
                 <input id="address" type="text" x-model="form.address" autocomplete="street-address" placeholder="House no., street, sitio / purok" x-t:placeholder class="field" :aria-invalid="!!errors.address">
-                <p class="field-error" x-show="errors.address" x-text="errors.address"></p>
               </div>
-              <div class="sm:col-span-3" x-show="shown('barangay')">
+              <div class="sm:col-span-3" x-field="barangay">
                 <label for="barangay" class="field-label" x-t>Barangay</label>
                 <input id="barangay" type="text" x-model="form.barangay" placeholder="e.g. Soong" x-t:placeholder class="field" :aria-invalid="!!errors.barangay">
-                <p class="field-error" x-show="errors.barangay" x-text="errors.barangay"></p>
               </div>
-              <div class="sm:col-span-3" x-show="shown('city')">
+              <div class="sm:col-span-3" x-field="city">
                 <label for="city" class="field-label" x-t>City / municipality</label>
                 <input id="city" type="text" x-model="form.city" class="field" :aria-invalid="!!errors.city">
-                <p class="field-error" x-show="errors.city" x-text="errors.city"></p>
               </div>
-              <div class="sm:col-span-6" x-show="shown('residentLLC')">
+              <div class="sm:col-span-6" x-field="residentLLC">
                 <span class="field-label" x-t>Resident of Lapu-Lapu City?</span>
                 <div class="flex flex-wrap gap-2">
                   <template x-for="o in ['Yes', 'No']" :key="o">
@@ -273,13 +262,12 @@
                   </template>
                 </div>
                 <p class="field-hint" x-show="form.residentLLC === 'No'" x-t>You can still book. We will check at intake whether the clinic can help or refer you to the right office.</p>
-                <p class="field-error" x-show="errors.residentLLC" x-text="errors.residentLLC"></p>
               </div>
             </fieldset>
 
             <!-- ================= Step 3: Sections C + D — Household & sector ================= -->
             <div x-show="step === 3" x-cloak class="mt-8 space-y-10">
-              <fieldset class="space-y-4" x-show="shown('household')">
+              <fieldset class="space-y-4" x-field="household">
                 <legend class="form-section w-full" x-t>Household composition &amp; income</legend>
                 <p class="text-sm text-muted" x-t>List yourself and everyone in your household, with their source of income and monthly amount. Leave the amount blank or 0 if none.</p>
 
@@ -311,7 +299,6 @@
                     </div>
                   </template>
                 </div>
-                <p class="field-error" x-show="errors.household" x-text="errors.household"></p>
 
                 <div class="flex flex-wrap items-center justify-between gap-4">
                   <button type="button" @click="addMember()" class="btn btn-ghost px-4 py-2 text-xs" x-t>+ Add household member</button>
@@ -322,7 +309,7 @@
                 </div>
               </fieldset>
 
-              <fieldset class="grid gap-6 sm:grid-cols-2" x-show="shown('property')">
+              <fieldset class="grid gap-6 sm:grid-cols-2" x-field="property">
                 <legend class="form-section mb-6 w-full" x-t>Property and assets</legend>
                 <div>
                   <span class="field-label" x-t>Do you or your household own land or a house other than your present residence?</span>
@@ -352,7 +339,7 @@
                 </div>
               </fieldset>
 
-              <fieldset x-show="shown('sectors')">
+              <fieldset x-field="sectors">
                 <legend class="form-section mb-4 w-full"><span x-t>Sector classification</span> <span class="font-normal normal-case tracking-normal text-muted" x-t>— check all that apply</span></legend>
                 <div class="flex flex-wrap gap-2">
                   <template x-for="o in opt.sectors" :key="o">
@@ -368,7 +355,7 @@
 
             <!-- ================= Step 4: Sections F + E — Legal issue & conflict check ================= -->
             <div x-show="step === 4" x-cloak class="mt-8 space-y-10">
-              <fieldset x-show="shown('practiceAreas')">
+              <fieldset x-field="practiceAreas">
                 <legend class="form-section mb-4 w-full"><span x-t>Practice area / category</span> <span class="font-normal normal-case tracking-normal text-muted" x-t>— check all that apply</span></legend>
                 <div class="flex flex-wrap gap-2">
                   <template x-for="o in opt.practiceAreas" :key="o">
@@ -379,26 +366,23 @@
                   <label for="practiceOther" class="field-label text-xs" x-t>Other / not sure</label>
                   <input id="practiceOther" type="text" x-model="form.practiceOther" placeholder="Describe it briefly" x-t:placeholder class="field">
                 </div>
-                <p class="field-error" x-show="errors.practiceAreas" x-text="errors.practiceAreas"></p>
               </fieldset>
 
-              <fieldset x-show="shown('assistance')">
+              <fieldset x-field="assistance">
                 <legend class="form-section mb-4 w-full" x-t>Requested assistance / service</legend>
                 <div class="flex flex-wrap gap-2">
                   <template x-for="o in opt.assistance" :key="o">
                     <label class="pill"><input type="checkbox" :value="o" x-model="form.assistance" class="accent-copper" :aria-invalid="!!errors.assistance"><span x-text="$t(o)"></span></label>
                   </template>
                 </div>
-                <p class="field-error" x-show="errors.assistance" x-text="errors.assistance"></p>
               </fieldset>
 
               <fieldset class="grid gap-6 sm:grid-cols-2" x-show="shown('opposingParty') || shown('represented')">
                 <legend class="form-section mb-6 w-full"><span x-t>Opposing / adverse party</span> <span class="font-normal normal-case tracking-normal text-muted" x-t>— for the conflict check</span></legend>
-                <div class="sm:col-span-2" x-show="shown('opposingParty')">
-                  <label for="opposingName" class="field-label"><span x-t>Name(s)</span> <span class="font-normal text-copper-dark" x-t>(required)</span></label>
-                  <input id="opposingName" type="text" x-model="form.opposingName" placeholder="Surname, first name, middle name — separate several with semicolons" x-t:placeholder class="field" :aria-invalid="!!errors.opposingName">
+                <div class="sm:col-span-2" x-field="opposingParty">
+                  <label for="opposingName" class="field-label"><span x-t>Name(s)</span></label>
+                  <input id="opposingName" type="text" x-model="form.opposingName" placeholder="Surname, first name, middle name — separate several with semicolons" x-t:placeholder class="field" :aria-invalid="!!errors.opposingParty">
                   <p class="field-hint" x-t>Without the other party's name your file cannot be cleared for assignment to a student practitioner.</p>
-                  <p class="field-error" x-show="errors.opposingName" x-text="errors.opposingName"></p>
                 </div>
                 <div x-show="shown('opposingParty')">
                   <label for="opposingRelationship" class="field-label" x-t>Relationship to you</label>
@@ -408,7 +392,7 @@
                   <label for="opposingContact" class="field-label"><span x-t>Address / phone</span> <span class="font-normal text-muted" x-t>(if known)</span></label>
                   <input id="opposingContact" type="text" x-model="form.opposingContact" class="field">
                 </div>
-                <div class="sm:col-span-2" x-show="shown('represented')">
+                <div class="sm:col-span-2" x-field="represented">
                   <span class="field-label" x-t>Are you currently represented by an attorney in this matter?</span>
                   <div class="flex flex-wrap gap-2">
                     <template x-for="o in ['No', 'Yes']" :key="o">
@@ -421,7 +405,7 @@
 
               <fieldset class="grid gap-6" x-show="shown('priorConsult') || shown('opposingConsulted')">
                 <legend class="form-section mb-6 w-full" x-t>Prior consultation</legend>
-                <div x-show="shown('priorConsult')">
+                <div x-field="priorConsult">
                   <span class="field-label" x-t>Have you previously consulted this Law Clinic or an attorney about this matter?</span>
                   <div class="flex flex-wrap gap-2">
                     <template x-for="o in ['No', 'Yes']" :key="o">
@@ -434,7 +418,7 @@
                     <p class="field-error" x-show="errors.priorConsultDetails" x-text="errors.priorConsultDetails"></p>
                   </div>
                 </div>
-                <div x-show="shown('opposingConsulted')">
+                <div x-field="opposingConsulted">
                   <span class="field-label" x-t>Do you know whether the opposing party has consulted this Law Clinic?</span>
                   <div class="flex flex-wrap gap-2">
                     <template x-for="o in ['Yes', 'No', 'Unknown']" :key="o">
@@ -449,17 +433,16 @@
             <div x-show="step === 5" x-cloak class="mt-8 space-y-10">
               <fieldset class="grid gap-6 sm:grid-cols-2">
                 <legend class="form-section mb-6 w-full" x-t>Narrative of facts</legend>
-                <div class="sm:col-span-2">
+                <div class="sm:col-span-2" x-field="narrative">
                   <label for="narrative" class="field-label" x-t>Brief narrative of facts, in chronological order</label>
                   <textarea id="narrative" rows="7" x-model="form.narrative" class="field" :aria-invalid="!!errors.narrative"
                             placeholder="Tell us in your own words, from the beginning. Take your time — what happened, when, and who was involved." x-t:placeholder></textarea>
-                  <p class="field-error" x-show="errors.narrative" x-text="errors.narrative"></p>
                 </div>
-                <div class="sm:col-span-2" x-show="shown('personsInvolved')">
+                <div class="sm:col-span-2" x-field="personsInvolved">
                   <label for="personsInvolved" class="field-label" x-t>1. Who are the persons involved?</label>
                   <input id="personsInvolved" type="text" x-model="form.personsInvolved" class="field">
                 </div>
-                <div x-show="shown('incident')">
+                <div x-field="incident">
                   <label for="incidentDate" class="field-label" x-t>2. When did it happen?</label>
                   <input id="incidentDate" type="date" x-model="form.incidentDate" :max="today" class="field">
                 </div>
@@ -467,11 +450,11 @@
                   <label for="incidentPlace" class="field-label" x-t>Where did it happen?</label>
                   <input id="incidentPlace" type="text" x-model="form.incidentPlace" class="field">
                 </div>
-                <div class="sm:col-span-2" x-show="shown('existingDocuments')">
+                <div class="sm:col-span-2" x-field="existingDocuments">
                   <label for="existingDocuments" class="field-label" x-t>3. What documents presently exist?</label>
                   <input id="existingDocuments" type="text" x-model="form.existingDocuments" placeholder="e.g. contract, receipts, text messages, barangay blotter" x-t:placeholder class="field">
                 </div>
-                <div class="sm:col-span-2" x-show="shown('caseFiled')">
+                <div class="sm:col-span-2" x-field="caseFiled">
                   <span class="field-label" x-t>4. Has any complaint or case already been filed?</span>
                   <div class="flex flex-wrap gap-2">
                     <template x-for="o in ['No', 'Yes']" :key="o">
@@ -484,7 +467,7 @@
                     <p class="field-error" x-show="errors.caseDetails" x-text="errors.caseDetails"></p>
                   </div>
                 </div>
-                <div class="sm:col-span-2" x-show="shown('pendingHearing')">
+                <div class="sm:col-span-2" x-field="pendingHearing">
                   <span class="field-label" x-t>5. Are there pending hearings, deadlines, or court dates?</span>
                   <div class="flex flex-wrap gap-2">
                     <template x-for="o in ['No', 'Yes']" :key="o">
@@ -503,7 +486,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="sm:col-span-2" x-show="shown('referralSources')">
+                <div class="sm:col-span-2" x-field="referralSources">
                   <span class="field-label" x-t>6. How did you learn about the Clinic?</span>
                   <div class="flex flex-wrap gap-2">
                     <template x-for="o in opt.referralSources" :key="o">
@@ -517,9 +500,9 @@
                 </div>
               </fieldset>
 
-              <fieldset x-show="shown('documents') || shown('attachments')">
+              <fieldset x-show="shown('documents') || shown('attachments')" :class="isRequired('documents') && 'is-required'">
                 <legend class="form-section mb-4 w-full"><span x-t>Documents you have</span> <span class="font-normal normal-case tracking-normal text-muted" x-t>— check what you can bring</span></legend>
-                <div x-show="shown('documents')">
+                <div x-field="documents">
                   <div class="grid gap-2 sm:grid-cols-2">
                     <template x-for="o in opt.documents" :key="o">
                       <label class="pill"><input type="checkbox" :value="o" x-model="form.documents" class="accent-copper"><span x-text="$t(o)"></span></label>
@@ -530,10 +513,10 @@
                     <input id="documentsOther" type="text" x-model="form.documentsOther" class="field">
                   </div>
                 </div>
-                <div x-show="shown('attachments')">
+                <div x-field="attachments">
                   <label class="mt-6 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-black/15 bg-white px-6 py-8 text-center transition hover:border-copper">
                     <svg class="size-8 text-copper" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
-                    <span class="text-sm font-semibold"><span x-t>Attach copies</span> <span class="font-normal text-muted" x-t>(optional)</span></span>
+                    <span class="text-sm font-semibold"><span x-t>Attach copies</span><span x-show="isRequired('attachments')" class="text-red-700"> *</span> <span class="font-normal text-muted" x-show="!isRequired('attachments')" x-t>(optional)</span></span>
                     <span class="text-xs text-muted" x-t>Photos or scans. Please still bring the originals to your appointment.</span>
                     <input type="file" multiple accept="image/*,.pdf" class="sr-only" @change="onFiles">
                   </label>
@@ -564,7 +547,7 @@
               </div>
 
               <!-- Section H -->
-              <fieldset>
+              <fieldset x-field="privacyConsent">
                 <legend class="form-section mb-4 w-full" x-t>Data privacy consent (RA 10173)</legend>
                 <p class="text-sm leading-relaxed text-muted" x-t>Pursuant to Republic Act No. 10173 (Data Privacy Act of 2012), the SNMC Legal Clinic collects, stores, and processes personal and case-related information solely to determine qualification for free legal assistance and for the continuous rendition of legal service. All disclosures are protected under attorney-client privilege. Clients retain full rights to access, dispute inaccuracies, and withdraw consent in accordance with law.</p>
                 <div class="mt-4 flex flex-wrap gap-2">
@@ -572,11 +555,10 @@
                   <label class="pill"><input type="radio" name="privacyConsent" value="disagree" x-model="form.privacyConsent" class="accent-copper"> <span x-t>I DO NOT AGREE.</span></label>
                 </div>
                 <p class="mt-3 rounded-sm bg-copper/10 p-3 text-sm" x-show="form.privacyConsent === 'disagree'" x-transition x-t>We cannot process an online request without your consent. You can still visit the clinic in person during office hours and our staff will assist you.</p>
-                <p class="field-error" x-show="errors.privacyConsent" x-text="errors.privacyConsent"></p>
               </fieldset>
 
               <!-- Section I -->
-              <fieldset>
+              <fieldset x-field="declaration">
                 <legend class="form-section mb-4 w-full" x-t>Declaration &amp; representation disclaimer</legend>
                 <div class="space-y-3">
                   <label class="flex cursor-pointer gap-3 rounded-md bg-white p-4 ring-1 ring-black/10">
@@ -588,7 +570,6 @@
                     <span class="text-sm leading-relaxed" x-t.html>I understand that the SNMC Legal Clinic provides free legal advice through supervised law student practitioners under Rule 138-A, and that completing this intake form <strong>does not</strong> automatically establish an attorney-client relationship or guarantee ongoing court representation unless a formal engagement is executed.</span>
                   </label>
                 </div>
-                <p class="field-error" x-show="errors.declaration" x-text="errors.declaration"></p>
 
                 <div class="mt-6 grid gap-4 sm:grid-cols-[2fr_1fr]">
                   <div>

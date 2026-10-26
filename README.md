@@ -65,7 +65,7 @@ Add `data-reveal` to any element to fade it in on scroll (`data-reveal-delay="12
 
 - **Phone number, email, address, hours:** `assets/js/components.js` → `window.SITE` (the phone is still `[add clinic number]`).
 - **Nav links:** `SITE.nav` in the same file. Only Book a Visit is linked for now; add the other pages back there to relink them in the header and footer.
-- **Logo:** `assets/img/snmc-legal-aid-logo.png` (`SITE.logo`). Used in the header, footer, booking intro and as the favicon.
+- **Logo:** the SNMC Legal Aid seal (`assets/img/snmc-legal-aid-logo.png`, `SITE.logo`) is **off the public pages for now** until there's a high-res SVG; the header shows the small scales icon (`SITE.logoSvg`) instead. The seal is still the favicon and appears on the staff pages. To put it back on the booking page, add `logo` to its `<page-intro>`; for the header/footer, see git history.
 - **Colors / fonts:** the `@theme` block in `assets/js/theme.js`. For example, `--color-copper` becomes the `bg-copper` / `text-copper` classes.
 - **Add a page:** copy an existing page (e.g. `about.html`), keep the `<head>` "Shared head" block as it is, set `<site-header active="…">`, and add the page to `SITE.nav`.
 - **Images:** the files in `assets/img/` are labelled placeholders. Export the real photos from the Canva design and save them over these files with the same names:
@@ -87,7 +87,7 @@ Add `data-reveal` to any element to fade it in on scroll (`data-reveal-delay="12
 Sections **A** (administrative) and **J** (staff assessment) are for clinic staff, so they are not on the public form.
 Checkbox and radio choices are in `INTAKE_OPTIONS` at the top of `assets/js/intake.js` (add the Bisaya wording to `assets/js/i18n-vs.js` too). `toPayload()` there groups the answers by form section (`B_personal`, `C_household`, …).
 
-The form validates each step, then shows a "Request received" screen with a reference number, but **it does not send the data anywhere yet**.
+The form checks each step (required questions, mobile/email format), then shows a "Request received" screen with a reference number, but **it does not send the data anywhere yet**.
 To connect it, implement `sendRequest()` in `assets/js/intake.js` (for example, POST to Formspree, a Google Apps Script, or a PHP endpoint if the host supports PHP).
 
 ## Preview locally
@@ -167,9 +167,15 @@ The admin login at https://capi.snmclaw.com/_/ is a PocketBase **superuser**, se
 
 - **Consultation days:** any of Monday to Saturday. The booking calendar only lets clients pick these days, from today up to 90 days ahead (`INTAKE_BOOKING_DAYS_AHEAD` in `intake.js`).
 - **Time slots:** any times from 7:00 AM to 7:00 PM in 30-minute steps. On today's date, slots that have already started aren't offered.
-- **Form fields:** each optional question can be turned off. The ones needed to book, reach the client, understand the problem or record consent are locked on. If every question in a step is off, the form skips that step. The list is `INTAKE_FIELDS` in `assets/js/intake.js`; each key matches an `x-show="shown('…')"` in `index.html`.
+- **Questions:** each one has three controls.
+  - **Ask:** show it or not. If every question in a step is off, the form skips that step.
+  - **Required:** clients can't continue without answering it (marked with a red * on the form). Questions that always have an answer (a pre-selected Yes/No) can't be required; for questions with a follow-up, "required" means the follow-up must be filled in when they answer Yes.
+  - **Always ask (lock):** the question stays on and neither switch can be changed until someone unlocks it, which asks for confirmation. Use it for whatever the group has agreed on.
 
-If the settings can't be loaded, the form falls back to `INTAKE_DEFAULT_SETTINGS` (Tuesdays and Thursdays, 1:00–4:00 PM, every question shown).
+  Date, time, data privacy consent and the declaration are always asked and required. The list is `INTAKE_FIELDS` in `assets/js/intake.js`; each key matches an `x-field="…"` in `index.html`, which shows/hides the question, adds the * and shows its error.
+- **Stored as:** `hidden_fields`, `required_fields` and `locked_fields` (lists of question keys) on the `intake_settings` record.
+
+If the settings can't be loaded, the form falls back to `INTAKE_DEFAULT_SETTINGS` (Tuesdays and Thursdays, 1:00–4:00 PM, every question shown; name, contact number and the facts of the case required and always asked).
 
 ## Languages (EN / VS)
 
@@ -179,3 +185,22 @@ The first page of the booking form has a **Language / Pinulongan** menu: EN (Eng
 - The Bisaya wording is in `assets/js/i18n-vs.js`, keyed by the exact English text. Anything missing shows in English, so a changed English sentence needs its key updated there too.
 - Answers are always saved in English, and the payload records which language the client used (`language`).
 - **Please have a native Bisaya speaker on the team review `i18n-vs.js`**, especially the legal wording.
+
+## Database (PocketBase)
+
+All at https://capi.snmclaw.com. "Staff" = signed-in user with a verified email; "admin" = staff with `role = "admin"`.
+
+| Collection | What it holds | Who can read / write |
+|---|---|---|
+| `users` | Staff accounts: name, email, photo, `role` (admin / staff) | Admins: everyone. Staff: only themselves (see "Users page") |
+| `lawyers` | Supervising lawyers (SL): name, email, contact no., active / archived cases, ULAS hours, status | Staff read, admins write |
+| `practitioners` | Law student practitioners (LSP): name, email, contact no., `level` (Level 1 / Level 2 under Rule 138-A), active / archived cases, status | Staff read, admins write |
+| `appointments` | A booking: `title`, `email`, `mobile_no`, `json` (the full form) | Anyone can create; staff read |
+| `appointments_status` | History log, one row per change: `app_id` → appointment, `user_id` → who made the change, `app_status` (PENDING / SCHEDULED / WIP / DONE), `remarks`, **`lsp_id` → practitioners**, **`sl_id` → lawyers** | Superuser only for now |
+| `appointments_view` (view) | Each appointment's **latest** status row, with `lsp_id`, `sl_id`, `lsp_name`, `sl_name` | Superuser only for now |
+| `appointments_pending` (view) | Appointments with no status row yet | Superuser only for now |
+| `intake_settings` | One record: booking days, time slots, hidden / required / always-asked questions | Anyone reads, admins update |
+
+**Assigning an LSP and a Supervising Lawyer:** add an `appointments_status` row for the appointment with `lsp_id` and `sl_id` set (along with the status). The newest row is the current assignment, so reassigning is just a new row, and the log keeps who changed it and when. When adding a row for any other reason (e.g. SCHEDULED → WIP), copy the current `lsp_id` / `sl_id` across so the assignment carries forward.
+
+Before staff can do this from the dashboard, `appointments_status` and the two views need API rules (they're superuser-only today), e.g. List/View `@request.auth.verified = true`, Create `@request.auth.verified = true && @request.body.user_id = @request.auth.id`.

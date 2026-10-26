@@ -54,7 +54,7 @@
       <template x-if="!loading && !loadError">
         <div class="space-y-6">
           <p class="text-sm text-muted">
-            These control what clients see on the public booking form. Changes apply as soon as you save.
+            These control what clients see on the public booking form: open days, times, and which questions are asked or required. Changes apply as soon as you save.
             <span class="block sm:inline"><strong class="text-ink">Now:</strong> <span x-text="summary"></span></span>
           </p>
 
@@ -104,23 +104,29 @@
             </div>
           </section>
 
-          <!-- ---------- Fields ---------- -->
+          <!-- ---------- Questions ---------- -->
           <section class="card" aria-labelledby="fields-title">
-            <h2 id="fields-title" class="text-2xl">Form fields</h2>
-            <p class="mt-1 text-sm text-muted">Turn off questions you don't need. Locked ones are always asked: they're needed to book, to reach the client, or for consent. A step with every question turned off is skipped.</p>
+            <h2 id="fields-title" class="text-2xl">Questions</h2>
+            <ul class="mt-2 space-y-1 text-sm text-muted">
+              <li><strong class="text-ink">Ask</strong>: show the question on the booking form. A step with every question off is skipped.</li>
+              <li><strong class="text-ink">Required</strong>: clients can't continue without answering it.</li>
+              <li><strong class="text-ink">Always ask</strong> (lock): the question stays on and its settings can't be changed until someone unlocks it. Use it for anything the clinic has decided on.</li>
+              <li>Date, time, data privacy consent and the declaration are needed for every booking, so they're always asked and required.</li>
+            </ul>
 
-            <div class="mt-6 grid gap-4 xl:grid-cols-2">
+            <div class="mt-6 grid gap-4 2xl:grid-cols-2">
               <template x-for="(stepName, i) in steps" :key="i">
                 <div class="rounded-md bg-white ring-1 ring-black/10">
-                  <div class="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3">
+                  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-black/10 px-4 py-3">
                     <div class="min-w-0">
                       <p class="text-xs font-semibold uppercase tracking-wider text-muted" x-text="`Step ${i + 1}`"></p>
-                      <h3 class="truncate font-sans text-base font-semibold" x-text="stepName"></h3>
+                      <h3 class="font-sans text-base font-semibold" x-text="stepName"></h3>
                     </div>
-                    <div class="flex shrink-0 items-center gap-2 text-xs">
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
                       <span x-show="stepSkipped(i + 1)" class="rounded-full bg-amber/15 px-2 py-0.5 font-semibold text-[#8a5a1c]">Step skipped</span>
                       <span x-show="!stepSkipped(i + 1) && hiddenCount(i + 1)" class="rounded-full bg-black/5 px-2 py-0.5 font-semibold text-muted" x-text="`${hiddenCount(i + 1)} off`"></span>
-                      <template x-if="isAdmin && fieldsFor(i + 1).some((f) => !f.locked)">
+                      <span x-show="requiredCount(i + 1)" class="rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-800" x-text="`${requiredCount(i + 1)} required`"></span>
+                      <template x-if="canChangeStep(i + 1)">
                         <span class="flex gap-1">
                           <button type="button" class="rounded-sm px-2 py-1 font-semibold text-copper-dark hover:bg-black/5" @click="setStep(i + 1, true)">All on</button>
                           <button type="button" class="rounded-sm px-2 py-1 font-semibold text-copper-dark hover:bg-black/5" @click="setStep(i + 1, false)">All off</button>
@@ -128,20 +134,50 @@
                       </template>
                     </div>
                   </div>
+
+                  <!-- Column headings -->
+                  <div class="grid grid-cols-[1fr_auto] gap-3 border-b border-black/5 bg-cream/50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted" aria-hidden="true">
+                    <span>Question</span>
+                    <span class="grid w-40 grid-cols-3 text-center sm:w-52 sm:tracking-wide"><span>Ask</span><span>Required</span><span>Always</span></span>
+                  </div>
+
                   <ul class="divide-y divide-black/5">
                     <template x-for="field in fieldsFor(i + 1)" :key="field.key">
-                      <li class="flex items-center justify-between gap-4 px-4 py-2.5">
-                        <span class="text-sm" :class="!isShown(field) && 'text-muted line-through decoration-black/30'" x-text="field.label" :id="'f-' + field.key"></span>
-                        <span x-show="field.locked" class="flex shrink-0 items-center gap-1 text-xs text-muted">
-                          <svg class="size-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-                          Always asked
-                        </span>
-                        <button x-show="!field.locked" type="button" role="switch" :aria-checked="isShown(field)" :aria-labelledby="'f-' + field.key"
-                                @click="toggleField(field)" :disabled="!isAdmin"
-                                class="relative h-6 w-11 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-60"
-                                :class="isShown(field) ? 'bg-copper' : 'bg-black/20'">
-                          <span class="absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow transition" :class="isShown(field) && 'translate-x-5'"></span>
-                        </button>
+                      <li class="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-2.5" :class="isLocked(field) && !field.core && 'bg-copper/5'">
+                        <div class="min-w-0">
+                          <p class="text-sm" :class="!isShown(field) && 'text-muted line-through decoration-black/30'">
+                            <span x-text="field.label"></span><span x-show="isRequired(field)" class="text-red-700"> *</span>
+                          </p>
+                          <p x-show="field.core" class="text-xs text-muted">Needed for every booking</p>
+                          <p x-show="!field.core && isLocked(field)" class="text-xs font-semibold text-copper-dark">Always asked · unlock to change</p>
+                          <p x-show="field.canRequire === false" class="text-xs text-muted">Always has an answer, so it can't be required</p>
+                          <p x-show="field.requiredNote && isRequired(field) && !field.core" class="text-xs text-muted" x-text="field.requiredNote"></p>
+                        </div>
+                        <div class="grid w-40 grid-cols-3 items-center justify-items-center sm:w-52">
+                          <button type="button" role="switch" :aria-checked="isShown(field)" :aria-label="'Ask: ' + field.label"
+                                    @click="toggleAsk(field)" :disabled="!canChangeAsk(field)"
+                                    class="relative h-6 w-11 rounded-full transition disabled:cursor-not-allowed disabled:opacity-50"
+                                    :class="isShown(field) ? 'bg-copper' : 'bg-black/20'">
+                              <span class="absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow transition" :class="isShown(field) && 'translate-x-5'"></span>
+                            </button>
+                          <template x-if="field.canRequire !== false">
+                            <button type="button" role="switch" :aria-checked="isRequired(field)" :aria-label="'Required: ' + field.label"
+                                    @click="toggleRequired(field)" :disabled="!canChangeRequired(field)"
+                                    class="relative h-6 w-11 rounded-full transition disabled:cursor-not-allowed disabled:opacity-50"
+                                    :class="isRequired(field) ? 'bg-copper' : 'bg-black/20'">
+                              <span class="absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow transition" :class="isRequired(field) && 'translate-x-5'"></span>
+                            </button>
+                          </template>
+                          <span x-show="field.canRequire === false" class="text-muted" aria-hidden="true">—</span>
+                          <button type="button" @click="toggleLock(field)" :disabled="!isAdmin || field.core" :aria-pressed="isLocked(field)"
+                                  :aria-label="(isLocked(field) ? 'Unlock: ' : 'Always ask: ') + field.label"
+                                  :title="field.core ? 'Needed for every booking' : isLocked(field) ? 'Always asked. Click to unlock.' : 'Click to always ask this question'"
+                                  class="grid size-9 place-items-center rounded-full transition disabled:cursor-not-allowed"
+                                  :class="isLocked(field) ? (field.core ? 'text-muted' : 'bg-copper text-white enabled:hover:bg-copper-dark') : 'text-black/35 ring-1 ring-black/15 enabled:hover:text-copper-dark enabled:hover:ring-copper/60'">
+                            <svg x-show="isLocked(field)" class="size-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                            <svg x-show="!isLocked(field)" class="size-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>
+                          </button>
+                        </div>
                       </li>
                     </template>
                   </ul>
@@ -170,6 +206,20 @@
     </div>
     <p x-show="!dirty && updatedLabel" class="px-4 pb-8 text-xs text-muted sm:px-6 lg:px-8" x-text="`Last saved ${updatedLabel}`"></p>
   </div>
+
+  <!-- Unlock confirmation -->
+  <dialog x-ref="unlockDialog" aria-labelledby="unlock-title"
+          class="m-auto w-[calc(100%-2rem)] max-w-md rounded-md bg-paper p-6 text-ink shadow-xl backdrop:bg-black/50 sm:p-8">
+    <h2 id="unlock-title" class="text-2xl">Unlock this question?</h2>
+    <p class="mt-3 leading-relaxed text-muted">
+      <strong class="text-ink" x-text="unlockTarget?.label"></strong> is set to <strong class="text-ink">Always ask</strong>.
+      Once unlocked, any admin can turn it off or change whether it's required. Nothing changes on the booking form until you save.
+    </p>
+    <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+      <button type="button" class="btn btn-ghost text-ink" @click="$refs.unlockDialog.close()" autofocus>Keep it locked</button>
+      <button type="button" class="btn btn-primary" @click="confirmUnlock()">Unlock</button>
+    </div>
+  </dialog>
 
   <!-- Toast -->
   <div x-show="toast" x-cloak x-transition.opacity role="status" aria-live="polite"

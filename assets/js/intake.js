@@ -7,15 +7,13 @@
  * The client fills in Sections B–I and K online. Sections A (administrative) and
  * J (assessment) are for clinic staff and are completed at the intake interview.
  *
- * Which days, times and fields the form offers comes from the public PocketBase
- * `intake_settings` record, which admins edit in the staff area (see README).
+ * Which days, times and questions the form offers, and which questions must be answered, come from
+ * the public PocketBase `intake_settings` record, which admins edit in the staff area (see README).
+ * In the markup, x-field="key" on a question shows/hides it, marks it required (*) and shows its error.
  *
  * The form is UI-only for now: submit() validates, builds the payload (toPayload) and
  * shows the "Request received" screen. Wire the real submission up in sendRequest() below.
  */
-
-// Set to true to turn required-field validation back on (step checks + consent/signature gate on Submit).
-const INTAKE_VALIDATION = false;
 
 // Checkbox/radio choices, copied from the paper form. Edit here to change the options
 // (and add the Bisaya wording to assets/js/i18n-vs.js). The English value is what gets saved.
@@ -50,6 +48,8 @@ const INTAKE_DEFAULT_SETTINGS = {
   days: ['tue', 'thu'],
   time_slots: ['13:00', '14:00', '15:00', '16:00'], // 24-hour "HH:MM"
   hidden_fields: [],
+  required_fields: ['lastName', 'firstName', 'mobile', 'narrative'],
+  locked_fields: ['lastName', 'firstName', 'mobile', 'narrative'], // "Always ask": can't be turned off until unlocked
 };
 
 // Days the clinic can offer (never Sunday). `day` = Date#getDay(); `plural` is used in sentences.
@@ -64,15 +64,18 @@ const INTAKE_WEEKDAYS = [
 
 const INTAKE_STEPS = ['Book a slot', 'Personal information', 'Household & sector', 'Legal issue', 'Case facts', 'Consent & declaration'];
 
-// Parts of the form admins can hide (staff area → Intake Settings). `locked` ones are always shown:
-// they're needed to book, to reach the client, to understand the problem, or for consent.
-// A step whose fields are all hidden is skipped.
+// Questions on the form, for the Intake Settings page. Admins can turn each one off, make it required,
+// or lock it as "Always ask" (then it can't be turned off or changed until someone unlocks it).
+//   core: true        always asked and required (the booking can't work without it)
+//   canRequire: false the question always has an answer (a pre-selected choice), so "required" doesn't apply
+//   requiredNote      what "required" means for questions with a follow-up
+// A step whose questions are all turned off is skipped.
 const INTAKE_FIELDS = [
-  { key: 'date', step: 1, label: 'Preferred date', locked: true },
-  { key: 'time', step: 1, label: 'Time slot', locked: true },
-  { key: 'firstTime', step: 1, label: 'First time with the clinic?' },
-  { key: 'lastName', step: 2, label: 'Last name', locked: true },
-  { key: 'firstName', step: 2, label: 'First name', locked: true },
+  { key: 'date', step: 1, label: 'Preferred date', core: true },
+  { key: 'time', step: 1, label: 'Time slot', core: true },
+  { key: 'firstTime', step: 1, label: 'First time with the clinic?', canRequire: false },
+  { key: 'lastName', step: 2, label: 'Last name' },
+  { key: 'firstName', step: 2, label: 'First name' },
   { key: 'middleName', step: 2, label: 'Middle name' },
   { key: 'nickname', step: 2, label: 'Nickname / alias' },
   { key: 'dob', step: 2, label: 'Date of birth' },
@@ -84,32 +87,32 @@ const INTAKE_FIELDS = [
   { key: 'language', step: 2, label: 'Language / dialect' },
   { key: 'occupation', step: 2, label: 'Occupation / employment' },
   { key: 'disability', step: 2, label: 'Disability' },
-  { key: 'mobile', step: 2, label: 'Contact number', locked: true },
+  { key: 'mobile', step: 2, label: 'Contact number' },
   { key: 'email', step: 2, label: 'Email' },
   { key: 'address', step: 2, label: 'Complete address' },
   { key: 'barangay', step: 2, label: 'Barangay' },
   { key: 'city', step: 2, label: 'City / municipality' },
   { key: 'residentLLC', step: 2, label: 'Resident of Lapu-Lapu City?' },
-  { key: 'household', step: 3, label: 'Household members & income' },
-  { key: 'property', step: 3, label: 'Property and assets' },
+  { key: 'household', step: 3, label: 'Household members & income', requiredNote: 'Required: every member needs a name.' },
+  { key: 'property', step: 3, label: 'Property and assets', requiredNote: 'Required: the estimated value is needed when they answer Yes.' },
   { key: 'sectors', step: 3, label: 'Sector classification' },
   { key: 'practiceAreas', step: 4, label: 'Practice area / category' },
   { key: 'assistance', step: 4, label: 'Requested assistance / service' },
-  { key: 'opposingParty', step: 4, label: 'Opposing party (names, relationship, contact)' },
-  { key: 'represented', step: 4, label: 'Already represented by an attorney?' },
-  { key: 'priorConsult', step: 4, label: 'Consulted the clinic or an attorney before?' },
-  { key: 'opposingConsulted', step: 4, label: 'Has the opposing party consulted the clinic?' },
-  { key: 'narrative', step: 5, label: 'Narrative of facts', locked: true },
+  { key: 'opposingParty', step: 4, label: 'Opposing party (names, relationship, contact)', requiredNote: 'Required: the opposing party\'s name is needed.' },
+  { key: 'represented', step: 4, label: 'Already represented by an attorney?', canRequire: false },
+  { key: 'priorConsult', step: 4, label: 'Consulted the clinic or an attorney before?', requiredNote: 'Required: details are needed when they answer Yes.' },
+  { key: 'opposingConsulted', step: 4, label: 'Has the opposing party consulted the clinic?', canRequire: false },
+  { key: 'narrative', step: 5, label: 'Narrative of facts', requiredNote: 'Required: at least a few sentences.' },
   { key: 'personsInvolved', step: 5, label: 'Persons involved' },
-  { key: 'incident', step: 5, label: 'When and where it happened' },
+  { key: 'incident', step: 5, label: 'When and where it happened', requiredNote: 'Required: the date is needed.' },
   { key: 'existingDocuments', step: 5, label: 'Documents that presently exist' },
-  { key: 'caseFiled', step: 5, label: 'Complaint or case already filed?' },
-  { key: 'pendingHearing', step: 5, label: 'Pending hearings or deadlines?' },
+  { key: 'caseFiled', step: 5, label: 'Complaint or case already filed?', requiredNote: 'Required: court and case number are needed when they answer Yes.' },
+  { key: 'pendingHearing', step: 5, label: 'Pending hearings or deadlines?', requiredNote: 'Required: the date is needed when they answer Yes.' },
   { key: 'referralSources', step: 5, label: 'How they learned about the clinic' },
   { key: 'documents', step: 5, label: 'Documents checklist' },
   { key: 'attachments', step: 5, label: 'Attach copies (photo / PDF uploads)' },
-  { key: 'privacyConsent', step: 6, label: 'Data privacy consent', locked: true },
-  { key: 'declaration', step: 6, label: 'Declarations and typed signature', locked: true },
+  { key: 'privacyConsent', step: 6, label: 'Data privacy consent', core: true },
+  { key: 'declaration', step: 6, label: 'Declarations and typed signature', core: true },
 ];
 
 // How far ahead clients can book.
@@ -137,6 +140,8 @@ async function fetchIntakeSettings() {
       days: Array.isArray(record.days) && record.days.length ? record.days : INTAKE_DEFAULT_SETTINGS.days,
       time_slots: Array.isArray(record.time_slots) && record.time_slots.length ? [...record.time_slots].sort() : INTAKE_DEFAULT_SETTINGS.time_slots,
       hidden_fields: Array.isArray(record.hidden_fields) ? record.hidden_fields : [],
+      required_fields: Array.isArray(record.required_fields) ? record.required_fields : INTAKE_DEFAULT_SETTINGS.required_fields,
+      locked_fields: Array.isArray(record.locked_fields) ? record.locked_fields : INTAKE_DEFAULT_SETTINGS.locked_fields,
     };
   } catch (err) {
     console.warn('[intake] using the default days and times:', err.message);
@@ -145,6 +150,28 @@ async function fetchIntakeSettings() {
 }
 
 document.addEventListener('alpine:init', () => {
+  // x-field="key" on a question's wrapper: shows it only when it's asked, adds .is-required (the *),
+  // marks its first input aria-required / aria-invalid, and shows errors[key] under it.
+  Alpine.directive('field', (el, { expression: key }, { effect }) => {
+    const data = Alpine.$data(el);
+    const error = document.createElement('p');
+    error.className = 'field-error';
+    el.appendChild(error);
+    const control = el.querySelector('input, select, textarea'); // the calendar has none; its group has aria-invalid
+    effect(() => {
+      const required = data.isRequired(key);
+      const message = data.errors[key] || '';
+      el.style.display = data.shown(key) ? '' : 'none';
+      el.classList.toggle('is-required', required);
+      error.textContent = message;
+      error.style.display = message ? '' : 'none';
+      if (control) {
+        control.setAttribute('aria-required', String(required));
+        control.setAttribute('aria-invalid', String(!!message));
+      }
+    });
+  });
+
   Alpine.data('intake', () => ({
     opt: INTAKE_OPTIONS,
     settings: { ...INTAKE_DEFAULT_SETTINGS },
@@ -229,7 +256,18 @@ document.addEventListener('alpine:init', () => {
 
     shown(key) {
       const field = INTAKE_FIELDS.find((f) => f.key === key);
-      return !!field?.locked || !this.settings.hidden_fields.includes(key);
+      return !!field?.core || this.settings.locked_fields.includes(key) || !this.settings.hidden_fields.includes(key);
+    },
+
+    isRequired(key) {
+      const field = INTAKE_FIELDS.find((f) => f.key === key);
+      if (!field) return false;
+      if (field.core) return true;
+      return field.canRequire !== false && this.shown(key) && this.settings.required_fields.includes(key);
+    },
+
+    stepHasRequired(step) {
+      return INTAKE_FIELDS.some((f) => f.step === step && this.isRequired(f.key));
     },
 
     // Steps that still have something to fill in, e.g. [1, 2, 5, 6].
@@ -361,8 +399,8 @@ document.addEventListener('alpine:init', () => {
       return this.form.household.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
     },
 
+    // Consent, both declarations and the typed signature are always needed.
     get canSubmit() {
-      if (!INTAKE_VALIDATION) return true;
       const f = this.form;
       return f.privacyConsent === 'agree' && f.declarationTrue && f.declarationNoRelationship && f.signature.trim().length >= 3;
     },
@@ -433,14 +471,16 @@ document.addEventListener('alpine:init', () => {
 
     // ---------- Validation and navigation ----------
 
-    // Returns an errors object for the given step; empty object = valid. Hidden fields are skipped.
+    // Returns an errors object for the given step (keys match INTAKE_FIELDS); empty = valid.
+    // Required questions must be answered; anything typed in must also look right (mobile, email, dates).
     validate(step) {
-      if (!INTAKE_VALIDATION) return {};
       const f = this.form;
       const e = {};
-      const blank = (v) => !String(v).trim();
-      const show = (key) => this.shown(key);
+      const blank = (v) => !String(v ?? '').trim();
+      const need = (key) => this.isRequired(key);
       const tr = (k) => this.tr(k);
+      const answer = tr('Please answer this question.');
+      const pickOne = tr('Choose at least one.');
 
       if (step === 1) {
         if (!f.date) e.date = tr('Pick a preferred date.');
@@ -449,39 +489,52 @@ document.addEventListener('alpine:init', () => {
       }
 
       if (step === 2) {
-        if (blank(f.lastName)) e.lastName = tr('Enter your last name.');
-        if (blank(f.firstName)) e.firstName = tr('Enter your first name.');
-        if (show('dob')) {
-          if (!f.dob) e.dob = tr('Enter your date of birth.');
-          else if (f.dob > this.today) e.dob = tr('Date of birth cannot be in the future.');
-        }
-        if (show('sex') && !f.sex) e.sex = tr('Choose one.');
-        if (show('civilStatus') && !f.civilStatus) e.civilStatus = tr('Choose your civil status.');
-        if (!/^(09|\+639)\d{9}$/.test(f.mobile.replace(/[\s-]/g, ''))) e.mobile = tr('Enter a mobile number like 0917 000 0000.');
-        if (show('email') && f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) e.email = tr('Enter a valid email address, or leave it blank.');
-        if (show('address') && blank(f.address)) e.address = tr('Enter your complete address.');
-        if (show('barangay') && blank(f.barangay)) e.barangay = tr('Enter your barangay.');
-        if (show('city') && blank(f.city)) e.city = tr('Enter your city or municipality.');
-        if (show('residentLLC') && !f.residentLLC) e.residentLLC = tr('Choose one.');
+        const textFields = {
+          lastName: 'Enter your last name.', firstName: 'Enter your first name.', address: 'Enter your complete address.',
+          barangay: 'Enter your barangay.', city: 'Enter your city or municipality.',
+          middleName: '', nickname: '', citizenship: '', religion: '', language: '', occupation: '', disability: '',
+        };
+        for (const [key, message] of Object.entries(textFields)) if (need(key) && blank(f[key])) e[key] = message ? tr(message) : answer;
+        if (need('dob') && !f.dob) e.dob = tr('Enter your date of birth.');
+        else if (f.dob && f.dob > this.today) e.dob = tr('Date of birth cannot be in the future.');
+        if (need('sex') && !f.sex) e.sex = tr('Choose one.');
+        if (need('civilStatus') && !f.civilStatus) e.civilStatus = tr('Choose your civil status.');
+        if (need('education') && !f.education) e.education = tr('Choose one.');
+        if (need('residentLLC') && !f.residentLLC) e.residentLLC = tr('Choose one.');
+        const mobile = f.mobile.replace(/[\s-]/g, '');
+        if ((need('mobile') || mobile) && !/^(09|\+639)\d{9}$/.test(mobile)) e.mobile = tr('Enter a mobile number like 0917 000 0000.');
+        if (need('email') && blank(f.email)) e.email = tr('Enter a valid email address.');
+        else if (f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) e.email = tr(need('email') ? 'Enter a valid email address.' : 'Enter a valid email address, or leave it blank.');
       }
 
       if (step === 3) {
-        if (show('household') && f.household.some((row) => row.amount !== '' && Number(row.amount) < 0)) e.household = tr('Monthly amounts cannot be negative.');
-        if (show('property') && f.ownsOtherProperty === 'Yes' && f.propertyValue === '') e.propertyValue = tr('Enter the estimated net value.');
-        if (show('property') && f.hasOtherAssets === 'Yes' && f.assetsValue === '') e.assetsValue = tr('Enter the estimated net value.');
+        if (this.shown('household')) {
+          if (f.household.some((row) => row.amount !== '' && Number(row.amount) < 0)) e.household = tr('Monthly amounts cannot be negative.');
+          else if (need('household') && f.household.some((row) => blank(row.name))) e.household = tr('Enter a name for each household member.');
+        }
+        if (need('property') && f.ownsOtherProperty === 'Yes' && f.propertyValue === '') e.propertyValue = tr('Enter the estimated net value.');
+        if (need('property') && f.hasOtherAssets === 'Yes' && f.assetsValue === '') e.assetsValue = tr('Enter the estimated net value.');
+        if (need('sectors') && !f.sectors.length && blank(f.sectorOther)) e.sectors = pickOne;
       }
 
       if (step === 4) {
-        if (show('practiceAreas') && !f.practiceAreas.length && blank(f.practiceOther)) e.practiceAreas = tr('Choose at least one category, or describe it under "Other / not sure".');
-        if (show('assistance') && !f.assistance.length) e.assistance = tr('Choose the kind of help you need.');
-        if (show('opposingParty') && blank(f.opposingName)) e.opposingName = tr('The other party\'s name is required for the conflict-of-interest check.');
-        if (show('priorConsult') && f.priorConsult === 'Yes' && blank(f.priorConsultDetails)) e.priorConsultDetails = tr('Tell us who you consulted.');
+        if (need('practiceAreas') && !f.practiceAreas.length && blank(f.practiceOther)) e.practiceAreas = tr('Choose at least one category, or describe it under "Other / not sure".');
+        if (need('assistance') && !f.assistance.length) e.assistance = tr('Choose the kind of help you need.');
+        if (need('opposingParty') && blank(f.opposingName)) e.opposingParty = tr('The other party\'s name is required for the conflict-of-interest check.');
+        if (need('priorConsult') && f.priorConsult === 'Yes' && blank(f.priorConsultDetails)) e.priorConsultDetails = tr('Tell us who you consulted.');
       }
 
       if (step === 5) {
-        if (f.narrative.trim().length < 30) e.narrative = tr('Tell us a little more about what happened (a few sentences at least).');
-        if (show('caseFiled') && f.caseFiled === 'Yes' && blank(f.caseDetails)) e.caseDetails = tr('Enter the court and case number, if you know them.');
-        if (show('pendingHearing') && f.pendingHearing === 'Yes' && !f.hearingDate) e.hearingDate = tr('Enter the hearing or deadline date.');
+        if (need('narrative') && f.narrative.trim().length < 30) e.narrative = tr('Tell us a little more about what happened (a few sentences at least).');
+        if (need('personsInvolved') && blank(f.personsInvolved)) e.personsInvolved = answer;
+        if (need('incident') && !f.incidentDate) e.incident = tr('Enter the date it happened.');
+        else if (f.incidentDate && f.incidentDate > this.today) e.incident = tr('The date cannot be in the future.');
+        if (need('existingDocuments') && blank(f.existingDocuments)) e.existingDocuments = answer;
+        if (need('caseFiled') && f.caseFiled === 'Yes' && blank(f.caseDetails)) e.caseDetails = tr('Enter the court and case number, if you know them.');
+        if (need('pendingHearing') && f.pendingHearing === 'Yes' && !f.hearingDate) e.hearingDate = tr('Enter the hearing or deadline date.');
+        if (need('referralSources') && !f.referralSources.length && blank(f.referralOther)) e.referralSources = pickOne;
+        if (need('documents') && !f.documents.length && blank(f.documentsOther)) e.documents = pickOne;
+        if (need('attachments') && !f.files.length) e.attachments = tr('Attach at least one file.');
       }
 
       if (step === 6) {

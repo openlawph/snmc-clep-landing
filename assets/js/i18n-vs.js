@@ -65,7 +65,6 @@ window.I18N_STRINGS.vs = {
   '(optional)': '(opsyonal)',
   '(if any)': '(kon naa)',
   '(if known)': '(kon nahibal-an)',
-  '(required)': '(kinahanglan)',
   'Choose…': 'Pagpili…',
   '— check all that apply': '— i-tsek ang tanan nga angay',
   'Other': 'Uban pa',
@@ -296,6 +295,16 @@ window.I18N_STRINGS.vs = {
   'Free of charge': 'Libre',
   "Your information is confidential and privileged. The clinic charges no fees at any stage. If anyone asks you for payment in the clinic's name, report it to the Clinical Program Director.":
     'Ang imong impormasyon kompidensyal ug protektado. Walay bayad ang klinika bisan unsang yugto. Kon adunay mangayo nimo og bayad sa ngalan sa klinika, ireport kini sa Clinical Program Director.',
+
+  // ---------- Required questions ----------
+  'Questions marked * are required.': 'Ang mga pangutana nga adunay * kinahanglan tubagon.',
+  'Please answer this question.': 'Palihug tubaga kini nga pangutana.',
+  'Choose at least one.': 'Pagpili og bisan usa.',
+  'Attach at least one file.': 'Ilakip ang bisan usa ka file.',
+  'Enter the date it happened.': 'Isulat ang petsa sa pagkahitabo.',
+  'The date cannot be in the future.': 'Ang petsa dili mahimong sa umaabot.',
+  'Enter a valid email address.': 'Isulat ang sakto nga email.',
+  'Enter a name for each household member.': 'Isulat ang ngalan sa matag kauban sa panimalay.',
 
   // ---------- Error messages ----------
   'Pick a preferred date.': 'Pilia ang imong gusto nga petsa.',

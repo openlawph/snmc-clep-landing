@@ -5,7 +5,7 @@
  */
 customElements.define('site-header', class extends HTMLElement {
   connectedCallback() {
-    const { nav, name, logo } = window.SITE;
+    const { nav, name, logoSvg } = window.SITE;
     const active = this.getAttribute('active');
 
     const link = (item, mobile) => {
@@ -24,8 +24,7 @@ customElements.define('site-header', class extends HTMLElement {
               class="sticky top-0 z-50 border-b border-white/10 bg-black/95 backdrop-blur">
         <div class="container-site flex h-16 items-center justify-between gap-6">
           <a href="index.html" class="flex items-center gap-3 text-white">
-            <img src="${logo}" alt="" class="h-12 w-auto">
-
+            <span class="size-8 text-copper">${logoSvg}</span>
             <span class="font-display text-lg leading-tight">${name}</span>
           </a>
 
