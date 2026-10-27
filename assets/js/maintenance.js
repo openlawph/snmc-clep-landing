@@ -1,7 +1,7 @@
 /*
  * Maintenance mode for the public pages. Load it on every PUBLIC page only, in <head>, NOT deferred.
  *
- * Reads the public PocketBase `site_settings` record (SITE.apiUrl). While `maintenance` is on, visitors
+ * Reads the public PocketBase `site_settings` record (fetchSiteSettings, components.js). While `maintenance` is on, visitors
  * get a "We'll be back soon" page (in English and Bisaya) instead of the site, and PocketBase refuses
  * online bookings. Anyone signed in to the staff dashboard in this browser still sees the site, with a
  * notice at the top. Add ?maintenance-preview to the address to see the maintenance page anyway.
@@ -71,16 +71,11 @@
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
-    try {
-      const controller = new AbortController();
-      setTimeout(() => controller.abort(), 2300);
-      const res = await fetch(`${window.SITE.apiUrl}/api/collections/site_settings/records?perPage=1`, { signal: controller.signal });
-      const settings = (await res.json()).items?.[0] || {};
-      if (preview) showMaintenancePage(settings);
-      else if (settings.maintenance) signedInStaff() ? showStaffNotice() : showMaintenancePage(settings);
-    } catch (err) {
-      console.warn('[maintenance] could not check maintenance mode; showing the site.', err.message);
-    }
+    // The request is shared with the rest of the page (fetchSiteSettings in components.js); wait 2.3 s at most.
+    const settings = await Promise.race([fetchSiteSettings(), new Promise((resolve) => setTimeout(resolve, 2300))]);
+    if (!settings) console.warn('[maintenance] could not check maintenance mode; showing the site.');
+    if (preview) showMaintenancePage(settings || {});
+    else if (settings?.maintenance) signedInStaff() ? showStaffNotice() : showMaintenancePage(settings);
     clearTimeout(failSafe);
     reveal();
   });

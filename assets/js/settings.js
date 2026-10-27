@@ -1,7 +1,7 @@
 /*
  * Intake Form Settings (clinic-settings.html): which days, time slots and questions the public booking
  * form (index.html) offers. Usage: <body x-data="intakeSettings">. Needs auth.js and intake.js
- * (INTAKE_WEEKDAYS, INTAKE_STEPS, INTAKE_FIELDS, INTAKE_DEFAULT_SETTINGS, formatSlot); load BEFORE Alpine.
+ * (INTAKE_WEEKDAYS, INTAKE_STEPS, INTAKE_FIELDS, INTAKE_DEFAULT_SETTINGS) and formatSlot() from components.js; load BEFORE Alpine.
  *
  * Each question can be asked or not, required or not, and locked as "Always ask" (then neither can be
  * changed until someone unlocks it, which asks for confirmation). Core questions (INTAKE_FIELDS

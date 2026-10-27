@@ -102,6 +102,49 @@
         </section>
       </template>
 
+      <!-- Office and online booking hours (site-settings.js: hourGroups, toggleDay, hoursError) -->
+      <template x-if="!loading && !loadError">
+        <section class="card max-w-3xl" aria-labelledby="hours-title">
+          <h2 id="hours-title" class="text-2xl">Office and booking hours</h2>
+          <p class="mt-1 text-sm leading-relaxed text-muted">All times are Manila time.</p>
+
+          <template x-for="group in hourGroups" :key="group.key">
+            <div class="mt-6 border-t border-black/10 pt-6" role="group" :aria-labelledby="`${group.key}-hours-title`">
+              <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <h3 :id="`${group.key}-hours-title`" class="text-xl" x-text="group.title"></h3>
+                <button x-show="isAdmin && group.key === 'intake'" type="button" class="text-sm font-semibold text-copper-dark hover:underline" @click="copyOfficeHours()">Same as office hours</button>
+              </div>
+              <p class="mt-1 text-sm leading-relaxed text-muted" x-text="group.hint"></p>
+
+              <div class="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-7">
+                <template x-for="d in days" :key="d.key">
+                  <button type="button" @click="toggleDay(group.key, d.key)" :disabled="!isAdmin" :aria-pressed="form[group.key].days.includes(d.key)" :aria-label="d.label"
+                          class="rounded-md px-2 py-2.5 text-sm font-semibold ring-1 transition disabled:cursor-not-allowed"
+                          :class="form[group.key].days.includes(d.key) ? 'bg-copper text-white ring-copper' : 'bg-white text-ink ring-black/15 enabled:hover:ring-copper/60'">
+                    <span class="block" x-text="d.label.slice(0, 3)"></span>
+                    <span class="block text-[11px] font-normal opacity-80" x-text="form[group.key].days.includes(d.key) ? 'Open' : 'Closed'"></span>
+                  </button>
+                </template>
+              </div>
+
+              <div class="mt-4 flex flex-wrap gap-3">
+                <div>
+                  <label :for="`${group.key}-open`" class="field-label">Opens</label>
+                  <input :id="`${group.key}-open`" type="time" x-model="form[group.key].open" :disabled="!isAdmin" class="field w-auto disabled:bg-cream">
+                </div>
+                <div>
+                  <label :for="`${group.key}-close`" class="field-label">Closes</label>
+                  <input :id="`${group.key}-close`" type="time" x-model="form[group.key].close" :disabled="!isAdmin" class="field w-auto disabled:bg-cream">
+                </div>
+              </div>
+              <p x-show="hoursError(group.key)" class="field-error" x-text="hoursError(group.key)"></p>
+              <p x-show="hoursSummary(group.key)" class="field-hint" x-text="hoursSummary(group.key)"></p>
+              <p x-show="group.key === 'intake' && intakeStatus" class="mt-4 rounded-sm bg-cream px-4 py-2 text-sm" x-text="intakeStatus"></p>
+            </div>
+          </template>
+        </section>
+      </template>
+
       <p x-show="!dirty && updatedLabel" class="text-xs text-muted" x-text="`Last saved ${updatedLabel}`"></p>
     </main>
 
@@ -111,11 +154,12 @@
       <div class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
         <div class="text-sm">
           <p class="font-semibold">You have unsaved changes.</p>
+          <p x-show="hoursInvalid" class="text-red-700">Fix the office or online booking hours first (see the message under them).</p>
           <p x-show="saveError" class="text-red-700" x-text="saveError"></p>
         </div>
         <div class="flex gap-3">
           <button type="button" class="btn btn-ghost text-ink" @click="discard()" :disabled="saving">Discard</button>
-          <button type="button" class="btn btn-primary" @click="requestSave()" :disabled="saving" x-text="saving ? 'Saving…' : 'Save changes'"></button>
+          <button type="button" class="btn btn-primary" @click="requestSave()" :disabled="saving || hoursInvalid" x-text="saving ? 'Saving…' : 'Save changes'"></button>
         </div>
       </div>
     </div>

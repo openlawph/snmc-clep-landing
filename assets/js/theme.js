@@ -17,6 +17,10 @@
   --color-paper: #fbf9f4;      /* cards on cream */
   --color-copper: #b9785c;     /* primary accent: buttons, numbers */
   --color-copper-dark: #9c5f45;
+  --color-brick: #9e4536;      /* soft brick: buttons (logo banner colour) */
+  --color-brick-dark: #7f3427; /* hover (logo banner ribbon) */
+  --color-brick-deep: #692a20; /* pressed */
+  --color-brick-soft: #d4b3ab; /* disabled */
   --color-rose: #c99a86;       /* soft accent labels on dark */
   --color-brown: #6b4518;      /* feature panels */
   --color-amber: #c8883a;      /* amber band */
@@ -36,9 +40,10 @@
   .container-site { @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8; }
   .eyebrow { @apply text-xs font-semibold uppercase tracking-[0.2em] text-copper; }
   /* Use together: class="btn btn-primary" or class="btn btn-ghost" */
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded-sm px-6 py-3 text-sm font-semibold uppercase tracking-wider transition duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-copper disabled:cursor-not-allowed disabled:opacity-40; }
-  .btn-primary { @apply bg-copper text-white hover:bg-copper-dark; }
-  .btn-ghost { @apply border border-current hover:bg-black/5; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-sm px-6 py-3 text-sm font-semibold uppercase tracking-wider transition duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick disabled:cursor-not-allowed disabled:opacity-40; }
+  /* Soft brick (from the logo's banner): default -> hover -> pressed -> disabled (flat and washed out, so it can't pass for the default) */
+  .btn-primary { @apply bg-brick text-white hover:bg-brick-dark active:bg-brick-deep disabled:bg-brick-soft disabled:text-white/80 disabled:opacity-100; }
+  .btn-ghost { @apply border border-current hover:border-brick hover:bg-brick/10 hover:text-brick-dark! active:bg-brick/20 disabled:border-black/15 disabled:bg-transparent disabled:text-ink/35! disabled:opacity-100; }
   .card { @apply rounded-md bg-paper p-6 shadow-sm ring-1 ring-black/5 sm:p-8; }
   .field-label { @apply mb-1.5 block text-sm font-semibold text-ink; }
   .field { @apply block w-full rounded-sm border border-black/15 bg-white px-3.5 py-2.5 text-ink placeholder:text-black/35 focus:border-copper focus:ring-2 focus:ring-copper/30 focus:outline-none; }

@@ -3,6 +3,7 @@
  * <contact-info variant="inline"></contact-info> -> phone · email on one line
  *
  * Single source for contact details; edit them in SITE (assets/js/components.js).
+ * Office hours come from Site Settings (SITE.officeHours until they load).
  */
 customElements.define('contact-info', class extends HTMLElement {
   connectedCallback() {
@@ -33,8 +34,13 @@ customElements.define('contact-info', class extends HTMLElement {
       <div class="space-y-8">
         ${row('Phone', phoneHtml, icon('M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2'))}
         ${row('Email', emailHtml, icon('M3 6h18v12H3zM3 6l9 7 9-7'))}
-        ${row('Visit', `${address}.<br><span class="mt-2 block text-sm text-white/65">${officeHours} ${consultationHours}</span>`,
+        ${row('Visit', `${address}.<br><span class="mt-2 block text-sm text-white/65"><span data-office-hours>${describeHours(officeHours)}.</span> ${consultationHours}</span>`,
               icon('M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z'))}
       </div>`;
+
+    fetchSiteSettings().then((record) => {
+      const hours = clinicHours(record, 'office');
+      if (hours) this.querySelector('[data-office-hours]').textContent = `${describeHours(hours)}.`;
+    });
   }
 });

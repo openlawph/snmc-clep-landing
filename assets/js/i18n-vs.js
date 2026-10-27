@@ -20,6 +20,26 @@ window.I18N_STRINGS.vs = {
   'Saturdays': 'Sabado',
   'and': 'ug',
   '{from} to {to}': '{from} hangtod {to}',
+  'Every day': 'Matag adlaw',
+
+  // ---------- Online booking hours (Site Settings) ----------
+  'Online booking is closed right now': 'Sirado ang online booking karon',
+  'It opens again {when}.': 'Mobukas kini pag-usab {when}.',
+  'today at {time}': 'karong adlawa sa {time}',
+  'tomorrow at {time}': 'ugma sa {time}',
+  'on {date} at {time}': 'sa {date}, {time}',
+  "To keep the clinic's bookings safe from spam and abuse, the form is only open during these hours.":
+    'Aron mapanalipdan ang mga booking sa klinika batok sa spam ug pang-abuso, bukas lang ang porma niining mga orasa.',
+  'Online booking': 'Online booking',
+  'Office hours': 'Oras sa opisina',
+  'All times are Philippine time. For urgent concerns, call or visit the clinic during office hours.':
+    'Ang tanang oras sumala sa oras sa Pilipinas. Para sa dinalian nga kabalaka, tawagi o bisitaha ang klinika sulod sa oras sa opisina.',
+  'Online booking closes at {time} today. Please send your request before then.':
+    'Mosirado ang online booking karong {time}. Palihug ipadala ang imong hangyo sa dili pa kana.',
+  'Online booking is closed right now. It opens again {when}. Keep this page open and send your request then, or call or visit the clinic.':
+    'Sirado ang online booking karon. Mobukas kini pag-usab {when}. Ayaw sirhi kini nga panid ug ipadala ang imong hangyo unya, o tawagi o bisitaha ang klinika.',
+  'Online booking is closed right now. Please try again later, or call or visit the clinic.':
+    'Sirado ang online booking karon. Palihug sulayi pag-usab unya, o tawagi o bisitaha ang klinika.',
 
   // ---------- Page intro ----------
   'Book an appointment': 'Pagpa-iskedyul og konsulta',
@@ -273,7 +293,7 @@ window.I18N_STRINGS.vs = {
   // ---------- Sidebar ----------
   'Consultation days': 'Mga adlaw sa konsulta',
   '{days}, {hours}, by appointment.': '{days}, {hours}, pinaagi sa appointment.',
-  'Clinic office hours are Monday to Friday, 9:00 AM to 4:00 PM.': 'Ang oras sa opisina sa klinika: Lunes hangtod Biyernes, 9:00 AM hangtod 4:00 PM.',
+  'Clinic office hours are {hours}.': 'Ang oras sa opisina sa klinika: {hours}.',
   'What to bring': 'Unsay dad-on',
   'A valid ID and every document about your problem — contracts, receipts, barangay records, court notices.':
     'Usa ka balido nga ID ug tanang dokumento bahin sa imong problema — kontrata, resibo, rekord sa barangay, pahibalo gikan sa korte.',
@@ -309,6 +329,14 @@ window.I18N_STRINGS.vs = {
   // ---------- Sending ----------
   "We couldn't reach the clinic's server. Check your internet connection and try again.": 'Dili maabot ang server sa klinika. Susiha ang imong internet ug sulayi pag-usab.',
   'Something went wrong sending your request. Please try again, or call or visit the clinic.': 'Adunay problema sa pagpadala sa imong hangyo. Palihug sulayi pag-usab, o tawagi o bisitaha ang klinika.',
+  'Online booking is paused while the site is under maintenance. Please try again later, or call or visit the clinic.': 'Gi-pause sa pagkakaron ang online booking samtang gi-maintenance ang site. Palihug sulayi pag-usab unya, o tawagi o bisitaha ang klinika.',
+
+  // ---------- Before you can submit (list above the Submit button) ----------
+  'Before you can submit:': 'Sa dili pa ka makapadala:',
+  'Agree to the data privacy terms': 'Mouyon sa mga termino sa data privacy',
+  'Tick both declarations': 'I-tsek ang duha ka deklarasyon',
+  'Type your full name as your signature': 'I-type ang imong tibuok ngalan isip pirma',
+  'Complete the security check': 'Kompletoha ang pagsusi sa seguridad',
 
   // ---------- Security check ----------
   'Security check': 'Pagsusi sa seguridad',

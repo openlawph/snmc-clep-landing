@@ -78,15 +78,37 @@
             <a href="index.html" class="btn btn-ghost mt-8" x-t>Book another visit</a>
           </div>
 
-          <div x-show="!submitted">
-            <!-- ---------- Language (first page) ---------- -->
-            <div x-show="step === activeSteps[0]" class="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-md bg-cream px-4 py-3">
-              <label for="lang" class="text-sm font-semibold">Language / Pinulongan</label>
-              <select id="lang" x-model="$store.i18n.lang" class="rounded-sm border border-black/15 bg-white px-3 py-1.5 text-sm font-semibold text-ink focus:border-copper focus:outline-none focus:ring-2 focus:ring-copper/30">
-                <option value="en">EN — English</option>
-                <option value="vs">VS — Visaya</option>
-              </select>
+          <!-- ---------- Language (first page, and while online booking is closed) ---------- -->
+          <div x-show="!submitted && (closed || step === activeSteps[0])" class="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-md bg-cream px-4 py-3">
+            <label for="lang" class="text-sm font-semibold">Language / Pinulongan</label>
+            <select id="lang" x-model="$store.i18n.lang" class="rounded-sm border border-black/15 bg-white px-3 py-1.5 text-sm font-semibold text-ink focus:border-copper focus:outline-none focus:ring-2 focus:ring-copper/30">
+              <option value="en">EN — English</option>
+              <option value="vs">VS — Visaya</option>
+            </select>
+          </div>
+
+          <!-- ---------- Online booking closed: outside the hours set in Site Settings (`closed` in intake.js) ---------- -->
+          <div x-show="closed && !submitted" x-cloak class="py-4 text-center" role="status">
+            <div class="mx-auto grid size-16 place-items-center rounded-full bg-copper/15 text-copper">
+              <svg class="size-8" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
             </div>
+            <h2 class="mt-6 text-3xl sm:text-4xl" x-t>Online booking is closed right now</h2>
+            <p class="mx-auto mt-4 max-w-lg text-lg leading-relaxed" x-show="reopensText" x-text="$t('It opens again {when}.', { when: reopensText })"></p>
+            <p class="mx-auto mt-3 max-w-lg leading-relaxed text-muted" x-t>To keep the clinic's bookings safe from spam and abuse, the form is only open during these hours.</p>
+            <dl class="mx-auto mt-8 grid max-w-md gap-2 rounded-md bg-cream p-5 text-left text-sm">
+              <div class="flex justify-between gap-4"><dt class="shrink-0 text-muted" x-t>Online booking</dt><dd class="text-right font-semibold" x-text="describe(intakeHours)"></dd></div>
+              <div class="flex justify-between gap-4"><dt class="shrink-0 text-muted" x-t>Office hours</dt><dd class="text-right font-semibold" x-text="describe(officeHours)"></dd></div>
+              <div class="flex justify-between gap-4"><dt class="shrink-0 text-muted" x-t>Email</dt><dd class="text-right font-semibold"><a :href="`mailto:${SITE.email}`" class="text-copper-dark hover:underline" x-text="SITE.email"></a></dd></div>
+            </dl>
+            <p class="mx-auto mt-4 max-w-md text-sm text-muted" x-t>All times are Philippine time. For urgent concerns, call or visit the clinic during office hours.</p>
+          </div>
+
+          <div x-show="!submitted && !closed">
+            <!-- Online booking closes within the hour (visitors), or is closed to visitors (signed-in staff) -->
+            <p x-show="closingSoonText" x-cloak role="status" class="mb-8 rounded-sm bg-amber/15 px-4 py-3 text-sm ring-1 ring-amber/30" x-text="closingSoonText"></p>
+            <p x-show="staffSignedIn && closedToVisitors" x-cloak class="mb-8 rounded-sm bg-amber/15 px-4 py-3 text-sm ring-1 ring-amber/30">
+              Online booking is closed to visitors right now (open <span x-text="intakeHours && describeHours(intakeHours)"></span>). You can use the form because you're signed in as staff.
+            </p>
 
             <!-- ---------- Stepper ---------- -->
             <ol class="mb-10 grid gap-1.5" :style="`grid-template-columns: repeat(${activeSteps.length}, minmax(0, 1fr))`" :aria-label="$t('Progress')">
@@ -575,11 +597,11 @@
                 <legend class="form-section mb-4 w-full" x-t>Declaration &amp; representation disclaimer</legend>
                 <div class="space-y-3">
                   <label class="flex cursor-pointer gap-3 rounded-md bg-white p-4 ring-1 ring-black/10">
-                    <input type="checkbox" x-model="form.declarationTrue" class="mt-1 size-4 shrink-0 accent-copper" :aria-invalid="!!errors.declaration && !form.declarationTrue">
+                    <input id="decl-true" type="checkbox" x-model="form.declarationTrue" class="mt-1 size-4 shrink-0 accent-copper" :aria-invalid="!!errors.declaration && !form.declarationTrue">
                     <span class="text-sm leading-relaxed" x-t>I verify that the information provided in this form is true and correct to the best of my knowledge.</span>
                   </label>
                   <label class="flex cursor-pointer gap-3 rounded-md bg-white p-4 ring-1 ring-black/10">
-                    <input type="checkbox" x-model="form.declarationNoRelationship" class="mt-1 size-4 shrink-0 accent-copper" :aria-invalid="!!errors.declaration && !form.declarationNoRelationship">
+                    <input id="decl-relationship" type="checkbox" x-model="form.declarationNoRelationship" class="mt-1 size-4 shrink-0 accent-copper" :aria-invalid="!!errors.declaration && !form.declarationNoRelationship">
                     <span class="text-sm leading-relaxed" x-t.html>I understand that the SNMC Legal Clinic provides free legal advice through supervised law student practitioners under Rule 138-A, and that completing this intake form <strong>does not</strong> automatically establish an attorney-client relationship or guarantee ongoing court representation unless a formal engagement is executed.</span>
                   </label>
                 </div>
@@ -607,16 +629,26 @@
               </fieldset>
             </div>
 
+            <!-- What's still needed before the request can go (missingToSubmit in intake.js); each item jumps to its question -->
+            <div x-show="step === lastStep && missingToSubmit.length" x-cloak class="mt-10 rounded-sm bg-copper/10 p-4 text-sm">
+              <p class="font-semibold text-ink" x-t>Before you can submit:</p>
+              <ul class="mt-2 space-y-1">
+                <template x-for="item in missingToSubmit" :key="item.text">
+                  <li><button type="button" class="text-left text-brick-dark underline-offset-2 hover:underline" @click="focusMissing(item.target)">• <span x-text="$t(item.text)"></span></button></li>
+                </template>
+              </ul>
+            </div>
+
             <!-- ---------- Navigation ---------- -->
             <div class="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-black/10 pt-6">
               <button type="button" x-show="position > 1" @click="back()" class="btn btn-ghost" x-t>← Back</button>
               <span x-show="position === 1"></span>
               <button type="submit" x-show="step !== lastStep" class="btn btn-primary" x-text="$t('Continue to Step {n}', { n: position + 1 })"></button>
-              <button type="submit" x-show="step === lastStep" x-cloak class="btn btn-primary" :disabled="!canSubmit || submitting">
+              <button type="submit" x-show="step === lastStep" x-cloak class="btn btn-primary" :disabled="submitting">
                 <span x-text="submitting ? $t('Submitting…') : $t('Submit request')"></span>
               </button>
             </div>
-            <p x-show="captchaOn && step === lastStep && !captchaToken && !captchaError" x-cloak class="mt-3 text-right text-sm text-muted" x-t>Complete the security check to submit.</p>
+            <p x-show="staffSignedIn && step === lastStep" x-cloak class="mt-3 text-right text-xs text-muted">Signed in as staff: this booking is sent with your sign-in, so it goes through even in maintenance mode. It's marked as sent by you.</p>
             <p x-show="submitError" x-cloak x-text="submitError" role="alert" class="mt-4 rounded-sm bg-red-50 p-3 text-sm text-red-800 ring-1 ring-red-200"></p>
           </div>
         </div>
@@ -628,7 +660,7 @@
               <h3 class="text-xl text-rose" x-t>Consultation days</h3>
               <p class="mt-2 text-sm leading-relaxed text-white/80">
                 <span x-text="$t('{days}, {hours}, by appointment.', { days: daysText, hours: hoursText })"></span>
-                <span x-t>Clinic office hours are Monday to Friday, 9:00 AM to 4:00 PM.</span>
+                <span x-text="$t('Clinic office hours are {hours}.', { hours: describe(officeHours) })"></span>
               </p>
             </div>
             <div class="rounded-md bg-ink p-6 text-white">

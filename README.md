@@ -31,11 +31,11 @@ clinic-users.html   Staff: list, add, edit and delete user accounts (sign-in req
 clinic-lawyers.html Staff: list, add, edit and delete lawyers (sign-in required)
 clinic-practitioners.html Staff: list, add, edit and delete law student practitioners (LSP)
 clinic-settings.html Staff: Intake Form Settings (open days, time slots, which questions the booking form asks)
-clinic-site-settings.html Staff: Site Settings (maintenance mode)
+clinic-site-settings.html Staff: Site Settings (maintenance mode, office and online booking hours)
 login.html          Staff sign-in (PocketBase), not linked publicly
 assets/
   js/theme.js       Colors, fonts and shared classes (.btn, .card, .field, .eyebrow…)
-  js/components.js  SITE settings: phone, email, address, hours, NAV LINKS + scroll-reveal helper
+  js/components.js  SITE settings: phone, email, address, NAV LINKS + site_settings fetch, clinic hours helpers, scroll-reveal
   js/components/    One file per component (see below)
   js/intake.js      Logic for the booking wizard (Alpine component "intake") + the field list, weekdays and default settings
   js/i18n.js        EN / VS translation helpers (x-t, $t) for the booking form
@@ -53,10 +53,10 @@ assets/
   js/maintenance.js Public pages only: shows "We'll be back soon" while maintenance mode is on
   js/preloader.js   Every page: the logo preloader shown while the page gets ready (see "Preloader")
   img/              Images (currently placeholders; see below)
-  img/snmc-legal-aid.svg           SNMC Legal Aid logo (brick, full colour): sidebar, sign-in page, favicon, SITE.logo
+  img/snmc-legal-aid.svg           SNMC Legal Aid logo (brick, full colour): sign-in page, favicon, SITE.logo
   img/snmc-legal-aid-white.svg     Same logo in plain white, for dark backgrounds: booking page hero (SITE.logoWhite)
   img/snmc-legal-aid-animated.svg  Same logo drawing itself in (~3.5 s, plays once), used by the preloader
-  img/snmc-legal-aid-emblem-white.svg  White emblem (no lettering) for dark backgrounds: header, footer, maintenance page
+  img/snmc-legal-aid-emblem-white.svg  White emblem (no lettering) for dark backgrounds: header, footer, maintenance page, staff sidebar (SITE.emblem)
   img/favicon-32.png, img/apple-touch-icon.png  PNG copies of the logo for browsers that can't use an SVG icon (Safari, iPhone home screen)
   img/snmc-legal-aid-logo.png      Old low-res seal: no longer used by the site (kept for the Annex B branch)
 ```
@@ -88,7 +88,8 @@ Add `data-reveal` to any element to fade it in on scroll (`data-reveal-delay="12
 
 ## Common edits
 
-- **Phone number, email, address, hours:** `assets/js/components.js` → `window.SITE` (the phone is still `[add clinic number]`).
+- **Phone number, email, address:** `assets/js/components.js` → `window.SITE` (the phone is still `[add clinic number]`).
+- **Office hours and online booking hours:** Site Settings in the dashboard (see "Site Settings"). `SITE.officeHours` is only shown until those load, or if they can't be.
 - **Nav links:** `SITE.nav` in the same file. Only Book a Visit is linked for now; add the other pages back there to relink them in the header and footer.
 - **Logo:** the full-colour SNMC Legal Aid seal is `assets/img/snmc-legal-aid.svg` (`SITE.logo`): staff sidebar, sign-in page, favicon and preloader. The booking page hero shows the same seal in plain white (`assets/img/snmc-legal-aid-white.svg`, `SITE.logoWhite`). The public header, footer and maintenance page use the plain white emblem instead (`assets/img/snmc-legal-aid-emblem-white.svg`, `SITE.emblem`: the seal's artwork without the lettering, for dark backgrounds). It's designed for light backgrounds, so on dark ones it sits on a cream medallion: `<span class="seal size-12"><img src="assets/img/snmc-legal-aid.svg" alt=""></span>` (`.seal` in `theme.js`; set the size with `size-*`). To show it on the booking page intro too, add `logo` to its `<page-intro>`. If the logo changes, re-export `favicon-32.png` (32 × 32, transparent) and `apple-touch-icon.png` (180 × 180, on `#fbf9f4`) from the new SVG too.
 - **Colors / fonts:** the `@theme` block in `assets/js/theme.js`. For example, `--color-copper` becomes the `bg-copper` / `text-copper` classes.
@@ -228,22 +229,31 @@ All at https://capi.snmclaw.com. "Staff" = signed-in user with a verified email;
 |---|---|---|
 | `users` | Staff accounts: name, email, photo, `role` (admin / staff) | Admins: everyone. Staff: only themselves (see "Users page") |
 | `lawyers` | Supervising lawyers (SL): name, email, contact no., active / archived cases, ULAS hours, status | Staff read, admins write |
-| `practitioners` | Law student practitioners (LSP): name, email, contact no., `level` (Level 1 / Level 2 under Rule 138-A), active / archived cases, status | Staff read, admins write |
-| `appointments` | A booking: `reference`, `title`, `email`, `mobile_no` (digits only), `scheduled_at`, `json` (the full form) | Anyone can create (the booking form) **unless maintenance mode is on**; staff read, edit and always create; admins delete |
+| `practitioners` | Law student practitioners (LSP): name, email, contact no., `level` (Level 1 / Level 2 under Rule 138-A), `year_level` (1st–4th year in law school), `semester_id` → semesters, active / archived cases, status | Staff read, admins write |
+| `semesters` | School terms: `school_year` (e.g. `2026-2027`), `semester` (1st semester / 2nd semester / Summer, one record per pair), `end_date`. LSPs in a semester are set to Inactive the night after its end date (see "LSPs and semesters") | Staff read, admins write |
+| `appointments` | A booking: `reference`, `title`, `email`, `mobile_no` (digits only), `scheduled_at`, `json` (the full form) | Anyone can create (the booking form) **only during the online booking hours, and not in maintenance mode** (see "Site Settings"); staff read, edit and always create; admins delete |
 | `appointments_status` | History log, one row per change: `app_id` → appointment (deleted with it), `user_id` → who made the change, `app_status` (PENDING / SCHEDULED / WIP / DONE / CANCELLED), `remarks`, **`lsp_id` → practitioners**, **`sl_id` → lawyers** | Staff read and add rows (only in their own name); admins edit and delete |
 | `appointments_overview` (view) | **Every** appointment with its latest status (PENDING if none), `lsp_id` / `lsp_name`, `sl_id` / `sl_name` | Staff read |
 | `appointments_view` (view) | Each appointment's **latest** status row, with `lsp_id`, `sl_id`, `lsp_name`, `sl_name` | Staff read |
 | `appointments_pending` (view) | Appointments with no status row yet | Staff read |
 | `intake_settings` | One record: booking days, time slots, hidden / required / always-asked questions | Anyone reads, admins update |
-| `site_settings` | One record: `maintenance` (on/off), `maintenance_message`, `maintenance_until` | Anyone reads, admins update |
+| `site_settings` | One record: `maintenance` (on/off), `maintenance_message`, `maintenance_until`; office hours `office_days` / `office_open` / `office_close` and online booking hours `intake_days` / `intake_open` / `intake_close` (days `mon`…`sun`, times `HH:MM` Manila time, all required) | Anyone reads, admins update |
 
 **Assigning an LSP and a Supervising Lawyer:** add an `appointments_status` row for the appointment with `lsp_id` and `sl_id` set (along with the status). The newest row is the current assignment, so reassigning is just a new row, and the log keeps who changed it and when. When adding a row for any other reason (e.g. SCHEDULED → WIP), copy the current `lsp_id` / `sl_id` across so the assignment carries forward.
 
 The Appointments page does this for you: **Save update** adds the row (with the current LSP and lawyer carried over), so nobody has to copy IDs by hand.
 
+## LSPs and semesters
+
+LSPs serve one semester at a time. On the LSPs page (`clinic-practitioners.html`), the **Semesters** card lists the school terms; admins add each one with its school year, semester and last day. Every LSP is put in a semester (**School year and semester** in the LSP form; new LSPs start in the current one).
+
+The night after a semester's end date, every LSP in it is set to **Inactive** by a PocketBase job. To keep someone on, move them to the next semester before it runs (or afterwards, and set them back to Active). A semester that still has LSPs can't be deleted.
+
+The job needs installing once on the PocketBase server: copy `pocketbase/pb_hooks/semester-end.pb.js` into the `pb_hooks` folder next to `pb_data` and restart PocketBase. It then shows under **Settings → Crons** as `lspSemesterEnd` (00:05 Manila time, every night), and you can run it from there to test. Until it's installed, nothing switches automatically; the LSP list still marks an ended semester in red.
+
 ## Spam protection
 
-Anyone can create an `appointments` record (that's how the public form books), so there are two layers against bots:
+Anyone can create an `appointments` record (that's how the public form books), so there are three layers against bots:
 
 **1. Security check (Cloudflare Turnstile).** The booking form shows a check above Submit (usually one tick, sometimes nothing). It only appears once a site key is set, and only protects you once the server checks it too:
 
@@ -255,15 +265,53 @@ Do step 2 before step 3: once the secret is set, bookings without a token are re
 
 **2. Booking limit per connection (PocketBase).** PocketBase admin → **Settings** → **Rate limits** → add a rule: label `appointments:create`, audience **Guest only**, max **10** requests per **600** seconds. That's at most 10 online bookings per 10 minutes from one internet address; staff aren't affected. (Mobile networks often put many phones behind one address, so don't go much lower.) Without this rule only PocketBase's general `*:create` limit applies: 20 per 5 seconds, which a bot can easily live with.
 
-## Site Settings: maintenance mode
+**3. Online booking hours (Site Settings).** Visitors can only book during the hours set there; PocketBase refuses their bookings at other times, even when they're sent straight to the API. This gives spam and abuse a smaller window and keeps the form open mainly while staff are around to notice. Already on (see "Site Settings").
 
-`clinic-site-settings.html` (sidebar → Site Settings). Admins can change it; other staff can only look.
+What these don't do: none of them is what stops **SQL injection**. PocketBase never pastes what a visitor sends into its database queries (it passes values separately, as parameters), and its API rules decide who can read or change what. That, the rules in "Database", and not showing visitors' text as HTML ("Security") are the protection there. Limiting the hours only shrinks the window for spam and other abuse.
+
+## Site Settings
+
+`clinic-site-settings.html` (sidebar → Site Settings). Admins can change it; other staff can only look. It's saved on the one `site_settings` record.
+
+### Maintenance mode
 
 - **Maintenance mode on:** every public page (anything that loads `assets/js/maintenance.js`) shows a "We'll be back soon / Mobalik mi dayon" page with the clinic's email, and PocketBase refuses new online bookings (the `appointments` create rule checks `site_settings.maintenance`). Staff pages and walk-in bookings keep working. Turning it on asks for confirmation.
 - **Message** (optional): replaces the default English + Bisaya text. **Expected back** (optional): shown on the page in Manila time; it doesn't switch the site back on by itself.
-- **Staff can still see the site:** anyone signed in to the dashboard in that browser sees the normal site with a yellow notice at the top. **Preview the maintenance page** (or add `?maintenance-preview` to a public page's address) shows the maintenance page anyway.
+- **Staff can still see the site:** anyone signed in to the dashboard in that browser sees the normal site with a yellow notice at the top. **Preview the maintenance page** (or add `?maintenance-preview` to a public page's address) shows the maintenance page anyway. Bookings they send from the public form go with their sign-in, so they go through (for testing) and skip the security check; each is marked `submittedByStaff` in its `json` with their name.
 - If the setting can't be loaded within about 2 seconds (e.g. PocketBase is down), the public site is shown as normal.
 - Adding a new public page: put `<script src="assets/js/maintenance.js"></script>` right after `theme.js` in its `<head>` (not deferred). Never add it to staff pages.
+
+### Office and online booking hours
+
+Two sets of days plus an opening and closing time, in Manila time (currently Monday to Friday, 9:00 AM to 4:00 PM for both). **Same as office hours** copies the office hours into the booking hours. The closing time must be after the opening time on the same day (no overnight hours).
+
+- **Office hours** are shown on the public site: the booking page sidebar ("Clinic office hours are …"), the "closed" message, and `<contact-info>`. If they can't be loaded, `SITE.officeHours` in `components.js` is shown instead.
+- **Online booking hours:** outside them, visitors see "Online booking is closed right now" (English or Bisaya) with when it opens again, the hours and the clinic's email, instead of the form. The page opens the form by itself when booking opens, and warns visitors during the last hour before closing. Someone who's already filling in the form at closing time keeps it, but PocketBase refuses the request once it's sent; they're told it's closed, when it opens again, and that their answers stay on the page until then.
+- **Signed-in staff** can always use the form (with a notice that it's closed to visitors), and their bookings always go through.
+- **Enforced by PocketBase**, not just the page: the `appointments` **create rule** only lets visitors book when maintenance mode is off and it's within the booking hours. Rules see the time in UTC (`@now`), so it uses `strftime(…, @now, '+8 hours')` for the Manila time and day of the week (Manila has no daylight saving). If you edit the rule in the PocketBase admin, keep the staff part first. The full rule:
+
+  ```
+  // Signed-in staff can always book (walk-ins added on the dashboard, tests from the public form).
+  @request.auth.collectionName = "users" || (
+    // Visitors: only while maintenance mode is off (Site Settings)…
+    @collection.site_settings.maintenance ?= false &&
+    // …and during the online booking hours set in Site Settings: intake_days, from intake_open until intake_close.
+    // Those are Manila times; @now is UTC, so the clock is moved 8 hours ahead (Manila has no daylight saving).
+    @collection.site_settings.intake_open ?<= strftime('%H:%M', @now, '+8 hours') &&
+    @collection.site_settings.intake_close ?> strftime('%H:%M', @now, '+8 hours') && (
+      // %w = day of the week in Manila, 0 = Sunday
+      (strftime('%w', @now, '+8 hours') = '1' && @collection.site_settings.intake_days:each ?= 'mon') ||
+      (strftime('%w', @now, '+8 hours') = '2' && @collection.site_settings.intake_days:each ?= 'tue') ||
+      (strftime('%w', @now, '+8 hours') = '3' && @collection.site_settings.intake_days:each ?= 'wed') ||
+      (strftime('%w', @now, '+8 hours') = '4' && @collection.site_settings.intake_days:each ?= 'thu') ||
+      (strftime('%w', @now, '+8 hours') = '5' && @collection.site_settings.intake_days:each ?= 'fri') ||
+      (strftime('%w', @now, '+8 hours') = '6' && @collection.site_settings.intake_days:each ?= 'sat') ||
+      (strftime('%w', @now, '+8 hours') = '0' && @collection.site_settings.intake_days:each ?= 'sun')
+    )
+  )
+  ```
+
+  (`intake_days:each ?= 'mon'` means "the list includes mon"; a plain `?=` compares the whole list.) This is a rule rather than a `pb_hooks` file so it works without copying anything to the server or restarting PocketBase, and it sits next to the maintenance check. The catch: a refused rule only says "Failed to create record", so the booking form asks for the settings again to tell the visitor why.
 
 ## Error pages
 
@@ -294,5 +342,6 @@ Things only an admin can do (outside this repo), in rough order of importance:
 4. **Spam protection** (see above): the `appointments:create` rate limit, and the Turnstile keys + hook. Until both are done, the public booking form is protected only by PocketBase's general limits.
 5. **Backups:** PocketBase admin → Settings → Backups → turn on automatic backups (e.g. cron `0 3 * * *`, keep 7). They're currently off, so a broken server or a bad delete means lost bookings. Store them on S3 if you can (S3 is already set up for files) so a dead server doesn't take the backups with it.
 6. **Cloudflare:** make sure the PocketBase server only accepts connections from Cloudflare (firewall). PocketBase trusts the `CF-Connecting-IP` header for rate limits, so anyone who can reach the server directly could fake their address and get around the limits.
-7. **Maintenance mode:** turn it **off** in Site Settings when the beta starts (it's on now).
-8. **Content:** have a native Bisaya speaker review `assets/js/i18n-vs.js`; the attach-files box on step 5 tells clients that only file names are sent, so turn that question off in Intake Settings if you'd rather not show it until uploads work.
+7. **Semester job:** install `pocketbase/pb_hooks/semester-end.pb.js` (see "LSPs and semesters"), then add the current semester on the LSPs page.
+8. **Maintenance mode:** turn it **off** in Site Settings when the beta starts (it's on now). Check the **office and online booking hours** there too: both are Monday to Friday, 9:00 AM to 4:00 PM until someone changes them.
+9. **Content:** have a native Bisaya speaker review `assets/js/i18n-vs.js`; the attach-files box on step 5 tells clients that only file names are sent, so turn that question off in Intake Settings if you'd rather not show it until uploads work.

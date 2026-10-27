@@ -46,6 +46,12 @@ document.addEventListener('alpine:init', () => {
       return custom ? custom[index] : new Date(2000, index, 1).toLocaleDateString('en-GB', { month: 'long' });
     },
 
+    // Sunday first: 0 → 'Sunday' / 'Domingo'
+    weekday(index) {
+      const custom = window.I18N_STRINGS[this.lang]?.$weekdays;
+      return custom ? custom[index] : new Date(2000, 0, 2 + index).toLocaleDateString('en-GB', { weekday: 'long' });
+    },
+
     // Sunday first, e.g. ['Sun', 'Mon', …]
     weekdayShort(index) {
       const custom = window.I18N_STRINGS[this.lang]?.$weekdaysShort;

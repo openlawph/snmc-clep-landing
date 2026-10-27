@@ -11,6 +11,10 @@
  * the public PocketBase `intake_settings` record, which admins edit in the staff area (see README).
  * In the markup, x-field="key" on a question shows/hides it, marks it required (*) and shows its error.
  *
+ * Outside the online booking hours (Site Settings: the public `site_settings` record, see components.js) visitors
+ * see when booking opens again instead of the form; signed-in staff can still use it. PocketBase enforces the
+ * same hours, so a request sent after closing time is refused (submit() then says so).
+ *
  * submit() validates, builds the payload (toPayload) and saves it as a record in the PocketBase
  * `appointments` collection (sendRequest), then shows the "Request received" screen with the reference.
  */
@@ -118,11 +122,7 @@ const INTAKE_FIELDS = [
 // How far ahead clients can book.
 const INTAKE_BOOKING_DAYS_AHEAD = 90;
 
-// '13:00' → '1:00 PM'
-function formatSlot(hhmm) {
-  const [h, m] = hhmm.split(':').map(Number);
-  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
-}
+// formatSlot() ('13:00' → '1:00 PM') and clinicNow() (the date and time in Manila) are in components.js.
 
 // Phone number as PocketBase stores it (digits only, optional leading +):
 // '0917 123-4567' → '09171234567', '+63 917 123 4567' → '09171234567', '(032) 123 4567' → '0321234567'.
@@ -144,16 +144,6 @@ function ymdOf(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-// Today's date and the time now at the clinic (Manila), whatever time zone the client's device is set to,
-// e.g. { date: '2026-10-27', time: '13:05' }. Slots are clinic times, so "today" and "already started" are too.
-const CLINIC_CLOCK = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-});
-function clinicNow() {
-  const p = Object.fromEntries(CLINIC_CLOCK.formatToParts(new Date()).map((part) => [part.type, part.value]));
-  return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}` };
-}
-
 // Loads Cloudflare Turnstile once (only when SITE.turnstileSiteKey is set).
 function loadTurnstile() {
   if (window.turnstile) return Promise.resolve();
@@ -166,6 +156,18 @@ function loadTurnstile() {
     document.head.appendChild(script);
   });
   return loadTurnstile.promise;
+}
+
+// The staff sign-in the dashboard keeps in this browser (PocketBase SDK), or null. Bookings sent with it
+// go through during maintenance mode and skip the security check, so staff can test the form.
+// An expired token is simply ignored by PocketBase (the booking is then sent as a visitor's).
+function staffSession() {
+  try {
+    const auth = JSON.parse(localStorage.getItem('pocketbase_auth') || 'null');
+    return auth?.token && auth.record?.collectionName === 'users' ? auth : null;
+  } catch {
+    return null;
+  }
 }
 
 // Reads the public intake_settings record (SITE.apiUrl in components.js). Falls back to the defaults.
@@ -234,6 +236,12 @@ document.addEventListener('alpine:init', () => {
     captchaError: '',
     reference: '',
     errors: {},
+    staffSignedIn: !!staffSession(), // shows a note by the Submit button
+    // Hours from Site Settings (components.js). Outside the online booking hours the form is closed to visitors.
+    officeHours: window.SITE.officeHours, // until the ones from Site Settings load
+    intakeHours: null, // { days, open, close }; null = not loaded (the form stays open and PocketBase decides)
+    now: clinicNow(), // updated every 30 seconds
+    closed: false,
 
     form: {
       // Step 1 — appointment
@@ -288,6 +296,17 @@ document.addEventListener('alpine:init', () => {
         if (this.form.time && !this.availableSlots.includes(this.form.time)) this.form.time = '';
         this.jumpToFirstOpenMonth();
       });
+      fetchSiteSettings().then((record) => {
+        this.officeHours = clinicHours(record, 'office') || this.officeHours;
+        this.intakeHours = clinicHours(record, 'intake');
+        // Decided once, so a visitor already filling in the form at closing time keeps it (see submit()).
+        this.closed = !this.staffSignedIn && this.closedToVisitors;
+      });
+      // Keep the clock current, and open the form by itself when online booking opens.
+      setInterval(() => {
+        this.now = clinicNow();
+        if (this.closed && !this.closedToVisitors) this.closed = false;
+      }, 30000);
       // Show the security check when the client reaches the last step.
       this.$watch('step', (step) => { if (step === this.lastStep) this.mountCaptcha(); });
     },
@@ -325,6 +344,45 @@ document.addEventListener('alpine:init', () => {
     // Text in the current language (assets/js/i18n.js).
     tr(key, params) {
       return this.$store.i18n.t(key, params);
+    },
+
+    // ---------- Office and online booking hours (Site Settings) ----------
+
+    // Outside the online booking hours right now (also true for staff, who can still use the form).
+    get closedToVisitors() {
+      return !!this.intakeHours && !hoursOpenAt(this.intakeHours, this.now);
+    },
+
+    // e.g. "Monday to Friday, 9:00 AM to 4:00 PM", in the current language.
+    describe(hours) {
+      return hours ? describeHours(hours, (key, params) => this.tr(key, params), (d) => this.$store.i18n.weekday(d.day)) : '';
+    },
+
+    // When online booking opens again, e.g. "tomorrow at 9:00 AM"; '' if unknown.
+    get reopensText() {
+      const next = this.intakeHours && nextOpening(this.intakeHours, this.now);
+      if (!next) return '';
+      const time = formatSlot(next.time);
+      return next.daysAhead === 0 ? this.tr('today at {time}', { time })
+        : next.daysAhead === 1 ? this.tr('tomorrow at {time}', { time })
+        : this.tr('on {date} at {time}', { date: this.formatDate(next.date), time });
+    },
+
+    // In the last hour before online booking closes, so visitors aren't caught out halfway through the form.
+    get closingSoonText() {
+      const h = this.intakeHours;
+      if (this.staffSignedIn || !h || this.closedToVisitors) return '';
+      const minutes = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
+      if (minutes(h.close) - minutes(this.now.time) > 60) return '';
+      return this.tr('Online booking closes at {time} today. Please send your request before then.', { time: formatSlot(h.close) });
+    },
+
+    // PocketBase refused the request because online booking closed while the visitor was filling in the form.
+    closedMessage() {
+      const when = this.reopensText;
+      return when
+        ? this.tr('Online booking is closed right now. It opens again {when}. Keep this page open and send your request then, or call or visit the clinic.', { when })
+        : this.tr('Online booking is closed right now. Please try again later, or call or visit the clinic.');
     },
 
     // ---------- Settings: visible fields and steps ----------
@@ -472,11 +530,23 @@ document.addEventListener('alpine:init', () => {
       return this.form.household.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
     },
 
-    // Consent, both declarations, the typed signature and (when on) the security check are always needed.
-    get canSubmit() {
+    // What the last step still needs before the request can go, listed above the Submit button:
+    // consent, both declarations, the typed signature and (when on) the security check. Empty = ready.
+    get missingToSubmit() {
       const f = this.form;
-      return f.privacyConsent === 'agree' && f.declarationTrue && f.declarationNoRelationship && f.signature.trim().length >= 3
-        && (!this.captchaOn || !!this.captchaToken);
+      return [
+        f.privacyConsent !== 'agree' && { text: 'Agree to the data privacy terms', target: '[name="privacyConsent"][value="agree"]' },
+        !(f.declarationTrue && f.declarationNoRelationship) && { text: 'Tick both declarations', target: f.declarationTrue ? '#decl-relationship' : '#decl-true' },
+        f.signature.trim().length < 3 && { text: 'Type your full name as your signature', target: '#signature' },
+        this.captchaOn && !this.captchaToken && { text: 'Complete the security check', target: '[x-ref="captcha"]' },
+      ].filter(Boolean);
+    },
+
+    focusMissing(target) {
+      const el = this.$root.querySelector(target);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.focus?.({ preventScroll: true });
     },
 
     // Review on the last step: one block per visible step, rows for visible fields only.
@@ -655,6 +725,7 @@ document.addEventListener('alpine:init', () => {
           return this.focusFirstError();
         }
       }
+      this.errors = {}; // everything checks out: drop the messages from an earlier try
       if (this.captchaOn && !this.captchaToken) {
         this.captchaError = this.tr('Complete the security check to submit.');
         return;
@@ -668,9 +739,10 @@ document.addEventListener('alpine:init', () => {
       } catch (err) {
         console.error('[intake] could not send the request:', err);
         this.resetCaptcha();
-        this.submitError = this.tr(err.offline
+        this.submitError = err.closed ? this.closedMessage() : this.tr(err.offline
           ? 'We couldn\'t reach the clinic\'s server. Check your internet connection and try again.'
-          : err.captcha ? 'The security check didn\'t go through. Please complete it again, then submit.'
+          : err.paused ? 'Online booking is paused while the site is under maintenance. Please try again later, or call or visit the clinic.'
+          : err.captcha ?'The security check didn\'t go through. Please complete it again, then submit.'
           : err.status === 429 ? 'Too many requests from your connection. Please wait a few minutes and try again.'
           : 'Something went wrong sending your request. Please try again, or call or visit the clinic.');
       } finally {
@@ -734,20 +806,22 @@ document.addEventListener('alpine:init', () => {
     async sendRequest(payload) {
       const f = this.form;
       const areas = [...f.practiceAreas, f.practiceOther.trim()].filter(Boolean).join(', ');
+      const staff = staffSession();
       for (let attempt = 0; attempt < 3; attempt++) {
         const reference = makeAppointmentReference();
         let res;
         try {
           res = await fetch(`${window.SITE.apiUrl}/api/collections/appointments/records`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...(staff && { Authorization: staff.token }) },
             body: JSON.stringify({
               reference,
               title: [this.fullName || 'Online booking', areas || 'Legal consultation'].join(' — '),
               email: f.email.trim(),
               mobile_no: normalizeMobile(f.mobile),
               scheduled_at: new Date(`${f.date}T${f.time}:00+08:00`).toISOString(), // clinic (Manila) time
-              json: { ...payload, reference },
+              // submittedByStaff marks a booking a signed-in staff member sent from this form (e.g. a test).
+              json: { ...payload, reference, ...(staff && { submittedByStaff: staff.record.name || staff.record.email || 'staff' }) },
               turnstile_token: this.captchaToken, // read (not stored) by the PocketBase hook
             }),
           });
@@ -757,6 +831,16 @@ document.addEventListener('alpine:init', () => {
         if (res.ok) return reference;
         const body = await res.json().catch(() => ({}));
         if (body?.data?.reference?.code !== 'validation_not_unique') {
+          // A refused create rule only says "Failed to create record" (no field errors). For visitors the rule
+          // checks maintenance mode and the online booking hours (Site Settings), so ask which one it was.
+          const refused = (res.status === 400 || res.status === 403) && !Object.keys(body?.data || {}).length && !/security check/i.test(body?.message || '');
+          const settings = refused && await fetchSiteSettings({ fresh: true });
+          if (settings?.maintenance) throw Object.assign(new Error('online bookings are paused (maintenance mode)'), { paused: true });
+          if (settings) {
+            this.intakeHours = clinicHours(settings, 'intake') || this.intakeHours; // to say when it opens again
+            this.now = clinicNow();
+            throw Object.assign(new Error('online booking is closed (outside the booking hours)'), { closed: true });
+          }
           throw Object.assign(new Error(`HTTP ${res.status}: ${JSON.stringify(body)}`), { status: res.status, captcha: /security check/i.test(body?.message || '') });
         }
         // That reference is already taken (very unlikely): try another.

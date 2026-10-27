@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Practitioners · SNMC Law Legal Clinic</title>
+  <title>LSPs · SNMC Law Legal Clinic</title>
   <meta name="robots" content="noindex, nofollow"><!-- staff page: keep it out of search results -->
 
   <!-- ===== Shared head: keep identical on every page ===== -->
@@ -40,7 +40,7 @@
       <button type="button" class="-ml-2 rounded-sm p-2 lg:hidden" @click="$dispatch('open-sidebar')" aria-label="Open menu">
         <svg class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
-      <h1 class="truncate text-2xl">Practitioners</h1>
+      <h1 class="truncate text-2xl">LSPs</h1>
       <button type="button" x-show="isAdmin" x-cloak class="btn btn-primary ml-auto px-4 py-2" @click="openCreate()">
         <svg class="size-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
         New LSP
@@ -56,7 +56,7 @@
       <section class="rounded-md bg-paper shadow-sm ring-1 ring-black/5" aria-labelledby="practitioners-title">
         <div class="flex flex-col gap-4 border-b border-black/10 p-5 sm:p-6">
           <div class="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 id="practitioners-title" class="text-2xl">Law student practitioners</h2>
+            <h2 id="practitioners-title" class="text-2xl">LSP–Student Practitioners</h2>
             <p class="text-sm text-muted">Certified under Rule 138-A, and their caseload</p>
           </div>
 
@@ -117,6 +117,13 @@
                     </div>
                   </td>
                   <td class="whitespace-nowrap px-5 py-3"><span class="rounded-sm bg-ink/5 px-2 py-0.5 text-xs font-semibold" x-text="p.level || '—'"></span></td>
+                  <td class="whitespace-nowrap px-5 py-3" x-text="p.year_level || '—'"></td>
+                  <td class="whitespace-nowrap px-5 py-3">
+                    <span x-show="semesterById(p.semester_id)" class="block" x-text="schoolYearLabel(semesterById(p.semester_id))"></span>
+                    <span x-show="semesterById(p.semester_id)" class="block text-xs" :class="semesterEnded(semesterById(p.semester_id)) ? 'text-red-700' : 'text-muted'"
+                          x-text="(semesterById(p.semester_id)?.semester || '') + (semesterEnded(semesterById(p.semester_id)) ? ' · ended' : '')"></span>
+                    <span x-show="!semesterById(p.semester_id)" class="text-muted">—</span>
+                  </td>
                   <td class="whitespace-nowrap px-5 py-3">
                     <a x-show="p.contactno" :href="'tel:' + (p.contactno || '').replace(/[^0-9+]/g, '')" class="hover:text-copper-dark hover:underline" x-text="p.contactno"></a>
                     <span x-show="!p.contactno" class="text-muted">—</span>
@@ -178,6 +185,61 @@
           </nav>
         </div>
       </section>
+
+      <!-- ================= Semesters (semesters collection) ================= -->
+      <section class="rounded-md bg-paper shadow-sm ring-1 ring-black/5" aria-labelledby="semesters-title">
+        <div class="flex flex-wrap items-start justify-between gap-4 border-b border-black/10 p-5 sm:p-6">
+          <div class="max-w-xl">
+            <h2 id="semesters-title" class="text-2xl">Semesters</h2>
+            <p class="mt-1 text-sm leading-relaxed text-muted">Each LSP belongs to one semester. The night after a semester's end date, its LSPs are set to Inactive.</p>
+          </div>
+          <button type="button" x-show="isAdmin" x-cloak class="btn btn-ghost px-4 py-2 text-xs text-ink" @click="openSemesterCreate()">+ Add semester</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[560px] text-left text-sm">
+            <thead class="bg-cream/60 text-xs uppercase tracking-wider text-muted">
+              <tr>
+                <th scope="col" class="px-5 py-3 font-semibold">School year</th>
+                <th scope="col" class="px-5 py-3 font-semibold">Semester</th>
+                <th scope="col" class="px-5 py-3 font-semibold">Ends</th>
+                <th scope="col" class="px-5 py-3 text-right font-semibold">LSPs</th>
+                <th scope="col" class="px-5 py-3 text-right font-semibold" x-show="isAdmin"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-black/5">
+              <template x-for="s in semesters" :key="s.id">
+                <tr class="hover:bg-cream/50">
+                  <td class="whitespace-nowrap px-5 py-3 font-semibold" x-text="schoolYearLabel(s)"></td>
+                  <td class="whitespace-nowrap px-5 py-3" x-text="s.semester"></td>
+                  <td class="whitespace-nowrap px-5 py-3">
+                    <span x-text="formatDate(s.end_date)"></span>
+                    <span x-show="semesterEnded(s)" class="ml-2 rounded-full bg-black/5 px-2 py-0.5 text-xs font-semibold text-muted ring-1 ring-black/10">Ended</span>
+                    <span x-show="s.id === currentSemesterId" class="ml-2 rounded-full bg-emerald-600/10 px-2 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-600/25">Current</span>
+                  </td>
+                  <td class="px-5 py-3 text-right tabular-nums" x-text="semesterCounts[s.id] || 0"></td>
+                  <td class="whitespace-nowrap px-5 py-3 text-right" x-show="isAdmin">
+                    <div class="inline-flex items-center gap-1">
+                      <button type="button" @click="openSemesterEdit(s)" class="rounded-sm px-2.5 py-1.5 font-semibold text-ink hover:bg-black/5"
+                              :aria-label="'Edit ' + s.semester + ', ' + schoolYearLabel(s)">Edit</button>
+                      <button type="button" @click="askSemesterDelete(s)" class="rounded-sm px-2.5 py-1.5 font-semibold text-red-700 hover:bg-red-50"
+                              :aria-label="'Delete ' + s.semester + ', ' + schoolYearLabel(s)">Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+              <tr x-show="semestersError" x-cloak>
+                <td colspan="5" class="px-5 py-10 text-center">
+                  <span class="text-red-700" x-text="semestersError"></span>
+                  <button type="button" class="ml-2 font-semibold text-copper-dark hover:underline" @click="loadSemesters()">Try again</button>
+                </td>
+              </tr>
+              <tr x-show="!semestersError && !semesters.length" x-cloak>
+                <td colspan="5" class="px-5 py-10 text-center text-muted">No semesters yet.<span x-show="isAdmin"> Add the current one with <strong class="text-ink">Add semester</strong>, then put each LSP in it.</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -187,8 +249,8 @@
     <form @submit.prevent="save()" novalidate class="p-6 sm:p-8">
       <div class="flex items-start justify-between gap-4">
         <div>
-          <p class="eyebrow" x-text="editing ? 'Edit practitioner' : 'New practitioner'"></p>
-          <h2 id="form-title" class="mt-2 text-3xl" x-text="editing ? displayName(editing) : 'Add a practitioner'"></h2>
+          <p class="eyebrow" x-text="editing ? 'Edit practitioner' : 'New Law Student Practitioner'"></p>
+          <h2 id="form-title" class="mt-2 text-3xl" x-text="editing ? displayName(editing) : 'Add a LSP'"></h2>
         </div>
         <button type="button" class="-mr-2 -mt-2 rounded-sm p-2 text-muted hover:bg-black/5 hover:text-ink" @click="closeForm()" aria-label="Close">
           <svg class="size-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
@@ -239,6 +301,28 @@
         </div>
 
         <div class="sm:col-span-2">
+          <span class="field-label">Year level</span>
+          <div class="flex flex-wrap gap-2">
+            <template x-for="y in yearLevels" :key="y">
+              <label class="pill"><input type="radio" class="accent-copper" :value="y" x-model="form.year_level" :aria-invalid="!!formErrors.year_level"> <span x-text="y"></span></label>
+            </template>
+          </div>
+          <p class="field-hint">Their current year in law school.</p>
+          <p x-show="formErrors.year_level" x-text="formErrors.year_level" class="field-error"></p>
+        </div>
+
+        <div class="sm:col-span-2">
+          <label for="p-semester" class="field-label">School year and semester</label>
+          <select id="p-semester" x-model="form.semester_id" class="field" :aria-invalid="!!formErrors.semester_id">
+            <option value="">Choose…</option>
+            <template x-for="s in semesters" :key="s.id"><option :value="s.id" x-text="termLabel(s)" :selected="form.semester_id === s.id"></option></template>
+          </select>
+          <p class="field-hint" x-show="semesters.length">The night after the semester ends, they're set to Inactive. To keep them on, move them to the next semester.</p>
+          <p class="field-hint" x-show="!semesters.length">No semesters yet. Close this and add one under <strong>Semesters</strong> first.</p>
+          <p x-show="formErrors.semester_id" x-text="formErrors.semester_id" class="field-error"></p>
+        </div>
+
+        <div class="sm:col-span-2">
           <span class="field-label">Status</span>
           <div class="flex flex-wrap gap-2">
             <template x-for="s in statuses" :key="s.value">
@@ -271,6 +355,73 @@
       <button type="button" class="btn btn-ghost text-ink" @click="$refs.deleteDialog.close()" autofocus>Cancel</button>
       <button type="button" class="btn bg-red-700 text-white hover:bg-red-800" :disabled="deleting" @click="confirmDelete()"
               x-text="deleting ? 'Deleting…' : 'Delete practitioner'"></button>
+    </div>
+  </dialog>
+
+  <!-- ================= Semester add / edit dialog ================= -->
+  <dialog x-ref="semesterDialog" aria-labelledby="semester-form-title"
+          class="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-md bg-paper p-0 text-ink shadow-xl backdrop:bg-black/50">
+    <form @submit.prevent="saveSemester()" novalidate class="p-6 sm:p-8">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="eyebrow" x-text="semesterEditing ? 'Edit semester' : 'New semester'"></p>
+          <h2 id="semester-form-title" class="mt-2 text-3xl" x-text="semesterEditing ? semesterEditing.semester + ', ' + schoolYearLabel(semesterEditing) : 'Add a semester'"></h2>
+        </div>
+        <button type="button" class="-mr-2 -mt-2 rounded-sm p-2 text-muted hover:bg-black/5 hover:text-ink" @click="$refs.semesterDialog.close()" aria-label="Close">
+          <svg class="size-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="mt-6 space-y-5">
+        <div>
+          <label for="s-year" class="field-label">School year</label>
+          <input id="s-year" type="text" x-model="semesterForm.school_year" placeholder="2026-2027" maxlength="9" inputmode="numeric" autocomplete="off" class="field" :aria-invalid="!!semesterErrors.school_year" autofocus>
+          <p x-show="semesterErrors.school_year" x-text="semesterErrors.school_year" class="field-error"></p>
+        </div>
+        <div>
+          <span class="field-label">Semester</span>
+          <div class="flex flex-wrap gap-2">
+            <template x-for="n in semesterNames" :key="n">
+              <label class="pill"><input type="radio" class="accent-copper" :value="n" x-model="semesterForm.semester" :aria-invalid="!!semesterErrors.semester"> <span x-text="n"></span></label>
+            </template>
+          </div>
+          <p x-show="semesterErrors.semester" x-text="semesterErrors.semester" class="field-error"></p>
+        </div>
+        <div>
+          <label for="s-end" class="field-label">Last day of the semester</label>
+          <input id="s-end" type="date" x-model="semesterForm.end_date" class="field" :aria-invalid="!!semesterErrors.end_date">
+          <p class="field-hint">Its LSPs are set to Inactive the night after this date.</p>
+          <p x-show="semesterErrors.end_date" x-text="semesterErrors.end_date" class="field-error"></p>
+        </div>
+      </div>
+
+      <p x-show="semesterError" x-text="semesterError" role="alert" class="field-error mt-5"></p>
+      <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button type="button" class="btn btn-ghost text-ink" @click="$refs.semesterDialog.close()">Cancel</button>
+        <button type="submit" class="btn btn-primary" :disabled="savingSemester"
+                x-text="savingSemester ? 'Saving…' : (semesterEditing ? 'Save changes' : 'Add semester')"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ================= Semester delete dialog ================= -->
+  <dialog x-ref="semesterDeleteDialog" aria-labelledby="semester-delete-title"
+          class="m-auto w-[calc(100%-2rem)] max-w-md rounded-md bg-paper p-6 text-ink shadow-xl backdrop:bg-black/50 sm:p-8">
+    <h2 id="semester-delete-title" class="text-2xl">Delete this semester?</h2>
+    <!-- A semester with LSPs in it can't be deleted: they'd lose their school year and never be set to Inactive. -->
+    <p x-show="semesterCounts[semesterDeleteTarget?.id]" class="mt-3 leading-relaxed text-muted">
+      <strong class="text-ink" x-text="semesterDeleteTarget && semesterDeleteTarget.semester + ', ' + schoolYearLabel(semesterDeleteTarget)"></strong>
+      still has <span x-text="semesterCounts[semesterDeleteTarget?.id]"></span> LSP(s). Move them to another semester first.
+    </p>
+    <p x-show="!semesterCounts[semesterDeleteTarget?.id]" class="mt-3 leading-relaxed text-muted">
+      <strong class="text-ink" x-text="semesterDeleteTarget && semesterDeleteTarget.semester + ', ' + schoolYearLabel(semesterDeleteTarget)"></strong>
+      will be removed. This can't be undone.
+    </p>
+    <p x-show="semesterDeleteError" x-text="semesterDeleteError" role="alert" class="field-error mt-4"></p>
+    <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+      <button type="button" class="btn btn-ghost text-ink" @click="$refs.semesterDeleteDialog.close()" autofocus>Cancel</button>
+      <button type="button" x-show="!semesterCounts[semesterDeleteTarget?.id]" class="btn bg-red-700 text-white hover:bg-red-800" :disabled="deletingSemester" @click="confirmSemesterDelete()"
+              x-text="deletingSemester ? 'Deleting…' : 'Delete semester'"></button>
     </div>
   </dialog>
 
