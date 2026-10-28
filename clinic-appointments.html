@@ -56,21 +56,21 @@
             <p class="text-sm text-muted">Online bookings and walk-ins. Open one to update its status or assign an LSP and a supervising lawyer.</p>
           </div>
 
+          <!-- Tabs -->
+          <div role="tablist" aria-label="Appointment groups" class="-mb-2 flex gap-1 overflow-x-auto border-b border-black/10">
+            <template x-for="t in tabs" :key="t.value">
+              <button type="button" role="tab" :aria-selected="tab === t.value" :title="t.hint" @click="tab = t.value"
+                      class="-mb-px whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-semibold transition"
+                      :class="tab === t.value ? 'border-copper text-copper-dark' : 'border-transparent text-muted hover:text-ink'" x-text="t.label"></button>
+            </template>
+          </div>
+
           <!-- Controls -->
-          <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]">
+          <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_auto]">
             <label class="relative block sm:col-span-2 xl:col-span-1">
               <span class="sr-only">Search appointments</span>
               <svg class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
               <input type="search" x-model.debounce.300ms="search" placeholder="Search name, reference, phone, email…" class="field pl-9">
-            </label>
-            <label>
-              <span class="sr-only">When</span>
-              <select x-model="whenFilter" class="field">
-                <option value="upcoming">Upcoming</option>
-                <option value="past">Past</option>
-                <option value="nodate">No date yet</option>
-                <option value="">Any date</option>
-              </select>
             </label>
             <label>
               <span class="sr-only">Status</span>
@@ -157,7 +157,7 @@
               <tr x-show="!loading && !loadError && !rows.length" x-cloak>
                 <td :colspan="columns.length + 1" class="px-5 py-12 text-center text-muted">
                   No appointments match these filters.
-                  <button type="button" class="ml-1 font-semibold text-copper-dark hover:underline" @click="whenFilter = ''; statusFilter = ''; lspFilter = ''; slFilter = ''; search = ''">Show all</button>
+                  <button type="button" class="ml-1 font-semibold text-copper-dark hover:underline" @click="tab = 'all'; statusFilter = ''; lspFilter = ''; slFilter = ''; search = ''">Show all</button>
                 </td>
               </tr>
             </tbody>
@@ -201,9 +201,14 @@
           <span x-text="current?.scheduled_at ? formatSchedule(current.scheduled_at) : 'No date yet'"></span>
         </p>
       </div>
-      <button type="button" class="-mr-2 rounded-sm p-2 text-muted hover:bg-black/5 hover:text-ink" @click="closeDetail()" aria-label="Close">
-        <svg class="size-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-      </button>
+      <div class="-mr-2 flex shrink-0 items-center gap-1">
+        <a x-show="current" :href="'clinic-intake-print.html#' + current?.id" target="_blank" rel="noopener"
+           class="rounded-sm px-3 py-2 text-sm font-semibold text-copper-dark hover:bg-black/5">Print intake form</a>
+        <a x-show="current" :href="'clinic-ulas-form.html#' + current?.id" class="rounded-sm px-3 py-2 text-sm font-semibold text-copper-dark hover:bg-black/5">ULAS declaration</a>
+        <button type="button" class="rounded-sm p-2 text-muted hover:bg-black/5 hover:text-ink" @click="closeDetail()" aria-label="Close">
+          <svg class="size-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
     </div>
 
     <p x-show="detailLoading && !current" class="px-8 py-12 text-center text-muted">Loading appointment…</p>

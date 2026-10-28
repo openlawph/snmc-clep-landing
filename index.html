@@ -57,7 +57,7 @@
     -->
     <section class="py-16 sm:py-20">
       <form x-data="intake" @submit.prevent="step !== lastStep ? next() : submit()" novalidate
-            class="container-site grid scroll-mt-24 gap-8 lg:grid-cols-[2fr_1fr]">
+            class="container-site grid scroll-mt-24 gap-8 xl:grid-cols-[2fr_1fr]">
 
         <!-- ================= Main card ================= -->
         <div class="card min-w-0">
@@ -81,7 +81,7 @@
           <!-- ---------- Language (first page, and while online booking is closed) ---------- -->
           <div x-show="!submitted && (closed || step === activeSteps[0])" class="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-md bg-cream px-4 py-3">
             <label for="lang" class="text-sm font-semibold">Language / Pinulongan</label>
-            <select id="lang" x-model="$store.i18n.lang" class="rounded-sm border border-black/15 bg-white px-3 py-1.5 text-sm font-semibold text-ink focus:border-copper focus:outline-none focus:ring-2 focus:ring-copper/30">
+            <select id="lang" x-model="$store.i18n.lang" class="rounded-sm border border-black/15 bg-white px-3 py-1.5 text-base font-semibold text-ink focus:border-copper focus:outline-none focus:ring-2 focus:ring-copper/30">
               <option value="en">EN — English</option>
               <option value="vs">VS — Visaya</option>
             </select>
@@ -118,7 +118,7 @@
                           class="group w-full text-left disabled:cursor-default" :aria-current="s === step ? 'step' : null">
                     <span class="block h-1 rounded-full transition-colors duration-300"
                           :class="i + 1 <= position ? 'bg-copper' : 'bg-black/10'"></span>
-                    <span class="mt-2 hidden text-[11px] leading-tight font-semibold md:block"
+                    <span class="mt-2 hidden pr-2 text-[11px] leading-tight font-semibold md:block"
                           :class="s === step ? 'text-ink' : (i + 1 < position ? 'text-copper-dark group-hover:underline' : 'text-black/40')"
                           x-text="$t(steps[s - 1])"></span>
                   </button>
@@ -654,8 +654,8 @@
         </div>
 
         <!-- ================= Sidebar (changes per step) ================= -->
-        <aside class="space-y-4 lg:sticky lg:top-24 lg:self-start">
-          <div x-show="step === 1 && !submitted" class="space-y-4">
+        <aside class="space-y-4 xl:sticky xl:top-24 xl:self-start">
+          <div x-show="step === 1 && !submitted" class="grid gap-4 md:grid-cols-3 xl:grid-cols-1">
             <div class="rounded-md bg-ink p-6 text-white">
               <h3 class="text-xl text-rose" x-t>Consultation days</h3>
               <p class="mt-2 text-sm leading-relaxed text-white/80">

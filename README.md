@@ -137,10 +137,12 @@ Staff pages are named `clinic-*.html` and share `<dashboard-sidebar active="…"
 
 ### Appointments
 
-`clinic-appointments.html` lists every booking (online and walk-in) from the `appointments_overview` view: search, filters (upcoming / past / no date, status, LSP, supervising lawyer), sorting and paging run on the server. Opening one (or linking to `clinic-appointments.html#<id>`) shows:
+`clinic-appointments.html` lists every booking (online and walk-in) from the `appointments_overview` view: tabs (Pending / Scheduled / Follow-ups / Past / All; an appointment moves to Past once its date has passed, and Follow-ups are returning clients who answered "No" to "First time with the clinic?"), filters (status, LSP, supervising lawyer), sorting and paging run on the server. Opening one (or linking to `clinic-appointments.html#<id>`) shows:
 
 - **Status & assignment:** pick the status, the LSP and the supervising lawyer, add remarks, **Save update**. Each save adds an `appointments_status` row with your name, so the history shows who changed what and when.
 - **History:** every update, newest first.
+- **Print intake form:** opens `clinic-intake-print.html#<id>`, the SNMC-CIF-001 form filled in from the booking (Section A from the assignment, B–I and K from the client's answers, J left blank) for Print / Save as PDF.
+- **ULAS declaration:** opens `clinic-ulas-form.html#<id>`: the Supreme Court's ULAS Annex "B" Qualified Beneficiary Declaration with Annex "B-1" / "B-2" lawyer certifications, prefilled from the booking (name, address, income, grounds, supervising lawyer, dates). Staff correct anything, then **Create PDF** stamps the answers onto the untouched scan (`assets/forms/ulas-annex-b.pdf`, 149 KB, rebuilt from the original with `tools/optimize-annex-b.py`) using pdf-lib in the browser. Signatures, the jurat and roll numbers stay blank.
 - **Booking details:** reference, date and time, mobile, email; **Edit** changes them (the client isn't notified).
 - **Form answers:** everything the client entered online, by form section.
 - **Delete** (admins only) removes the booking and its history. To keep a record, set the status to **Cancelled** instead.

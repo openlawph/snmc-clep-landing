@@ -62,9 +62,15 @@
         <!-- Upcoming appointments -->
         <section class="rounded-md bg-paper shadow-sm ring-1 ring-black/5" aria-labelledby="upcoming-title">
           <div class="flex flex-col gap-4 border-b border-black/10 p-5 sm:p-6">
-            <div class="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 id="upcoming-title" class="text-2xl">Upcoming appointments</h2>
-              <p class="text-sm text-muted">From today, soonest first. Click one to open it.</p>
+            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                <h2 id="upcoming-title" class="text-2xl" x-text="view === 'calendar' ? 'Appointment calendar' : 'Upcoming appointments'"></h2>
+                <p class="text-sm text-muted" x-text="view === 'calendar' ? 'Pick a day, then click an appointment to assign an LSP and lawyer.' : 'From today, soonest first. Click one to open it.'"></p>
+              </div>
+              <div class="inline-flex rounded-md bg-cream p-1 ring-1 ring-black/10" role="group" aria-label="Appointments view">
+                <button type="button" class="rounded-sm px-3 py-1.5 text-sm font-semibold" :class="view === 'list' ? 'bg-paper shadow-sm ring-1 ring-black/10' : 'text-muted hover:text-ink'" :aria-pressed="view === 'list'" @click="view = 'list'">List</button>
+                <button type="button" class="rounded-sm px-3 py-1.5 text-sm font-semibold" :class="view === 'calendar' ? 'bg-paper shadow-sm ring-1 ring-black/10' : 'text-muted hover:text-ink'" :aria-pressed="view === 'calendar'" @click="view = 'calendar'">Calendar</button>
+              </div>
             </div>
 
             <!-- Controls -->
@@ -93,8 +99,9 @@
             </div>
           </div>
 
+          <!-- ===== List view ===== -->
           <!-- Table (scrolls sideways inside the card on small screens) -->
-          <div class="relative overflow-x-auto">
+          <div x-show="view === 'list'" class="relative overflow-x-auto">
             <table class="w-full min-w-[760px] text-left text-sm" :aria-busy="loading">
               <thead class="bg-cream/60 text-xs uppercase tracking-wider text-muted">
                 <tr>
@@ -141,7 +148,7 @@
           </div>
 
           <!-- Pagination -->
-          <div class="flex flex-col gap-3 border-t border-black/10 px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <div x-show="view === 'list'" class="flex flex-col gap-3 border-t border-black/10 px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
             <div class="flex items-center gap-3 text-muted">
               <span x-text="rangeLabel" aria-live="polite"></span>
               <label class="flex items-center gap-2">
@@ -161,9 +168,185 @@
               <button type="button" class="rounded-sm px-3 py-1.5 hover:bg-black/5 disabled:opacity-30 disabled:hover:bg-transparent" @click="goTo(page + 1)" :disabled="page === totalPages">Next</button>
             </nav>
           </div>
+
+          <!-- ===== Calendar view ===== -->
+          <div x-show="view === 'calendar'" x-cloak class="p-5 sm:p-6" :aria-busy="monthLoading">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h3 class="text-xl" x-text="monthLabel" aria-live="polite"></h3>
+              <div class="flex items-center gap-1">
+                <button type="button" class="btn btn-ghost px-3 py-1.5 text-ink" @click="goToToday()">Today</button>
+                <button type="button" class="rounded-sm p-2 hover:bg-black/5" @click="shiftMonth(-1)" aria-label="Previous month">
+                  <svg class="size-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+                </button>
+                <button type="button" class="rounded-sm p-2 hover:bg-black/5" @click="shiftMonth(1)" aria-label="Next month">
+                  <svg class="size-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <p x-show="monthError" x-cloak class="mt-4 text-sm text-red-700">
+              <span x-text="monthError"></span>
+              <button type="button" class="ml-2 font-semibold text-copper-dark hover:underline" @click="load()">Try again</button>
+            </p>
+
+            <div class="mt-4 grid grid-cols-7 border-l border-t border-black/10 text-xs" :class="monthLoading && 'opacity-50'">
+              <template x-for="d in weekdays" :key="d">
+                <div class="border-b border-r border-black/10 bg-cream/60 px-2 py-2 text-center font-semibold uppercase tracking-wider text-muted" x-text="d"></div>
+              </template>
+              <template x-for="cell in cells" :key="cell.date">
+                <div class="min-h-14 min-w-0 cursor-pointer border-b border-r border-black/10 p-1 sm:min-h-28 sm:p-1.5"
+                     :class="[!cell.inMonth && 'bg-cream/50 text-muted', selectedDay === cell.date && 'ring-2 ring-inset ring-copper']"
+                     @click="selectedDay = cell.date">
+                  <button type="button" class="flex size-6 items-center justify-center rounded-full text-xs font-semibold"
+                          :class="cell.isToday ? 'bg-copper text-white' : 'hover:bg-black/5'"
+                          :aria-label="cell.date + ', ' + cell.items.length + ' appointments'" :aria-current="cell.isToday ? 'date' : null"
+                          @click.stop="selectedDay = cell.date" x-text="cell.day"></button>
+
+                  <!-- Wide screens: the first few appointments as chips -->
+                  <div class="mt-1 hidden space-y-1 sm:block">
+                    <template x-for="item in cell.items.slice(0, 3)" :key="item.id">
+                      <button type="button" class="flex w-full items-center gap-1 rounded-sm px-1.5 py-0.5 text-left text-[11px] font-semibold ring-1"
+                              :class="statusClass(item.app_status)" @click.stop="selectedDay = cell.date; openRow(item)">
+                        <span x-show="needsAssignment(item) && !['DONE', 'CANCELLED'].includes(item.app_status)" class="size-1.5 shrink-0 rounded-full bg-red-600" title="Needs an LSP or lawyer"></span>
+                        <span class="shrink-0 font-normal" x-text="timeOf(item)"></span>
+                        <span class="truncate" x-text="item.title"></span>
+                      </button>
+                    </template>
+                    <button type="button" x-show="cell.items.length > 3" class="px-1.5 text-[11px] font-semibold text-copper-dark hover:underline"
+                            @click.stop="selectedDay = cell.date" x-text="'+' + (cell.items.length - 3) + ' more'"></button>
+                  </div>
+
+                  <!-- Phones: just a count; the day's list is below the grid -->
+                  <p x-show="cell.items.length" class="mt-1 text-center text-[11px] font-semibold text-copper-dark sm:hidden" x-text="cell.items.length"></p>
+                </div>
+              </template>
+            </div>
+
+            <!-- Selected day -->
+            <div class="mt-6">
+              <h3 class="text-lg" x-text="selectedLabel"></h3>
+              <p x-show="!selectedItems.length" class="mt-2 text-sm text-muted">Nothing scheduled that day<span x-show="hasFilters"> with these filters</span>.</p>
+              <ul x-show="selectedItems.length" class="mt-3 divide-y divide-black/5 rounded-md ring-1 ring-black/10">
+                <template x-for="item in selectedItems" :key="item.id">
+                  <li>
+                    <button type="button" class="flex w-full flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-left text-sm hover:bg-cream/50" @click="openRow(item)">
+                      <span class="w-20 shrink-0 font-semibold" x-text="timeOf(item)"></span>
+                      <span class="min-w-0 flex-1 truncate" x-text="item.title"></span>
+                      <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1" :class="statusClass(item.app_status)" x-text="statusLabel(item.app_status)"></span>
+                      <span class="text-xs" :class="!item.lsp_name && 'italic text-muted'" x-text="'LSP: ' + (item.lsp_name || 'none')"></span>
+                      <span class="text-xs" :class="!item.sl_name && 'italic text-muted'" x-text="'SL: ' + (item.sl_name || 'none')"></span>
+                    </button>
+                  </li>
+                </template>
+              </ul>
+            </div>
+          </div>
         </section>
       </div>
     </main>
   </div>
+
+  <!-- ================= Appointment sheet (slides in from the right) ================= -->
+  <div x-show="sheetOpen" x-cloak class="fixed inset-0 z-50" @keydown.escape.window="closeSheet()">
+    <div class="absolute inset-0 bg-black/40" x-show="sheetOpen" x-transition.opacity.duration.200ms @click="closeSheet()"></div>
+    <aside role="dialog" aria-modal="true" aria-labelledby="sheet-title" x-show="sheetOpen"
+           x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+           x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+           class="absolute inset-y-0 right-0 flex w-full max-w-md flex-col bg-cream text-ink shadow-xl">
+      <div class="flex items-start justify-between gap-4 border-b border-black/10 px-5 py-4">
+        <div class="min-w-0">
+          <p class="eyebrow"><span x-text="current?.reference || 'Appointment'"></span></p>
+          <h2 id="sheet-title" class="mt-1 truncate text-2xl" x-text="current?.title || (detailLoading ? 'Loading…' : 'Appointment')"></h2>
+          <p class="mt-1 text-sm text-muted" x-show="current" x-text="current?.scheduled_at ? formatSchedule(current.scheduled_at) : 'No date yet'"></p>
+        </div>
+        <button type="button" x-ref="sheetClose" class="-mr-2 rounded-sm p-2 text-muted hover:bg-black/5 hover:text-ink" @click="closeSheet()" aria-label="Close">
+          <svg class="size-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="flex-1 space-y-6 overflow-y-auto p-5">
+        <p x-show="detailLoading && !current" class="py-12 text-center text-muted">Loading appointment…</p>
+        <p x-show="detailError" x-text="detailError" class="rounded-md bg-red-50 px-4 py-3 text-sm text-red-800 ring-1 ring-red-200"></p>
+
+        <template x-if="current">
+          <div class="space-y-6">
+            <dl class="grid grid-cols-[5.5rem_1fr] gap-x-4 gap-y-2 text-sm">
+              <dt class="text-muted">Status</dt>
+              <dd><span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1" :class="statusClass(current.app_status)" x-text="statusLabel(current.app_status)"></span></dd>
+              <dt class="text-muted">Mobile</dt>
+              <dd><a x-show="current.mobile_no" :href="'tel:' + (current.mobile_no || '').replace(/[^0-9+]/g, '')" class="hover:underline" x-text="current.mobile_no"></a><span x-show="!current.mobile_no">—</span></dd>
+              <dt class="text-muted">Email</dt>
+              <dd class="break-all"><a x-show="current.email" :href="'mailto:' + current.email" class="hover:underline" x-text="current.email"></a><span x-show="!current.email">—</span></dd>
+            </dl>
+
+            <form class="card space-y-5" @submit.prevent="saveUpdate()">
+              <div>
+                <h3 class="text-xl">Status &amp; assignment</h3>
+                <p class="mt-1 text-sm text-muted">Each update is added to the history, with your name.</p>
+              </div>
+              <div>
+                <span class="field-label">Status</span>
+                <div class="flex flex-wrap gap-2">
+                  <template x-for="s in statuses" :key="s.value">
+                    <label class="pill"><input type="radio" class="accent-copper" :value="s.value" x-model="update.app_status"> <span x-text="s.label"></span></label>
+                  </template>
+                </div>
+              </div>
+              <div>
+                <label for="s-lsp" class="field-label">Law student practitioner (LSP)</label>
+                <select id="s-lsp" x-model="update.lsp_id" class="field">
+                  <option value="">Not assigned</option>
+                  <template x-for="p in practitioners" :key="p.id"><option :value="p.id" x-text="personOption(p)" :selected="p.id === update.lsp_id"></option></template>
+                </select>
+                <p x-show="!practitioners.length" class="field-hint">No practitioners yet. Add them on the Practitioners page.</p>
+              </div>
+              <div>
+                <label for="s-sl" class="field-label">Supervising lawyer (SL)</label>
+                <select id="s-sl" x-model="update.sl_id" class="field">
+                  <option value="">Not assigned</option>
+                  <template x-for="l in lawyers" :key="l.id"><option :value="l.id" x-text="personOption(l)" :selected="l.id === update.sl_id"></option></template>
+                </select>
+                <p x-show="!lawyers.length" class="field-hint">No lawyers yet. Add them on the Lawyers page.</p>
+              </div>
+              <div>
+                <label for="s-remarks" class="field-label">Remarks <span class="font-normal text-muted">(optional)</span></label>
+                <textarea id="s-remarks" rows="2" x-model="update.remarks" class="field" placeholder="e.g. Rescheduled at the client's request"></textarea>
+              </div>
+              <p x-show="updateError" x-text="updateError" role="alert" class="field-error"></p>
+              <button type="submit" class="btn btn-primary w-full" :disabled="!updateChanged || updating" x-text="updating ? 'Saving…' : 'Save update'"></button>
+            </form>
+
+            <section class="card">
+              <h3 class="text-xl">History</h3>
+              <p x-show="!history.length" class="mt-2 text-sm text-muted">No updates yet. This appointment is pending.</p>
+              <ol class="mt-4 space-y-4">
+                <template x-for="entry in history" :key="entry.id">
+                  <li class="border-l-2 border-copper/30 pl-4">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1" :class="statusClass((entry.app_status || '').trim())" x-text="statusLabel((entry.app_status || '').trim())"></span>
+                      <span class="text-xs text-muted" x-text="formatSchedule(entry.created)"></span>
+                    </div>
+                    <p class="mt-1 text-sm">
+                      <span class="text-muted">LSP:</span> <span x-text="historyPerson(entry, 'lsp_id') || '—'"></span>
+                      <span class="ml-3 text-muted">SL:</span> <span x-text="historyPerson(entry, 'sl_id') || '—'"></span>
+                    </p>
+                    <p x-show="entry.remarks" class="mt-1 text-sm italic" x-text="entry.remarks"></p>
+                    <p x-show="historyAuthor(entry)" class="mt-1 text-xs text-muted" x-text="'by ' + historyAuthor(entry)"></p>
+                  </li>
+                </template>
+              </ol>
+            </section>
+
+            <a :href="'clinic-appointments.html#' + current.id" class="block text-center text-sm font-semibold text-copper-dark hover:underline">Open the full record (form answers, edit details) &rarr;</a>
+          </div>
+        </template>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Toast -->
+  <div x-show="toast" x-cloak x-transition.opacity role="status" aria-live="polite"
+       class="fixed inset-x-4 bottom-4 z-[60] mx-auto max-w-md rounded-md bg-ink px-5 py-3 text-sm text-white shadow-lg sm:left-auto sm:right-6 sm:mx-0"
+       x-text="toast"></div>
 </body>
 </html>

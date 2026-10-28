@@ -98,11 +98,19 @@ document.addEventListener('alpine:init', () => {
     singular: 'appointment',
     plural: 'appointments',
     searchFields: ['reference', 'title', 'email', 'mobile_no', 'lsp_name', 'sl_name'],
-    filters: { whenFilter: 'upcoming', statusFilter: '', lspFilter: '', slFilter: '' },
+    filters: { tab: 'pending', statusFilter: '', lspFilter: '', slFilter: '' },
     sortKey: 'scheduled_at',
     sortDir: 'asc',
   }, {
     statuses: APPT_STATUSES,
+    tabs: [
+      { value: 'pending', label: 'Pending', hint: 'Waiting to be confirmed or assigned' },
+      { value: 'scheduled', label: 'Scheduled', hint: 'Confirmed or in progress, today onward' },
+      { value: 'followup', label: 'Follow-ups', hint: 'Returning clients (not their first visit), today onward' },
+      { value: 'past', label: 'Past', hint: 'The appointment date has passed' },
+      { value: 'all', label: 'All', hint: 'Every appointment' },
+    ],
+    followIds: [],
     me: Auth.user,
     practitioners: [],
     lawyers: [],
@@ -139,6 +147,8 @@ document.addEventListener('alpine:init', () => {
     init() {
       pb.authStore.onChange(() => (this.me = pb.authStore.record));
       this.loadPeople();
+      // Past appointments read best newest first; the others soonest first.
+      this.$watch('tab', (t) => (this.sortDir = t === 'past' && this.sortKey === 'scheduled_at' ? 'desc' : this.sortKey === 'scheduled_at' ? 'asc' : this.sortDir));
       // clinic-appointments.html#<id> opens that appointment (links from the dashboard).
       const openFromHash = () => {
         const id = location.hash.slice(1);
@@ -166,12 +176,26 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
+    // Returning clients answered "No" to "First time with the clinic?"; that answer lives in the booking's json.
+    async beforeLoad() {
+      if (this.tab !== 'followup') return;
+      const found = await pb.collection('appointments').getFullList({
+        filter: 'json.appointment.firstTime = "No"', fields: 'id', requestKey: 'followups',
+      });
+      this.followIds = found.map((r) => r.id);
+    },
+
+    // Tabs: the date decides what is "past"; undated bookings stay in the live tabs until given a date.
     extraFilters() {
       const parts = [];
       const today = manilaTodayStartUTC();
-      if (this.whenFilter === 'upcoming') parts.push(pb.filter('scheduled_at >= {:t}', { t: today }));
-      if (this.whenFilter === 'past') parts.push(pb.filter('scheduled_at != "" && scheduled_at < {:t}', { t: today }));
-      if (this.whenFilter === 'nodate') parts.push('scheduled_at = ""');
+      const live = pb.filter('(scheduled_at = "" || scheduled_at >= {:t})', { t: today });
+      if (this.tab === 'pending') parts.push('app_status = "PENDING"', live);
+      else if (this.tab === 'scheduled') parts.push('(app_status = "SCHEDULED" || app_status = "WIP")', live);
+      else if (this.tab === 'followup') {
+        parts.push('app_status != "DONE" && app_status != "CANCELLED"', live);
+        parts.push(this.followIds.length ? '(' + this.followIds.map((id) => pb.filter('id = {:id}', { id })).join(' || ') + ')' : 'id = ""');
+      } else if (this.tab === 'past') parts.push(pb.filter('scheduled_at != "" && scheduled_at < {:t}', { t: today }));
       if (this.statusFilter === 'open') parts.push('app_status != "DONE" && app_status != "CANCELLED"');
       else if (this.statusFilter) parts.push(pb.filter('app_status = {:s}', { s: this.statusFilter }));
       for (const [key, value] of [['lsp_id', this.lspFilter], ['sl_id', this.slFilter]]) {

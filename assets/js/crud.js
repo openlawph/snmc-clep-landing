@@ -71,6 +71,7 @@ function crudPage(config, page = {}) {
       this.loading = true;
       this.loadError = '';
       try {
+        await this.beforeLoad?.(); // optional page hook, e.g. to fetch ids a filter needs
         const res = await pb.collection(config.collection).getList(this.page, this.perPage, {
           filter: this.filterString(),
           sort: this.sortString(),

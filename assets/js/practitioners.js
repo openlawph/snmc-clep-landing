@@ -56,6 +56,7 @@ document.addEventListener('alpine:init', () => {
     ],
 
     // Add / edit dialog
+    tab: location.hash === '#semesters' ? 'semesters' : 'lsps', // which card shows
     editing: null, // the record being edited, or null when adding
     form: emptyPractitionerForm(),
     formErrors: {},

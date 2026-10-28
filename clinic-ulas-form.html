@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-auth-required><!-- protected: only signed-in, verified staff (see assets/js/auth.js) -->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ULAS Declaration · SNMC Law Legal Clinic</title>
+  <meta name="robots" content="noindex, nofollow"><!-- staff page: keep it out of search results -->
+
+  <!-- ===== Shared head: keep identical on every page ===== -->
+  <!-- Where this page may load scripts, styles, images and data from. Add a host here when you add a CDN library or API (README → "Security"). -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://capi.snmclaw.com; connect-src 'self' https://capi.snmclaw.com; frame-src https://challenges.cloudflare.com https://maps.google.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
+  <link rel="icon" type="image/svg+xml" href="assets/img/snmc-legal-aid.svg">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="assets/js/theme.js"></script>
+  <script src="assets/js/preloader.js"></script><!-- logo preloader: not deferred, it covers the first paint -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3/dist/index.global.js" integrity="sha384-2ql948lIdLcGEE0/qxNiudyTjgauA3RDJERu5xW75kFCvSl5a9odyQYCb6tEjnmB" crossorigin="anonymous" defer></script><!-- deferred: the preloader covers the page until the styles are built -->
+  <script src="assets/js/components.js" defer></script>
+  <script src="assets/js/components/site-header.js" defer></script>
+  <script src="assets/js/components/site-footer.js" defer></script>
+  <script src="assets/js/components/page-intro.js" defer></script>
+  <script src="assets/js/components/legal-notice.js" defer></script>
+  <script src="assets/js/components/contact-info.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.28.1/dist/pocketbase.umd.js" integrity="sha384-Pr74Q4nJqBcqXYMrsOS8tSw8t8N0Nayn7pWqFRdz9MsePI7uo55HNdxwrCcIRD8e" crossorigin="anonymous"></script><!-- page-specific: PocketBase SDK -->
+  <script src="assets/js/auth.js"></script><!-- page-specific: checks the session before showing the page -->
+  <script src="assets/js/components/dashboard-sidebar.js" defer></script><!-- page-specific: staff sidebar -->
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous" defer></script><!-- page-specific: writes the answers onto the PDF -->
+  <script src="assets/js/appointments.js" defer></script><!-- page-specific: formatSchedule, manilaParts -->
+  <script src="assets/js/ulas-form.js" defer></script><!-- page-specific, must come before Alpine -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.5/dist/cdn.min.js" integrity="sha384-FYLKjwG3aohNhNZoVG8sY/5ntunm+MqylL90Q+rT3OM7AwV9/BKFjk/RjoIpIgsI" crossorigin="anonymous" defer></script>
+  <!-- ===== /Shared head ===== -->
+</head>
+<body x-data="ulasForm" class="bg-cream text-ink">
+  <dashboard-sidebar active="appointments"></dashboard-sidebar>
+
+  <div class="lg:pl-64">
+    <header class="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-black/10 bg-cream/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+      <button type="button" class="-ml-2 rounded-sm p-2 lg:hidden" @click="$dispatch('open-sidebar')" aria-label="Open menu">
+        <svg class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <h1 class="truncate text-2xl">ULAS Declaration</h1>
+      <a :href="row ? 'clinic-appointments.html#' + row.id : 'clinic-appointments.html'" class="ml-auto shrink-0 text-sm font-semibold text-copper-dark hover:underline">← Back to appointment</a>
+    </header>
+
+    <main class="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+      <p x-show="loading" class="py-12 text-center text-muted">Loading the appointment…</p>
+      <p x-show="error" x-cloak x-text="error" class="rounded-md bg-red-50 px-5 py-4 text-sm text-red-800 ring-1 ring-red-200"></p>
+
+      <template x-if="row && f">
+        <form class="space-y-6" @submit.prevent="createPdf()" novalidate>
+          <section class="card space-y-1">
+            <p class="eyebrow" x-text="row.reference || 'Appointment'"></p>
+            <h2 class="text-2xl" x-text="row.title"></h2>
+            <p class="text-sm text-muted">Qualified Beneficiary Declaration (Annex "B") with the Covered Lawyer's Certifications (Annex "B-1", "B-2") of the ULAS Rules Manual. Filled in from the client's intake answers: check each answer, fix what's wrong, then create the PDF. The form's own wording is never changed. The signature, the notary's jurat and the lawyer's roll number are left blank for hand writing.</p>
+          </section>
+
+          <section class="card space-y-5">
+            <h3 class="text-xl">1 · Personal details</h3>
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div class="sm:col-span-2">
+                <label for="u-name" class="field-label">Full name</label>
+                <input id="u-name" type="text" x-model="f.name" class="field">
+              </div>
+              <div class="sm:col-span-2">
+                <label for="u-address" class="field-label">Residence</label>
+                <input id="u-address" type="text" x-model="f.address" class="field">
+              </div>
+              <div>
+                <label for="u-short" class="field-label">Short residence <span class="font-normal text-muted">(used where the blank is small)</span></label>
+                <input id="u-short" type="text" x-model="f.addressShort" class="field">
+              </div>
+              <div>
+                <label for="u-city" class="field-label">City (top of the form)</label>
+                <input id="u-city" type="text" x-model="f.city" class="field">
+              </div>
+              <div class="sm:col-span-2">
+                <label for="u-contact" class="field-label">Contact no.</label>
+                <input id="u-contact" type="text" x-model="f.contact" class="field">
+              </div>
+              <div>
+                <label for="u-income" class="field-label">Source/s of income</label>
+                <textarea id="u-income" rows="2" x-model="f.income" class="field"></textarea>
+              </div>
+              <div>
+                <label for="u-family" class="field-label">Combined monthly family income</label>
+                <textarea id="u-family" rows="2" x-model="f.familyIncome" class="field"></textarea>
+              </div>
+              <div>
+                <label for="u-employer" class="field-label">Name of employer, if any</label>
+                <input id="u-employer" type="text" x-model="f.employer" class="field">
+              </div>
+              <div>
+                <label for="u-position" class="field-label">Position in employment, if any</label>
+                <input id="u-position" type="text" x-model="f.position" class="field">
+              </div>
+            </div>
+          </section>
+
+          <section class="card space-y-5">
+            <h3 class="text-xl">2 · Legal aid sought</h3>
+            <div>
+              <label for="u-legal" class="field-label">Brief description</label>
+              <textarea id="u-legal" rows="4" x-model="f.legalAid" class="field"></textarea>
+              <p class="field-hint">Long text is made smaller to fit the box; anything that still doesn't fit is marked "continued on a separate sheet".</p>
+            </div>
+          </section>
+
+          <section class="card space-y-5">
+            <h3 class="text-xl">3 · Grounds applied for</h3>
+            <p class="text-sm text-muted">This is sworn by the client, so only tick what applies. Confirm with the client and the documents.</p>
+            <div class="space-y-3">
+              <template x-for="(label, i) in groundLabels" :key="i">
+                <label class="flex items-start gap-3 text-sm"><input type="checkbox" class="mt-1 accent-copper" x-model="f.grounds[i]"> <span x-text="label"></span></label>
+              </template>
+            </div>
+            <div>
+              <label for="u-expl" class="field-label">4 · Explanation of the applicable ground</label>
+              <textarea id="u-expl" rows="4" x-model="f.explanation" class="field"></textarea>
+            </div>
+            <div>
+              <label for="u-docs" class="field-label">5 · Supporting documents presented, if any</label>
+              <textarea id="u-docs" rows="2" x-model="f.documents" class="field" placeholder="N/A"></textarea>
+            </div>
+          </section>
+
+          <section class="card space-y-5">
+            <h3 class="text-xl">6 · Dates &amp; covered lawyer</h3>
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label for="u-exec" class="field-label">Date of execution</label>
+                <input id="u-exec" type="text" x-model="f.executedOn" class="field" placeholder="October 28, 2026">
+              </div>
+              <div>
+                <label for="u-int" class="field-label">Date the lawyer interviewed the client</label>
+                <input id="u-int" type="text" x-model="f.interviewedOn" class="field" placeholder="October 28, 2026">
+              </div>
+              <div class="sm:col-span-2">
+                <label for="u-lawyer" class="field-label">Covered lawyer (supervising lawyer)</label>
+                <input id="u-lawyer" type="text" x-model="f.lawyer" class="field">
+                <p class="field-hint">Taken from the appointment's supervising lawyer. The roll number is left blank.</p>
+              </div>
+              <label class="flex items-center gap-3 text-sm"><input type="checkbox" class="accent-copper" x-model="f.includeB1"> Include Annex "B-1" (lawyer's certification)</label>
+              <label class="flex items-center gap-3 text-sm"><input type="checkbox" class="accent-copper" x-model="f.includeB2"> Include Annex "B-2" (second lawyer's certification)</label>
+            </div>
+          </section>
+
+          <div class="card flex flex-wrap items-center gap-4">
+            <button type="submit" class="btn btn-primary" :disabled="creating" x-text="creating ? 'Creating…' : 'Create PDF'"></button>
+            <template x-if="pdfUrl">
+              <div class="flex flex-wrap items-center gap-4 text-sm font-semibold">
+                <a :href="pdfUrl" target="_blank" rel="noopener" class="text-copper-dark hover:underline">Open to print</a>
+                <a :href="pdfUrl" :download="pdfName" class="text-copper-dark hover:underline">Download</a>
+              </div>
+            </template>
+            <p x-show="pdfError" x-text="pdfError" role="alert" class="field-error w-full"></p>
+          </div>
+        </form>
+      </template>
+    </main>
+  </div>
+</body>
+</html>

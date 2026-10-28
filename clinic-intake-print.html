@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" data-auth-required><!-- protected: only signed-in, verified staff (see assets/js/auth.js) -->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intake form · SNMC Law Legal Clinic</title>
+  <meta name="robots" content="noindex, nofollow"><!-- staff page: keep it out of search results -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://capi.snmclaw.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
+  <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.28.1/dist/pocketbase.umd.js" integrity="sha384-Pr74Q4nJqBcqXYMrsOS8tSw8t8N0Nayn7pWqFRdz9MsePI7uo55HNdxwrCcIRD8e" crossorigin="anonymous"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/intake.js" defer></script><!-- INTAKE_OPTIONS -->
+  <script src="assets/js/appointments.js" defer></script><!-- formatSchedule, manilaParts -->
+  <script src="assets/js/intake-print.js" defer></script><!-- must come before Alpine -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.5/dist/cdn.min.js" integrity="sha384-FYLKjwG3aohNhNZoVG8sY/5ntunm+MqylL90Q+rT3OM7AwV9/BKFjk/RjoIpIgsI" crossorigin="anonymous" defer></script>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #e8e6e1; color: #111; font: 10.5px/1.45 "Times New Roman", Times, serif; }
+    [x-cloak] { display: none !important; }
+    .bar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 16px; background: #1f1f1f; color: #fff; font: 14px system-ui, sans-serif; }
+    .bar a, .bar button { color: #fff; font: inherit; }
+    .bar button { margin-left: auto; padding: 8px 18px; border: 0; border-radius: 4px; background: #b4653a; font-weight: 600; cursor: pointer; }
+    .bar a { opacity: .8; }
+    .msg { max-width: 560px; margin: 60px auto; padding: 0 16px; font: 16px system-ui, sans-serif; }
+    .page { width: 8.5in; min-height: 11in; margin: 16px auto; padding: .5in .55in; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.2); }
+    h1, h2, h3, p { margin: 0; }
+    .school { text-align: center; font-weight: 700; }
+    .title { margin-top: 2px; text-align: center; font-size: 15px; font-weight: 700; letter-spacing: .04em; }
+    .refs { display: flex; justify-content: space-between; margin: 6px 0; font-weight: 700; }
+    .note { margin: 4px 0 8px; font-size: 9px; }
+    .sec { margin: 9px 0 3px; padding: 2px 5px; background: #222; color: #fff; font-weight: 700; letter-spacing: .03em; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    .row { display: flex; flex-wrap: wrap; gap: 3px 16px; margin: 3px 0; }
+    .row > span { flex: 1 1 0; min-width: 0; }
+    .row > .w2 { flex: 2 1 0; }
+    .row > .all { flex: 1 1 100%; }
+    .v { display: inline-block; min-width: 40px; padding: 0 3px; border-bottom: 1px solid #000; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 600; line-height: 1.3; }
+    .v.fill { display: block; margin-top: 1px; min-height: 14px; white-space: pre-line; }
+    .opts { display: flex; flex-wrap: wrap; gap: 2px 14px; margin: 3px 0; }
+    .opts span { white-space: nowrap; }
+    table { width: 100%; border-collapse: collapse; margin: 3px 0; }
+    th, td { border: 1px solid #000; padding: 2px 4px; text-align: left; font-family: Arial, Helvetica, sans-serif; font-size: 10px; height: 17px; }
+    th { font-family: "Times New Roman", serif; font-size: 10.5px; background: #eee; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    td.n { text-align: right; }
+    .sign { display: flex; gap: 24px; margin-top: 14px; }
+    .sign > span { flex: 1; }
+    .line { display: block; height: 18px; border-bottom: 1px solid #000; }
+    .blank { color: transparent; }
+    @page { size: letter; margin: 0; }
+    @media print {
+      body { background: #fff; }
+      .bar, .msg { display: none; }
+      .page { width: auto; min-height: 0; margin: 0; padding: .45in .55in; box-shadow: none; break-after: page; }
+      .page:last-child { break-after: auto; }
+    }
+  </style>
+</head>
+<body x-data="intakePrint">
+  <div class="bar" x-cloak>
+    <a href="clinic-appointments.html">← Appointments</a>
+    <span x-show="row" x-text="row && ('Intake form · ' + (row.reference || row.title))"></span>
+    <button type="button" @click="print()" :disabled="!row">Print / Save as PDF</button>
+  </div>
+
+  <p class="msg" x-show="loading">Loading the appointment…</p>
+  <p class="msg" x-show="error" x-text="error" x-cloak></p>
+
+  <template x-if="row">
+    <div>
+      <!-- ================= Page 1 ================= -->
+      <section class="page">
+        <p class="school">STO. NIÑO MACTAN COLLEGE, INC. · SCHOOL OF LAW</p>
+        <p class="school">CLINICAL LEGAL EDUCATION PROGRAM (CLEP) LEGAL CLINIC</p>
+        <h1 class="title">UNIFIED CLIENT INTAKE FORM</h1>
+        <div class="refs"><span>Form No.: SNMC-CIF-001</span><span>Interview Ref No.: <span x-text="row.reference || '________'"></span></span></div>
+        <p class="note"><b>INSTRUCTIONS TO CLIENT / APPLICANT:</b> Please answer all questions completely and honestly. All information provided will be treated with strict confidentiality in accordance with Republic Act No. 10173 (Data Privacy Act of 2012) and the attorney-client privilege. If you require assistance in filling out this form, please request support from clinic staff or student practitioners.</p>
+
+        <h2 class="sec">SECTION A: ADMINISTRATIVE INFORMATION</h2>
+        <div class="row">
+          <span class="w2">Date of Intake: <span class="v" x-text="intakeDate || ' '"></span></span>
+          <span>Time Started / Ended: <span class="v" x-text="timeStarted || ' '"></span> / <span class="v">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></span>
+        </div>
+        <div class="row">
+          <span>Interviewer / Staff: <span class="v" x-text="interviewer || ' '"></span></span>
+          <span>Supervising Lawyer: <span class="v" x-text="row.sl_name || ' '"></span></span>
+        </div>
+        <div class="row">
+          <span>Law Student Assigned: <span class="v" x-text="row.lsp_name || ' '"></span></span>
+          <span>Case File Number: <span class="v" x-text="row.reference || ' '"></span></span>
+        </div>
+        <div class="row" x-show="firstTimeNote"><span>Visit: <span class="v" x-text="firstTimeNote"></span></span></div>
+
+        <h2 class="sec">SECTION B: APPLICANT PERSONAL INFORMATION</h2>
+        <div class="row"><span>Full Name (Last, First, Middle): <span class="v" x-text="fullName || ' '"></span></span><span>Nickname / Alias: <span class="v" x-text="B.nickname || ' '"></span></span></div>
+        <div class="row">
+          <span>Date of Birth (MM/DD/YYYY): <span class="v" x-text="mdy(B.dateOfBirth) || ' '"></span></span>
+          <span>Age / Sex: <span class="v" x-text="B.age || ' '"></span> / <span x-text="box(B.sex === 'Female') + ' Female  ' + box(B.sex === 'Male') + ' Male'"></span></span>
+        </div>
+        <div class="row">
+          <span class="w2">Civil Status: <template x-for="s in options.civilStatus"><span x-text="box(B.civilStatus === s) + ' ' + s + '  '"></span></template></span>
+          <span>Citizenship / Religion: <span class="v" x-text="[B.citizenship, B.religion].filter(Boolean).join(' / ') || ' '"></span></span>
+        </div>
+        <div class="row"><span>Educational Attainment: <span class="v" x-text="B.education || ' '"></span></span><span>Language / Dialect: <span class="v" x-text="B.language || ' '"></span></span></div>
+        <div class="row"><span>Occupation / Employment: <span class="v" x-text="B.occupation || ' '"></span></span><span>Disability (if any): <span class="v" x-text="B.disability || ' '"></span></span></div>
+        <div class="row"><span>Contact Number / Email: <span class="v" x-text="contact || ' '"></span></span><span>Complete Address: <span class="v" x-text="B.address || ' '"></span></span></div>
+        <div class="row">
+          <span>Barangay / City / Municipality: <span class="v" x-text="locationLine || ' '"></span></span>
+          <span>Resident of Lapu-Lapu City?: <span x-text="box(B.residentOfLapuLapu === 'Yes') + ' Yes  ' + box(B.residentOfLapuLapu === 'No') + ' No'"></span></span>
+        </div>
+
+        <h2 class="sec">SECTION C: HOUSEHOLD COMPOSITION &amp; FINANCIAL ELIGIBILITY</h2>
+        <table>
+          <thead><tr><th>Household Member Name</th><th>Relationship</th><th>Source of Income</th><th>Monthly Amount (₱)</th></tr></thead>
+          <tbody>
+            <template x-for="m in householdRows"><tr><td x-text="m.name || ''"></td><td x-text="m.relationship || ''"></td><td x-text="m.source || ''"></td><td class="n" x-text="m.amount ? peso(m.amount) : ''"></td></tr></template>
+          </tbody>
+        </table>
+        <div class="row">
+          <span>Total Household Members: <span class="v" x-text="C.totalMembers || ' '"></span></span>
+          <span>Total Household Monthly Income: ₱ <span class="v" x-text="peso(C.totalMonthlyIncome) || ' '"></span></span>
+        </div>
+        <div class="row">
+          <span>Do you or your household own land/house other than present residence? <span x-text="box(no(C.otherProperty)) + ' No  ' + box(yes(C.otherProperty)) + ' Yes'"></span> — Net Value: ₱ <span class="v" x-text="peso(detail(C.otherProperty, 'netValue')) || ' '"></span></span>
+          <span>Other assets (vehicles, motorcycles, appliances, etc.): <span x-text="box(no(C.otherAssets)) + ' None  ' + box(yes(C.otherAssets)) + ' Yes'"></span> — Net Value: ₱ <span class="v" x-text="peso(detail(C.otherAssets, 'netValue')) || ' '"></span></span>
+        </div>
+
+        <h2 class="sec">SECTION D: VULNERABILITY / SECTOR CLASSIFICATION</h2>
+        <p>(Check all that apply):</p>
+        <div class="opts">
+          <template x-for="s in options.sectors"><span x-text="box(has(a.D_sectors?.sectors, s)) + ' ' + s"></span></template>
+          <span>Other Sector: <span class="v" x-text="a.D_sectors?.other || '                  '"></span></span>
+        </div>
+
+        <h2 class="sec">SECTION E: CONFLICT CHECK &amp; PRIOR CONSULTATION</h2>
+        <p>Has the applicant previously consulted this Law Clinic or an attorney regarding this matter? <span x-text="box(no(E.priorConsultation)) + ' No  ' + box(yes(E.priorConsultation)) + ' Yes'"></span> — Details / Attorney Name: <span class="v" x-text="detail(E.priorConsultation, 'details') || '              '"></span></p>
+        <p>Does the applicant know whether the opposing party has consulted this Law Clinic? <template x-for="o in ['Yes', 'No', 'Unknown']"><span x-text="box(E.opposingPartyConsultedClinic === o) + ' ' + o + '  '"></span></template></p>
+
+        <h2 class="sec">SECTION F: LEGAL ISSUE &amp; NATURE OF CONCERN</h2>
+        <p>Practice Area / Category (check all that apply):</p>
+        <div class="opts">
+          <template x-for="s in options.practiceAreas"><span x-text="box(has(F.practiceAreas, s)) + ' ' + s"></span></template>
+          <span>Other: <span class="v" x-text="F.other || '            '"></span></span>
+        </div>
+      </section>
+
+      <!-- ================= Page 2 ================= -->
+      <section class="page">
+        <p>Requested Assistance / Service:</p>
+        <div class="opts"><template x-for="s in options.assistance"><span x-text="box(has(F.requestedAssistance, s)) + ' ' + s"></span></template></div>
+        <p style="margin-top:5px"><b>Opposing Party / Adverse Parties Information (For Conflict Checks):</b></p>
+        <div class="row">
+          <span class="w2">Name(s): <span class="v" x-text="F.opposingParty?.names || ' '"></span></span>
+          <span>Relationship: <span class="v" x-text="F.opposingParty?.relationship || ' '"></span></span>
+        </div>
+        <div class="row">
+          <span class="w2">Address / Phone: <span class="v" x-text="F.opposingParty?.addressPhone || ' '"></span></span>
+          <span>Are you currently represented by an attorney? <span x-text="box(F.currentlyRepresentedByAttorney === 'No') + ' No  ' + box(F.currentlyRepresentedByAttorney === 'Yes') + ' Yes'"></span></span>
+        </div>
+
+        <h2 class="sec">SECTION G: CLIENT NARRATIVE &amp; CASE FACTS</h2>
+        <p>Brief Narrative of Facts (In chronological order):</p>
+        <span class="v fill" style="min-height:96px" x-text="G.narrative || ''"></span>
+        <div class="row"><span class="all">1. Who are the persons involved? <span class="v" x-text="G.personsInvolved || ' '"></span></span></div>
+        <div class="row"><span>2. When and where did the incident/events occur? Date: <span class="v" x-text="mdy(G.incident?.date) || ' '"></span></span><span>Place: <span class="v" x-text="G.incident?.place || ' '"></span></span></div>
+        <div class="row"><span class="all">3. What documents presently exist? <span class="v" x-text="G.existingDocuments || ' '"></span></span></div>
+        <div class="row"><span class="all">4. Has any complaint/case already been filed? Court &amp; Case No. (if applicable): <span class="v" x-text="detail(G.caseFiled, 'courtAndCaseNo') || ' '"></span></span></div>
+        <div class="row"><span>5. Are there pending hearings, deadlines, or court dates? Date: <span class="v" x-text="mdy(detail(G.pendingHearing, 'date')) || ' '"></span></span><span>Court / Venue: <span class="v" x-text="detail(G.pendingHearing, 'courtVenue') || ' '"></span></span></div>
+        <p>6. Referral Source / How did you learn about the Clinic?</p>
+        <div class="opts">
+          <template x-for="s in options.referralSources"><span x-text="box(has(G.referralSources, s)) + ' ' + s"></span></template>
+          <span x-show="G.referralOther" x-text="'[ ✓ ] Other: ' + G.referralOther"></span>
+        </div>
+
+        <h2 class="sec">SECTION H: DATA PRIVACY CONSENT (RA 10173)</h2>
+        <p>Pursuant to Republic Act No. 10173 (Data Privacy Act of 2012), the SNMC Legal Clinic collects, stores, and processes personal and case-related information solely to determine qualification for free legal assistance and for the continuous rendition of legal service. All disclosures are protected under attorney-client privilege. Clients retain full rights to access, dispute inaccuracies, and withdraw consent in accordance with law.</p>
+        <div class="opts"><span x-text="box(a.H_privacyConsent === 'I AGREE') + ' I AGREE to the collection, storage, and processing of my personal information.'"></span><span x-text="box(a.H_privacyConsent === 'I DO NOT AGREE') + ' I DO NOT AGREE.'"></span></div>
+
+        <h2 class="sec">SECTION I: DECLARATION &amp; REPRESENTATION DISCLAIMER</h2>
+        <p>I verify that the information provided in this form is true and correct to the best of my knowledge. I understand that the SNMC Legal Clinic provides free legal advice through supervised law student practitioners under Rule 138-A. I understand that completing this intake form DOES NOT automatically establish an attorney-client relationship or guarantee ongoing court representation unless a formal engagement is executed.</p>
+        <div class="sign">
+          <span>Applicant Signature: <span class="line"></span></span>
+          <span>Date: <span class="line"></span></span>
+        </div>
+        <div class="sign">
+          <span>Witness (Clinic Staff / Student): <span class="line"></span></span>
+          <span>Date: <span class="line"></span></span>
+        </div>
+        <p class="note" x-show="a.I_declaration?.signature" style="margin-top:6px">Typed signature on the online form: <b x-text="a.I_declaration.signature"></b> (<span x-text="mdy(a.I_declaration.date)"></span>). The applicant still signs the printed copy.</p>
+
+        <h2 class="sec">SECTION J: FOR CLINIC STAFF USE ONLY (ASSESSMENT &amp; ACTION)</h2>
+        <div class="row"><span class="all">Preliminary Assessment (Issues): <span class="v fill">&nbsp;</span></span></div>
+        <div class="row"><span class="all">Causes of Action / Defenses: <span class="v fill">&nbsp;</span></span></div>
+        <p>Urgency Assessment: [   ] High (Prejudice immediate)   [   ] Medium   [   ] Low</p>
+        <p>Reason for Urgency: <span class="v">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>
+        <p>Eligibility - Means Test: [   ] Appears Qualified   [   ] Indigent Cert Attached   [   ] PAO Means Test</p>
+        <p>Eligibility - Merits Test: [   ] Prima Facie Legal Basis   [   ] Needs Evaluation</p>
+        <p>Case Category: [   ] Category A (Urgent)   [   ] Category B (Regular)</p>
+        <p>Services Provided: [   ] Advice   [   ] Pleadings Drafted   [   ] Referred   [   ] None</p>
+        <p>Referral Action Taken: [   ] PAO   [   ] PNP   [   ] CSWDO   [   ] RTC   [   ] Other: ____________</p>
+        <p>Action Approved By: <span class="v" x-text="row.sl_name || '                        '"></span> (Supervising Attorney)</p>
+
+        <h2 class="sec">SECTION K: DOCUMENTARY REQUIREMENTS / ATTACHMENTS CHECKLIST</h2>
+        <div class="opts">
+          <template x-for="d in options.documents"><span x-text="box(has(a.K_documents?.checklist, d)) + ' ' + d"></span></template>
+          <span>Additional Required Documents: <span class="v" x-text="a.K_documents?.additional || '                    '"></span></span>
+        </div>
+      </section>
+    </div>
+  </template>
+</body>
+</html>
