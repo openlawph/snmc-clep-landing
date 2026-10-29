@@ -100,6 +100,8 @@ window.I18N_STRINGS.vs = {
   'Selected:': 'Napili:',
   'Time slot': 'Oras',
   'Pick a date first.': 'Pilia una ang petsa.',
+  'Not available': 'Dili na magamit',
+  'Slots marked "Not available" are already taken or have passed. Please choose one of the open slots.': 'Ang mga oras nga gimarkahan og "Dili na magamit" nakuha na o milapas na. Palihug pagpili sa bakanteng oras.',
   'No more slots on this day. Please pick another date.': 'Wala nay bakanteng oras niini nga adlaw. Palihug pilia ang laing petsa.',
   'First time with the clinic?': 'Unang higayon nimo sa klinika?',
 

@@ -176,10 +176,15 @@
                   <span id="time-label" class="field-label" x-t>Time slot</span>
                   <p x-show="!form.date" class="field-hint" x-t>Pick a date first.</p>
                   <div x-show="form.date" class="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-labelledby="time-label">
-                    <template x-for="slot in availableSlots" :key="slot">
-                      <label class="pill justify-center"><input type="radio" name="time" :value="slot" x-model="form.time" class="accent-copper" :aria-invalid="!!errors.time"><span x-text="formatSlot(slot)"></span></label>
+                    <template x-for="c in slotChoices" :key="c.slot">
+                      <label class="pill justify-center" :class="c.taken && 'is-taken'">
+                        <input type="radio" name="time" :value="c.slot" x-model="form.time" :disabled="c.taken" class="accent-copper" :aria-invalid="!!errors.time">
+                        <span x-text="formatSlot(c.slot)"></span>
+                        <span x-show="c.taken" class="text-xs" x-text="$t('Not available')"></span>
+                      </label>
                     </template>
                   </div>
+                  <p x-show="form.date && slotChoices.some((c) => c.taken)" class="field-hint" x-t>Slots marked "Not available" are already taken or have passed. Please choose one of the open slots.</p>
                   <p x-show="form.date && !availableSlots.length" class="field-hint" x-t>No more slots on this day. Please pick another date.</p>
                 </div>
               </div>

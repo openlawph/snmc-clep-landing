@@ -462,6 +462,13 @@ document.addEventListener('alpine:init', () => {
       return this.form.date ? this.slotsFor(this.form.date) : [];
     },
 
+    // Every slot of the day, so the ones already gone stay visible (greyed out) instead of vanishing.
+    get slotChoices() {
+      if (!this.form.date) return [];
+      const open = this.availableSlots;
+      return this.settings.time_slots.map((slot) => ({ slot, taken: !open.includes(slot) }));
+    },
+
     // Weeks of the shown month, Sunday first; days outside the month are null.
     get calendarDays() {
       const [y, m] = this.calendarMonth.split('-').map(Number);

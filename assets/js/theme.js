@@ -51,6 +51,9 @@
   .field-hint { @apply mt-1 text-xs text-muted; }
   /* Radio/checkbox "chip": <label class="pill"><input type="radio" class="accent-copper"> Text</label> */
   .pill { @apply inline-flex cursor-pointer items-center gap-2 rounded-sm border border-black/15 bg-white px-3.5 py-2 text-sm transition hover:border-copper/60 has-checked:border-copper has-checked:bg-copper/10; }
+  /* A choice that can't be picked (e.g. a time slot that has already passed) */
+  .pill.is-taken { @apply cursor-not-allowed flex-col gap-0 bg-black/5 text-muted hover:border-black/15; }
+  .pill.is-taken > span:first-of-type { @apply line-through; }
   /* Sub-heading that groups fields inside a form step */
   .form-section { @apply border-b border-black/10 pb-2 font-sans text-xs font-bold uppercase tracking-[0.15em] text-copper-dark; }
   /* The logo on a dark background: a cream medallion it was designed for. <span class="seal size-12"><img src="…svg" alt=""></span> */
