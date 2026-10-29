@@ -740,8 +740,13 @@ document.addEventListener('alpine:init', () => {
       this.submitting = true;
       this.submitError = '';
       try {
-        this.reference = await this.sendRequest(this.toPayload());
+        // this.reference = await this.sendRequest(this.toPayload());
+        const { id, reference } = await this.sendRequest(this.toPayload());
+        this.reference = reference;
+        this.appointmentId = id;
+
         this.submitted = true;
+        this.renderQR();
         this.scrollTop();
       } catch (err) {
         console.error('[intake] could not send the request:', err);
@@ -835,7 +840,12 @@ document.addEventListener('alpine:init', () => {
         } catch (err) {
           throw Object.assign(new Error('offline'), { offline: true, cause: err });
         }
-        if (res.ok) return reference;
+        // if (res.ok) return reference;
+        if (res.ok) {
+          const record = await res.json();
+          return { id: record.id, reference };   // or record.reference if you prefer the server's value
+        }
+
         const body = await res.json().catch(() => ({}));
         if (body?.data?.reference?.code !== 'validation_not_unique') {
           // A refused create rule only says "Failed to create record" (no field errors). For visitors the rule
@@ -865,5 +875,27 @@ document.addEventListener('alpine:init', () => {
     scrollTop() {
       this.$nextTick(() => this.$root.scrollIntoView({ behavior: 'smooth', block: 'start' }));
     },
+
+    get qrUrl() {
+      return this.appointmentId
+        ? new URL(`clinic-appointments.html#${this.appointmentId}`, location.href).href
+        : this.reference; // no id came back: fall back to the reference
+    },
+
+    renderQR() {
+      this.$nextTick(() => {
+        const el = this.$refs.qr;
+        if (!el || typeof QRCode === 'undefined') return;
+        el.innerHTML = '';              // clear any previous code
+        new QRCode(el, {
+          text: this.qrUrl,         // e.g. SNMC-2026-4K7Q2D (use your real property name)
+          width: 160,
+          height: 160,
+          correctLevel: QRCode.CorrectLevel.M,
+        });
+      });
+    },
+
+
   }));
 });
