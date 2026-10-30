@@ -71,7 +71,12 @@
             <p class="eyebrow mt-6" x-t>Request received</p>
             <p class="mt-3 font-display text-4xl"><span x-t>Reference</span> <span x-text="reference"></span></p>
 
-            <div x-ref="qr" class="inline-block rounded-lg bg-white p-3"></div>
+            <div>
+              <div x-ref="qr" class="inline-block rounded-lg bg-white p-3"></div>
+              <div class="inline-block rounded-lg bg-white p-3">
+                <iframe width="160" height="160" src="https://www.google.com/maps?q=Santo+Nino+Mactan+College&amp;z=15&amp;t=m&amp;hl=en&amp;output=embed" style="border:0;display:block;width:160px;height:160px;" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Google Map of SNMC Law"></iframe>
+              </div>
+            </div>
 
             <p class="mx-auto mt-4 max-w-md leading-relaxed text-muted" x-t>Keep this reference. Bring a valid ID and all documents about your problem to your appointment.</p>
             <dl class="mx-auto mt-8 grid max-w-md gap-2 rounded-md bg-cream p-5 text-left text-sm">
@@ -79,6 +84,8 @@
               <div class="flex justify-between gap-4"><dt class="text-muted" x-t>Time</dt><dd class="text-right font-semibold" x-text="form.time && formatSlot(form.time)"></dd></div>
               <div class="flex justify-between gap-4"><dt class="text-muted" x-t>Where</dt><dd class="text-right font-semibold">SNMC School of Law, Soong, Lapu-Lapu City</dd></div>
             </dl>
+
+
             <a href="index.html" class="btn btn-ghost mt-8" x-t>Book another visit</a>
           </div>
 
