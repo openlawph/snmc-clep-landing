@@ -12,7 +12,7 @@
  *
  * The "Reference numbers & safeguards" card is saved separately, to `intake_controls` (staff read, admins change, the
  * public can't see it). It only sends what changed, so saving it can't undo a number given out in the meantime, and the
- * server refuses to move a counter backwards. See pocketbase/pb_hooks/clinic-guards.pb.js.
+ * API rules refuse to move a counter backwards. See pocketbase/annex-c-d-schema.js.
  */
 
 // Time slots admins can choose from: every 30 minutes, 7:00 AM to 7:00 PM.
@@ -170,10 +170,9 @@ document.addEventListener('alpine:init', () => {
       return field.canRequire !== false && this.isShown(field) && this.required.includes(field.key);
     },
 
-    // Uploads stay off until the spam check is set up: anonymous uploads without it could fill the server's disk.
-    // The server refuses this too (it checks for the secret key; the site key is what this page can see).
+    // Uploads stay off until the spam check is on the server: anonymous uploads without it could fill the disk.
     needsSpamCheck(field) {
-      return !!field.needsSpamCheck && !window.SITE.turnstileSiteKey;
+      return !!field.needsSpamCheck && !INTAKE_UPLOADS.enabled;
     },
 
     canChangeAsk(field) {
@@ -265,8 +264,7 @@ document.addEventListener('alpine:init', () => {
       this.saving = true;
       this.saveError = '';
       try {
-        const record = await pb.collection('intake_settings').update(this.recordId, this.payload());
-        this.apply(record);
+        this.apply(await updateAndLog(this.me, 'intake_settings', { id: this.recordId, ...JSON.parse(this.savedJSON) }, this.payload()));
         this.flash('Saved. The booking form uses the new settings from now on.');
       } catch (err) {
         this.saveError = err?.status === 0 ? 'Couldn\'t reach the server. Check your internet connection and try again.'
@@ -300,7 +298,7 @@ document.addEventListener('alpine:init', () => {
       this.controls = record;
       this.controlsForm = {
         ref_prefix: record.ref_prefix, ref_next: record.ref_next, ref_paper_next: record.ref_paper_next, late_days: record.late_days,
-        slot_capacity: record.slot_capacity, max_open_per_mobile: record.max_open_per_mobile, alert_emails: record.alert_emails || '',
+        slot_capacity: record.slot_capacity, max_open_per_mobile: record.max_open_per_mobile,
       };
     },
 
@@ -332,17 +330,23 @@ document.addEventListener('alpine:init', () => {
 
     async saveControls() {
       if (!this.isAdmin || !this.controlsDirty) return;
-      this.savingControls = true;
       this.controlError = '';
       this.controlErrors = {};
+      // Forward only: the numbers below have been given out already.
+      for (const [key, label] of [['ref_next', 'next number'], ['ref_paper_next', 'next paper number']]) {
+        if (Number(this.controlsForm[key]) < this.controls[key]) this.controlErrors[key] = `The ${label} can't go below ${this.controls[key]}: lower numbers are already in use.`;
+      }
+      if (Object.keys(this.controlErrors).length) { this.controlError = 'Please fix the highlighted fields.'; return; }
+      this.savingControls = true;
       try {
-        this.applyControls(await pb.collection('intake_controls').update(this.controls.id, this.controlsChanges));
+        this.applyControls(await updateAndLog(this.me, 'intake_controls', this.controls, this.controlsChanges));
         this.flash('Saved.');
       } catch (err) {
         const fields = err?.response?.data || {};
         this.controlErrors = Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value?.message || 'Check this field.']));
         this.controlError = Object.keys(this.controlErrors).length ? 'Please fix the highlighted fields.'
           : err?.status === 0 ? 'Couldn\'t reach the server. Check your internet connection and try again.'
+          : err?.status === 400 ? 'The server refused this. Reload the page: someone may have taken a number in the meantime.'
           : err?.response?.message || 'The settings couldn\'t be saved. Please try again.';
       } finally {
         this.savingControls = false;
@@ -365,12 +369,12 @@ document.addEventListener('alpine:init', () => {
       this.voiding = true;
       this.voidError = '';
       try {
-        await pb.send(`/api/clinic/paper-forms/${this.voidTarget.id}/void`, { method: 'POST', body: { reason: this.voidReason.trim() } });
+        await voidPaperForm(this.me, this.voidTarget, this.voidReason.trim());
         this.paperOpen = this.paperOpen.filter((p) => p.id !== this.voidTarget.id);
         this.$refs.voidDialog.close();
         this.flash(`${this.voidTarget.reference} was voided.`);
       } catch (err) {
-        this.voidError = Object.values(err?.response?.data || {})[0]?.message || err?.response?.message || 'It couldn\'t be voided. Please try again.';
+        this.voidError = err?.status === 0 ? 'Couldn\'t reach the server. Check your internet connection and try again.' : 'It couldn\'t be voided. Reload the page: it may have been filed in already.';
       } finally {
         this.voiding = false;
       }

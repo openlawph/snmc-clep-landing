@@ -28,6 +28,7 @@
   <script src="assets/js/auth.js"></script><!-- page-specific: checks the session before showing the page -->
   <script src="assets/js/components/dashboard-sidebar.js" defer></script><!-- page-specific: staff sidebar -->
   <script src="assets/js/intake.js" defer></script><!-- page-specific: form field list, weekdays -->
+  <script src="assets/js/clinic-records.js" defer></script><!-- page-specific: voiding paper numbers, the audit log -->
   <script src="assets/js/settings.js" defer></script><!-- page-specific, must come before Alpine -->
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.5/dist/cdn.min.js" integrity="sha384-FYLKjwG3aohNhNZoVG8sY/5ntunm+MqylL90Q+rT3OM7AwV9/BKFjk/RjoIpIgsI" crossorigin="anonymous" defer></script>
   <!-- ===== /Shared head ===== -->
@@ -155,7 +156,7 @@
                             <span x-text="field.label"></span><span x-show="isRequired(field)" class="text-red-700"> *</span>
                             <span x-show="field.annexD" class="ml-1 whitespace-nowrap rounded-full bg-copper/10 px-2 py-0.5 text-[11px] font-semibold text-copper-dark">Annex D</span>
                           </p>
-                          <p x-show="needsSpamCheck(field)" class="text-xs font-semibold text-[#8a5a1c]">Stays off until the spam check (Turnstile) is set up</p>
+                          <p x-show="needsSpamCheck(field)" class="text-xs font-semibold text-[#8a5a1c]">Stays off until the spam check (Turnstile) is set up on the server</p>
                           <p x-show="field.core" class="text-xs text-muted">Needed for every booking</p>
                           <p x-show="!field.core && isLocked(field)" class="text-xs font-semibold text-copper-dark">Always asked · unlock to change</p>
                           <p x-show="field.canRequire === false" class="text-xs text-muted">Always has an answer, so it can't be required</p>
@@ -197,7 +198,7 @@
           <!-- ---------- Reference numbers & safeguards (saved on its own, to intake_controls) ---------- -->
           <section x-show="controls" class="card" id="paper" aria-labelledby="controls-title">
             <h2 id="controls-title" class="text-2xl">Reference numbers &amp; safeguards</h2>
-            <p class="mt-1 text-sm text-muted">Online bookings and e-filed intakes share one series. Paper forms have their own, so a number written by hand can never clash with one the system gave out. If numbers were used by hand outside the system, move the next number past them.</p>
+            <p class="mt-1 text-sm text-muted">Staff entries get these numbers: e-filed intakes share one series, and paper forms have their own, so a number written by hand can never clash with one the system gave out. Online bookings keep the random reference the form gives them, like SNMC-2026-4K7Q2D. If numbers were used by hand outside the system, move the next number past them.</p>
 
             <form class="mt-5 space-y-5" @submit.prevent="saveControls()" novalidate>
               <div class="grid gap-5 sm:grid-cols-3">
@@ -237,11 +238,6 @@
                   <input id="ctl-mobile" type="number" min="1" max="50" x-model="controlsForm.max_open_per_mobile" :disabled="!isAdmin" class="field disabled:bg-cream" :aria-invalid="!!controlErrors.max_open_per_mobile">
                   <p class="field-hint">Online only. Stops one number filling the calendar.</p>
                 </div>
-              </div>
-              <div>
-                <label for="ctl-emails" class="field-label">Who gets the alert emails</label>
-                <input id="ctl-emails" type="text" x-model="controlsForm.alert_emails" :disabled="!isAdmin" class="field disabled:bg-cream" placeholder="Leave empty for every admin. Separate several with commas." :aria-invalid="!!controlErrors.alert_emails">
-                <p class="field-hint">Urgent requests straight away, and a nightly email only if something has slipped. They never contain client names or case facts.</p>
               </div>
               <p x-show="controlError" x-text="controlError" role="alert" class="field-error"></p>
               <div x-show="isAdmin" class="flex justify-end">

@@ -470,6 +470,5 @@ window.I18N_STRINGS.vs = {
   'Someone else just booked that time. Please choose another slot.': 'Adunay laing nakakuha niana nga oras. Palihug pagpili og laing oras.',
   'That date or time is no longer offered. Please choose another.': 'Wala na kana nga petsa o oras. Palihug pagpili og lain.',
   'This number already has several upcoming bookings. Please call or visit the clinic instead.': 'Kini nga numero aduna nay daghang umaabot nga booking. Palihug tawagi o bisitaha na lang ang klinika.',
-  "Files can't be uploaded right now. Please remove them and bring copies to your visit.": 'Dili ma-upload ang mga file karon. Palihug tangtanga kini ug dad-a ang mga kopya sa imong pagbisita.',
   "One of the files couldn't be accepted. Please use a PDF or a photo of up to {mb} MB.": 'Dili madawat ang usa sa mga file. Palihug gamit og PDF o litrato nga hangtod {mb} MB.',
 };

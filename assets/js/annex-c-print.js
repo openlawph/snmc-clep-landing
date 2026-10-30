@@ -1,7 +1,7 @@
 /*
  * Printable Annex "C" (clinic-annex-c.html): the Request for Legal Assistance Form, word for word, ready for the
- * browser's Print / Save as PDF. Usage: <body x-data="annexCPrint">. Needs auth.js, appointments.js (formatSchedule) and
- * intake-c.js (ANNEX_C); load BEFORE Alpine.
+ * browser's Print / Save as PDF. Usage: <body x-data="annexCPrint">. Needs auth.js, appointments.js (formatSchedule),
+ * clinic-records.js and intake-c.js (ANNEX_C); load BEFORE Alpine.
  *
  *   clinic-annex-c.html#<intake id>          filled in from intake_requests and its appointment
  *   clinic-annex-c.html?blank=<paper number> a blank form again, for a number that's been issued
@@ -57,11 +57,10 @@ document.addEventListener('alpine:init', () => {
       this.issueBusy = true;
       this.issueError = '';
       try {
-        const { references } = await pb.send('/api/clinic/paper-forms', { method: 'POST', body: { count: Number(this.issueCount) } });
-        this.blanks = references;
+        this.blanks = await issuePaperForms(pb.authStore.record, Number(this.issueCount));
         this.issuing = false;
       } catch (err) {
-        this.issueError = Object.values(err?.response?.data || {})[0]?.message || err?.response?.message || 'The numbers couldn\'t be issued. Please try again.';
+        this.issueError = err?.fields?.count || 'The numbers couldn\'t be issued. Please try again.';
       } finally {
         this.issueBusy = false;
       }
@@ -100,7 +99,7 @@ document.addEventListener('alpine:init', () => {
       if (i.voided) return `VOIDED: ${i.void_reason}`;
       const parts = [];
       if (i.source === 'PAPER') parts.push(`Encoded from a paper form${i.paper_ref_written && i.paper_ref_written !== i.reference ? ` marked "${i.paper_ref_written}"` : ''}.`);
-      if (i.encoded_late) parts.push(`Filed late: ${i.late_reason}`);
+      if (this.row?.encoded_late) parts.push(`Filed late: ${i.late_reason}`);
       return parts.join(' ');
     },
 

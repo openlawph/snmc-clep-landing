@@ -48,7 +48,7 @@ const INTAKE_OPTIONS = {
     { value: 'Referral', hint: 'endorsement to another appropriate legal service provider or agency' },
     { value: 'Legal Information', hint: 'general information on laws, procedures, or legal services' },
   ],
-  urgencyFlags: [ // Annex D, Part III. The server reads these (urgencyOf in pb_hooks/clinic-lib.js): keep the wording.
+  urgencyFlags: [ // Annex D, Part III. urgencyEmergency and urgencyNeedsDate look for words in these: keep the wording.
     'I am currently detained.',
     'I have a court hearing within the next seven (7) days.',
     'I received a subpoena, summons, or legal notice.',
@@ -78,9 +78,11 @@ const INTAKE_DEFAULT_SETTINGS = {
   locked_fields: ['lastName', 'firstName', 'mobile', 'narrative'], // "Always ask": can't be turned off until unlocked
 };
 
-// What the file picker accepts. The server's limits are in the `attachments` field (pb_migrations): keep them in step.
-const INTAKE_UPLOADS = { maxFiles: 5, maxBytes: 5 * 1024 * 1024, types: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic'] };
-const INTAKE_NARRATIVE_MAX_WORDS = 300; // Annex D, Part II. The server checks it too.
+// File uploads are built but off: without the spam check on the server (Turnstile hook), anonymous uploads could fill its
+// disk. To turn them on: finish "Spam protection" in the README, add a protected `attachments` file field with these same
+// limits to `appointments`, then set `enabled` here and switch the question on in Intake Settings.
+const INTAKE_UPLOADS = { enabled: false, maxFiles: 5, maxBytes: 5 * 1024 * 1024, types: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic'] };
+const INTAKE_NARRATIVE_MAX_WORDS = 300; // Annex D, Part II. Checked on this page only: an API rule can't count words.
 
 // Days the clinic can offer (never Sunday). `day` = Date#getDay(); `plural` is used in sentences.
 const INTAKE_WEEKDAYS = [
@@ -357,13 +359,21 @@ document.addEventListener('alpine:init', () => {
       this.$watch('calendarMonth', (month) => this.loadFullSlots(month));
     },
 
-    // Which slots of a month are booked up (pocketbase/pb_hooks/clinic-routes.pb.js). If it can't be loaded the
-    // calendar just offers them all, and the server refuses a full slot when the request is sent.
+    // Which slots of a month are booked up (the public `appointment_slots_full` view: when, and nothing about who). If it
+    // can't be loaded the calendar just offers them all, and PocketBase refuses a full slot when the request is sent.
     async loadFullSlots(month) {
       try {
-        const res = await fetch(`${window.SITE.apiUrl}/api/clinic/slots?month=${encodeURIComponent(month)}`);
+        const [year, monthNumber] = month.split('-').map(Number);
+        const start = new Date(`${month}-01T00:00:00+08:00`).toISOString();
+        const end = new Date(Date.UTC(year, monthNumber, 1) - 8 * 60 * 60 * 1000).toISOString(); // the 1st of next month, Manila
+        const filter = `scheduled_at >= "${start.replace('T', ' ')}" && scheduled_at < "${end.replace('T', ' ')}"`;
+        const res = await fetch(`${window.SITE.apiUrl}/api/collections/appointment_slots_full/records?perPage=500&fields=scheduled_at&filter=${encodeURIComponent(filter)}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const { full } = await res.json();
+        const full = {};
+        for (const { scheduled_at: at } of (await res.json()).items) {
+          const manila = new Date(new Date(at.replace(' ', 'T')).getTime() + 8 * 60 * 60 * 1000).toISOString();
+          (full[manila.slice(0, 10)] ||= []).push(manila.slice(11, 16));
+        }
         const keep = Object.fromEntries(Object.entries(this.fullSlots).filter(([date]) => !date.startsWith(month)));
         this.fullSlots = { ...keep, ...full };
         if (this.form.time && !this.availableSlots.includes(this.form.time)) this.form.time = '';
@@ -451,7 +461,7 @@ document.addEventListener('alpine:init', () => {
     shown(key) {
       const field = INTAKE_FIELDS.find((f) => f.key === key);
       if (key === 'age' && this.shown('dob')) return false; // worked out from the date of birth instead
-      if (field?.needsSpamCheck && !this.captchaOn) return false; // the server refuses visitors' uploads without it
+      if (field?.needsSpamCheck && !INTAKE_UPLOADS.enabled) return false;
       return !!field?.core || this.settings.locked_fields.includes(key) || !this.settings.hidden_fields.includes(key);
     },
 
@@ -608,7 +618,7 @@ document.addEventListener('alpine:init', () => {
       return this.narrativeWords > INTAKE_NARRATIVE_MAX_WORDS;
     },
 
-    // Annex D's emergencies: on screen straight away (the clinic also gets an email when the request is sent).
+    // Annex D's emergencies: on screen straight away, because nobody at the clinic is told until they open the dashboard.
     get urgencyEmergency() {
       return this.form.urgencyFlags.some((flag) => /detained|threat/i.test(flag));
     },
@@ -881,19 +891,17 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
-    // The server said no for a reason the client can fix: go back to that question and say so. Their answers stay.
+    // PocketBase said no for a reason the client can fix: go back to that question and say so. Their answers stay.
     showRefusal(code) {
       const refusals = {
         slot_full: [1, 'time', 'Someone else just booked that time. Please choose another slot.'],
         slot_invalid: [1, 'time', 'That date or time is no longer offered. Please choose another.'],
         mobile_cap: [2, 'mobile', 'This number already has several upcoming bookings. Please call or visit the clinic instead.'],
-        narrative_long: [5, 'narrative', 'Please keep this to {n} words. You can tell us the rest at your interview.'],
-        uploads_off: [5, 'attachments', 'Files can\'t be uploaded right now. Please remove them and bring copies to your visit.'],
         attachments: [5, 'attachments', 'One of the files couldn\'t be accepted. Please use a PDF or a photo of up to {mb} MB.'],
       };
       const [step, key, message] = refusals[code];
       this.step = step;
-      this.errors = { [key]: this.tr(message, { n: INTAKE_NARRATIVE_MAX_WORDS, mb: INTAKE_UPLOADS.maxBytes / 1024 / 1024 }) };
+      this.errors = { [key]: this.tr(message, { mb: INTAKE_UPLOADS.maxBytes / 1024 / 1024 }) };
       if (code === 'slot_full' || code === 'slot_invalid') {
         this.form.time = '';
         this.loadFullSlots(this.form.date.slice(0, 7));
@@ -949,7 +957,7 @@ document.addEventListener('alpine:init', () => {
         K_documents: { checklist: f.documents, additional: f.documentsOther, attachedFiles: f.files },
         annexD: {
           preferredContact: f.preferredContact, preferredContactOther: f.preferredContactOther,
-          urgency: { flags: f.urgencyFlags, date: f.urgencyDate }, // the server reads these: urgencyOf in pb_hooks/clinic-lib.js
+          urgency: { flags: f.urgencyFlags, date: f.urgencyDate },
           acknowledgments: { applicationOnly: f.ackApplication, clinicMayContact: f.ackContact },
         },
       };
@@ -957,14 +965,14 @@ document.addEventListener('alpine:init', () => {
 
     /*
      * Saves the request in PocketBase (`appointments`: anyone may create, only staff can read).
-     * Returns the record's id and the reference number shown to the client. The server gives the reference; the one
-     * sent here only counts if the hooks aren't installed on the server.
+     * Returns the record's id and the reference number shown to the client.
      * With files attached it goes as multipart form data, otherwise as JSON.
      */
     async sendRequest(payload) {
       const f = this.form;
       const areas = [...f.practiceAreas, f.practiceOther.trim()].filter(Boolean).join(', ');
       const staff = staffSession();
+      const urgentFlags = f.urgencyFlags.filter((flag) => !/none of the above/i.test(flag));
       for (let attempt = 0; attempt < 3; attempt++) {
         const reference = makeAppointmentReference();
         const data = {
@@ -973,6 +981,8 @@ document.addEventListener('alpine:init', () => {
           email: f.email.trim(),
           mobile_no: normalizeMobile(f.mobile),
           scheduled_at: new Date(`${f.date}T${f.time}:00+08:00`).toISOString(), // clinic (Manila) time
+          client_urgent: urgentFlags.length > 0,
+          urgent_deadline: f.urgencyDate && urgentFlags.length ? new Date(`${f.urgencyDate}T00:00:00+08:00`).toISOString() : '',
           // submittedByStaff marks a booking a signed-in staff member sent from this form (e.g. a test).
           json: { ...payload, ...(staff && { submittedByStaff: staff.record.name || staff.record.email || 'staff' }) },
           turnstile_token: this.captchaToken, // read (not stored) by the PocketBase hook
@@ -1000,29 +1010,36 @@ document.addEventListener('alpine:init', () => {
         }
 
         const failure = await res.json().catch(() => ({}));
-        // Refusals with a field error are the server's own rules (pb_hooks), with a reason the client can fix.
         const fieldErrors = failure?.data || {};
-        const code = Object.values(fieldErrors)[0]?.code;
-        if (['slot_full', 'slot_invalid', 'mobile_cap', 'narrative_long', 'uploads_off'].includes(code)) {
-          throw Object.assign(new Error(code), { refused: code });
-        }
         if (fieldErrors.attachments) throw Object.assign(new Error('attachments'), { refused: 'attachments' });
         if (fieldErrors.reference?.code !== 'validation_not_unique') {
-          // A refused create rule only says "Failed to create record" (no field errors). For visitors the rule
-          // checks maintenance mode and the online booking hours (Site Settings), so ask which one it was.
+          // A refused create rule only says "Failed to create record" (no field errors), so work out which part it was.
           const refused = (res.status === 400 || res.status === 403) && !Object.keys(fieldErrors).length && !/security check/i.test(failure?.message || '');
-          const settings = refused && await fetchSiteSettings({ fresh: true });
-          if (settings?.maintenance) throw Object.assign(new Error('online bookings are paused (maintenance mode)'), { paused: true });
-          if (settings) {
-            this.intakeHours = clinicHours(settings, 'intake') || this.intakeHours; // to say when it opens again
-            this.now = clinicNow();
-            throw Object.assign(new Error('online booking is closed (outside the booking hours)'), { closed: true });
-          }
+          const reason = refused && await this.whyRefused();
+          if (reason) throw Object.assign(new Error('the booking rule refused this'), reason);
           throw Object.assign(new Error(`HTTP ${res.status}: ${JSON.stringify(failure)}`), { status: res.status, captcha: /security check/i.test(failure?.message || '') });
         }
         // That reference is already taken (very unlikely): try another.
       }
       throw new Error('no free reference number');
+    },
+
+    // The booking rule (pocketbase/annex-c-d-schema.js) checks these. Asks for each again, in the order a visitor can do
+    // something about them. Null if it can't tell.
+    async whyRefused() {
+      const { date, time } = this.form;
+      const site = await fetchSiteSettings({ fresh: true });
+      if (!site) return null;
+      if (site.maintenance) return { paused: true };
+      this.intakeHours = clinicHours(site, 'intake') || this.intakeHours; // to say when it opens again
+      this.now = clinicNow();
+      if (this.closedToVisitors) return { closed: true };
+      await this.loadFullSlots(date.slice(0, 7));
+      if ((this.fullSlots[date] || []).includes(time)) return { refused: 'slot_full' };
+      const offered = await fetchIntakeSettings();
+      const day = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date(`${date}T00:00:00Z`).getUTCDay()];
+      if (!offered.time_slots.includes(time) || !offered.days.includes(day) || new Date(`${date}T${time}:00+08:00`) <= new Date()) return { refused: 'slot_invalid' };
+      return { refused: 'mobile_cap' }; // the one left
     },
 
     focusFirstError() {

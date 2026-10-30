@@ -9,8 +9,7 @@
  * in a sheet where staff can set the status and assign an LSP and a supervising lawyer (each save adds
  * a row to `appointments_status`, like the Appointments page). The sheet links to the full record there.
  *
- * "Needs attention" is what the nightly email reports (pocketbase/pb_hooks/clinic-daily.pb.js), live. It stays out of
- * the way when there's nothing to do.
+ * "Needs attention" is what has slipped, live: nothing else tells anyone. It stays out of the way when there's nothing to do.
  */
 
 const OPEN_FILTER = 'app_status != "DONE" && app_status != "CANCELLED"';
@@ -86,7 +85,7 @@ document.addEventListener('alpine:init', () => {
         pb.authStore.onChange(() => (this.me = pb.authStore.record));
         this.$watch('sortKey', () => this.goTo(1));
         this.gateFrom = await loadGateFrom();
-        if (!this.gateFrom) this.sortKey = 'scheduled_at'; // the server files aren't installed: there's no urgency to sort by
+        if (!this.gateFrom) this.sortKey = 'scheduled_at'; // the database changes aren't in yet: there's no urgency to sort by
         this.loadStats();
         this.loadAttention();
         this.loadPeople();
@@ -132,7 +131,7 @@ document.addEventListener('alpine:init', () => {
 
       // What has slipped. Each query failing on its own (say, on an older server) just leaves its line out.
       async loadAttention() {
-        if (!this.gateFrom) return; // the server files aren't installed yet
+        if (!this.gateFrom) return; // the database changes aren't in yet
         const today = manilaTodayStartUTC();
         const open = `${OPEN_FILTER} && ${pb.filter('created >= {:g}', { g: this.gateFrom })}`;
         const lines = [
@@ -312,10 +311,12 @@ document.addEventListener('alpine:init', () => {
       // Adds a status row: the new status / assignment, who made the change, and remarks.
       async saveUpdate() {
         if (!this.updateChanged) return;
-        this.updating = true;
         this.updateError = '';
         const c = this.current;
         const u = this.update;
+        const problem = statusChangeProblem(c, u, this.gateFrom, c, this.practitioners, this.lawyers);
+        if (problem) { this.updateError = problem; return; }
+        this.updating = true;
         try {
           await pb.collection('appointments_status').create({
             app_id: c.id, user_id: this.me.id, app_status: u.app_status,
@@ -328,8 +329,7 @@ document.addEventListener('alpine:init', () => {
           this.loadStats();
           this.loadAttention();
         } catch (err) {
-          // The server's own rules come back as a field error, with a sentence saying what to do.
-          this.updateError = Object.values(this.fieldErrorsFrom(err))[0] || this.messageFor(err, 'save');
+          this.updateError = err?.status === 400 ? 'The server refused this change. Reload the page and check the appointment, then try again.' : this.messageFor(err, 'save');
         } finally {
           this.updating = false;
         }

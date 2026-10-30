@@ -4,15 +4,15 @@
  *
  * PocketBase:
  *  - appointments           one booking: reference, title, email, mobile_no, scheduled_at, json (form answers),
- *                           attachments, and the flags the server sets (client_urgent, possible_duplicate)
+ *                           client_urgent and urgent_deadline (from the form), not_duplicate (staff's answer)
  *  - appointments_status    history log, one row per change: app_status, remarks, lsp_id → practitioners,
  *                           sl_id → lawyers, user_id → the staff member who made the change
  *  - appointments_overview  view: every appointment with its latest status / LSP / SL and its Annex C (the list reads this)
  *  - intake_requests        Annex C: filed on clinic-intake.html, see intake-c.js
- *  - audit_log              who changed what; only the server writes to it
+ *  - audit_log              who changed what; written with each change (clinic-records.js), and can't be edited
  * Changing the status or the assignment adds a new status row; the history itself is never edited here.
- * New appointments start on clinic-intake.html, so a walk-in always has its Annex C. The server enforces the status
- * rules (pocketbase/pb_hooks/clinic-guards.pb.js); what's here only explains them before someone tries.
+ * New appointments start on clinic-intake.html, so a walk-in always has its Annex C. The API rules enforce the status
+ * rules (pocketbase/annex-c-d-schema.js); what's here says why before someone tries, which a refused rule can't.
  */
 
 // Must match the `app_status` select values in PocketBase.
@@ -49,7 +49,7 @@ const ANNEX_C_LABELS = {
 };
 
 // When Annex C became required (intake_controls.gate_from): older appointments don't need one. '' = can't tell (the
-// server files aren't installed yet), so nothing is held back here.
+// database changes aren't in yet), so nothing is held back here.
 async function loadGateFrom() {
   try {
     const { items } = await pb.collection('intake_controls').getList(1, 1, { requestKey: null });
@@ -64,6 +64,15 @@ const intakeGated = (row, gateFrom) => !!gateFrom && !!row && !row.intake_id && 
 // ...and is someone actually waiting to do it? Not once it's closed.
 const needsReceiving = (row, gateFrom) => intakeGated(row, gateFrom) && row.app_status !== 'DONE' && row.app_status !== 'CANCELLED';
 const statusNeedsIntake = (value) => value === 'WIP' || value === 'DONE';
+
+// What's stopping this status or assignment change, in words ('' = nothing). The API rules refuse the same things.
+function statusChangeProblem(row, update, gateFrom, previous, practitioners, lawyers) {
+  if (statusNeedsIntake(update.app_status) && intakeGated(row, gateFrom)) return 'Receive the intake (Annex C) first. Open the appointment and press "Receive intake".';
+  const exempt = !gateFrom || row.created < gateFrom || row.disposition === 'IMMEDIATE_REFERRAL';
+  if (update.app_status === 'DONE' && !exempt && (!update.lsp_id || !update.sl_id)) return 'Assign an LSP and a supervising lawyer before marking this as done.';
+  if (update.app_status === 'CANCELLED' && !update.remarks.trim()) return 'Add a remark saying why this is being cancelled.';
+  return assignmentProblem(update.lsp_id, update.sl_id, previous, practitioners, lawyers)?.[1] || '';
+}
 
 // Appointment times are clinic (Manila) times, whatever time zone the viewer's device is in.
 const CLINIC_TZ = 'Asia/Manila';
@@ -326,7 +335,8 @@ document.addEventListener('alpine:init', () => {
         ]);
         const [intake, changes, fileToken] = await Promise.all([
           row.intake_id ? pb.collection('intake_requests').getOne(row.intake_id, { requestKey: null }) : null,
-          pb.collection('audit_log').getFullList({ filter: pb.filter('target_id = {:id}', { id }), sort: '-created', requestKey: null }).catch(() => []),
+          // By reference too: filing and voiding its Annex C are logged against the Annex C.
+          pb.collection('audit_log').getFullList({ filter: pb.filter('target_id = {:id} || (target_reference != "" && target_reference = {:r})', { id, r: booking.reference }), sort: '-created', requestKey: null }).catch(() => []),
           booking.attachments?.length ? pb.files.getToken({ requestKey: null }) : '',
         ]);
         if (ticket !== this._openTicket) return;
@@ -357,6 +367,24 @@ document.addEventListener('alpine:init', () => {
       if (this.$refs.detailDialog.open) this.closeDetail();
     },
 
+    // An appointment with an Annex C is part of the record (the database refuses too). Otherwise a copy goes in the log.
+    async confirmDelete() {
+      this.deleting = true;
+      this.deleteError = '';
+      try {
+        if (this.deleteTarget.intake_id) throw clinicRefusal('id', 'This appointment has an Annex C, so it can\'t be deleted. Set its status to Cancelled instead.');
+        await deleteAndLog(this.me, 'appointments', await pb.collection('appointments').getOne(this.deleteTarget.id, { requestKey: null }));
+        this.flash(`${this.displayName(this.deleteTarget)} was deleted.`);
+        this.$refs.deleteDialog.close();
+        this.afterDelete();
+        this.load();
+      } catch (err) {
+        this.deleteError = err?.fields?.id || this.messageFor(err, 'delete');
+      } finally {
+        this.deleting = false;
+      }
+    },
+
     get updateChanged() {
       const c = this.current;
       if (!c) return false;
@@ -367,10 +395,12 @@ document.addEventListener('alpine:init', () => {
     // Adds a status row: the new status / assignment, who made the change, and remarks.
     async saveUpdate() {
       if (!this.updateChanged) return;
-      this.updating = true;
       this.updateError = '';
       const c = this.current;
       const u = this.update;
+      const problem = statusChangeProblem(c, u, this.gateFrom, c, this.practitioners, this.lawyers);
+      if (problem) { this.updateError = problem; return; }
+      this.updating = true;
       try {
         await pb.collection('appointments_status').create({
           app_id: c.id, user_id: this.me.id, app_status: u.app_status,
@@ -381,26 +411,25 @@ document.addEventListener('alpine:init', () => {
         await this.open(c.id);
         this.load();
       } catch (err) {
-        // The server's own rules come back as a field error, with a sentence saying what to do.
-        this.updateError = Object.values(this.fieldErrorsFrom(err))[0] || this.messageFor(err, 'save');
+        this.updateError = err?.status === 400 ? 'The server refused this change. Reload the page and check the appointment, then try again.' : this.messageFor(err, 'save');
       } finally {
         this.updating = false;
       }
     },
 
-    // Keeps the Annex C and says why; the appointment goes back to "to receive". Admins only (the server checks).
+    // Keeps the Annex C and says why; the appointment goes back to "to receive". Admins only (the API rules check).
     async voidIntake() {
       if (!this.voidReason.trim()) { this.voidError = 'Say why this is being voided.'; return; }
       this.voiding = true;
       this.voidError = '';
       try {
-        await pb.send(`/api/clinic/intakes/${this.intake.id}/void`, { method: 'POST', body: { reason: this.voidReason.trim() } });
+        await voidIntakeRecord(this.me, this.intake, this.voidReason.trim());
         this.voidReason = '';
         this.flash('Annex C voided.');
         await this.open(this.current.id);
         this.load();
       } catch (err) {
-        this.voidError = Object.values(this.fieldErrorsFrom(err))[0] || this.messageFor(err, 'save');
+        this.voidError = err?.status === 400 ? 'This Annex C couldn\'t be voided. Reload the page and check it hasn\'t been voided already.' : this.messageFor(err, 'save');
       } finally {
         this.voiding = false;
       }
@@ -452,7 +481,7 @@ document.addEventListener('alpine:init', () => {
       this.savingBooking = true;
       this.bookingError = '';
       try {
-        await pb.collection('appointments').update(this.booking.id, {
+        await updateAndLog(this.me, 'appointments', this.booking, {
           title: f.title.trim(), email: f.email.trim(), mobile_no: normalizeMobile(f.mobile_no),
           scheduled_at: f.date ? manilaToUTC(f.date, f.time) : '',
         });

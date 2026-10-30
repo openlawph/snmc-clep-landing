@@ -169,8 +169,7 @@ document.addEventListener('alpine:init', () => {
       const turningOn = this.form.maintenance && !this.saved.maintenance;
       const turningOff = !this.form.maintenance && this.saved.maintenance;
       try {
-        const record = await pb.collection('site_settings').update(this.recordId, this.payload());
-        this.apply(record);
+        this.apply(await updateAndLog(this.me, 'site_settings', { id: this.recordId, ...this.saved }, this.payload()));
         this.flash(turningOn ? 'Maintenance mode is on. Visitors now see the maintenance page.'
           : turningOff ? 'Maintenance mode is off. The site is live again.'
           : 'Saved.');

@@ -29,7 +29,8 @@
   <script src="assets/js/i18n-vs.js" defer></script><!-- page-specific: Bisaya wording -->
   <script src="assets/js/intake.js" defer></script><!-- page-specific, must come before Alpine -->
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.5/dist/cdn.min.js" integrity="sha384-FYLKjwG3aohNhNZoVG8sY/5ntunm+MqylL90Q+rT3OM7AwV9/BKFjk/RjoIpIgsI" crossorigin="anonymous" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+  <script src="assets/js/qr-helper.js" defer></script>
   <!-- ===== /Shared head ===== -->
 </head>
 <body class="bg-cream text-ink">
@@ -58,7 +59,8 @@
     -->
     <section class="py-16 sm:py-20">
       <form x-data="intake" @submit.prevent="step !== lastStep ? next() : submit()" novalidate
-            class="container-site grid scroll-mt-24 gap-8 xl:grid-cols-[2fr_1fr]">
+            class="container-site grid scroll-mt-24 gap-8 xl:grid-cols-[2fr_1fr]"
+            x-effect="window.dispatchEvent(new CustomEvent('qr-wizard', { detail: { show: step === 1 } }))">
 
         <!-- ================= Main card ================= -->
         <div class="card min-w-0">
@@ -80,7 +82,7 @@
 
             <p class="mx-auto mt-4 max-w-md leading-relaxed text-muted" x-t.html>Please <strong>take a screenshot</strong> or a <strong>photo</strong> of this page or QR code now. You will need to present it at reception on your appointment day. Bring a valid ID and all documents about your problem to your appointment.</p>
             <p class="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted" x-t>A representative of the Clinic may contact you if additional information is required or to schedule a preliminary interview. This request does not create a lawyer-client relationship.</p>
-            <!-- Annex D's emergencies: the clinic has been emailed, but the client shouldn't wait for a call back -->
+            <!-- Annex D's emergencies: nobody at the clinic is told until they open the dashboard, so the client shouldn't wait -->
             <div x-show="urgencyEmergency" class="mx-auto mt-6 max-w-md rounded-md bg-red-50 p-4 text-left text-sm text-red-900 ring-1 ring-red-200" role="alert">
               <p class="font-semibold" x-t>You told us this is urgent. Please do not wait for us to call.</p>
               <p class="mt-1" x-t>Contact the Clinic now, or go to the nearest Public Attorney's Office or Integrated Bar of the Philippines chapter.</p>
@@ -493,7 +495,7 @@
                 </div>
               </fieldset>
 
-              <!-- Annex D, Part III. The server flags the booking and emails the clinic for the emergencies. -->
+              <!-- Annex D, Part III. The booking is flagged, and goes to the top of the staff lists. -->
               <fieldset x-field="urgencyFlags">
                 <legend class="form-section mb-4 w-full" x-t>Urgency assessment</legend>
                 <p class="mb-3 text-sm font-semibold" x-t>Does your concern involve any of the following?</p>
@@ -651,7 +653,7 @@
                     <input id="documentsOther" type="text" x-model="form.documentsOther" class="field">
                   </div>
                 </div>
-                <!-- Annex D, Part IV. Only shown once the spam check is on (shown() in intake.js); the server enforces that too. -->
+                <!-- Annex D, Part IV. Off until the spam check is on the server (INTAKE_UPLOADS in intake.js). -->
                 <div x-field="attachments">
                   <h4 class="form-section mt-6" x-t>Supporting documents</h4>
                   <div class="mt-6 rounded-md bg-cream p-4 text-sm leading-relaxed">

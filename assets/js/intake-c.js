@@ -6,9 +6,8 @@
  *   clinic-intake.html               a new intake (walk-in, phone call…): files Annex C and creates the appointment
  *   clinic-intake.html#<appointment> receives that booking: prefilled from the online form, for staff to check
  *
- * Saving goes through POST /api/clinic/intakes (pocketbase/pb_hooks/clinic-routes.pb.js), which checks everything again,
- * gives the reference and saves it all together. Nobody can write to `intake_requests` any other way. Afterwards the page
- * moves on to clinic-annex-c.html, to print it or save it as a PDF.
+ * Saving is fileIntake() in clinic-records.js: it gives the reference and saves everything together, and the API rules
+ * check it again on the server. Afterwards the page moves on to clinic-annex-c.html, to print it or save it as a PDF.
  */
 
 // The choices on the form, word for word. The print page (annex-c-print.js) uses them too.
@@ -90,6 +89,7 @@ document.addEventListener('alpine:init', () => {
       window.addEventListener('beforeunload', (e) => { if (this.dirty) e.preventDefault(); });
       this.$watch('form.schedule_date', () => this.checkSlot());
       this.$watch('form.schedule_time', () => this.checkSlot());
+      let openingBooking = false;
       try {
         const [controls, practitioners, lawyers] = await Promise.all([
           pb.collection('intake_controls').getList(1, 1, { requestKey: null }),
@@ -101,9 +101,14 @@ document.addEventListener('alpine:init', () => {
         this.practitioners = practitioners;
         this.lawyers = lawyers;
         const id = location.hash.slice(1);
-        if (/^[a-z0-9]{15}$/.test(id)) await this.loadBooking(id);
+        if (/^[a-z0-9]{15}$/.test(id)) {
+          openingBooking = true;
+          await this.loadBooking(id);
+        }
       } catch (err) {
-        this.loadError = err?.status === 404 ? 'This appointment no longer exists.' : 'The form couldn\'t be loaded. Check your connection and try again.';
+        this.loadError = err?.status !== 404 ? 'The form couldn\'t be loaded. Check your connection and try again.'
+          : openingBooking ? 'This appointment no longer exists.'
+          : 'The form can\'t open yet: the database changes for Annex C haven\'t been applied (README → "Applying the database changes").';
       } finally {
         this.loading = false;
       }
@@ -220,6 +225,7 @@ document.addEventListener('alpine:init', () => {
       else if (f.date_received > today) e.date_received = 'The date received can\'t be in the future.';
       if (!f.full_name.trim()) e.full_name = 'Enter the applicant\'s full name.';
       if (!f.mobile_no.trim() && !f.email.trim() && !f.address.trim()) e.mobile_no = 'Enter at least one way to reach the applicant.';
+      if (f.mobile_no.trim() && !/^\+?[0-9]{7,19}$/.test(normalizeMobile(f.mobile_no))) e.mobile_no = 'Enter a valid phone number.';
       if (f.email.trim() && !/^\S+@\S+\.\S+$/.test(f.email.trim())) e.email = 'Enter a valid email address.';
       if (!f.nature.trim()) e.nature = 'Describe the request.';
       if (!f.assistance.length && !f.assistance_other.trim()) e.assistance = 'Choose the assistance requested.';
@@ -250,30 +256,28 @@ document.addEventListener('alpine:init', () => {
       this.saving = true;
       const f = this.form;
       try {
-        const saved = await pb.send('/api/clinic/intakes', {
-          method: 'POST',
-          body: {
-            appointment_id: this.appointment?.id || '',
-            date_received: f.date_received, contact_mode: f.contact_mode, contact_mode_other: f.contact_mode_other.trim(),
-            full_name: f.full_name.trim(), address: f.address.trim(), mobile_no: f.mobile_no.trim(), email: f.email.trim(),
-            urgency: f.urgency, disposition: f.disposition, disposition_other: f.disposition_other.trim(),
-            source: f.on_paper ? 'PAPER' : 'DIGITAL', paper_number: f.paper_number.trim(), late_reason: f.late_reason.trim(),
-            not_duplicate: f.not_duplicate, schedule_date: f.schedule_date, schedule_time: f.schedule_time,
-            lsp_id: f.lsp_id, sl_id: f.sl_id, remarks: f.remarks.trim(),
-            answers: {
-              preferred_contact: f.preferred_contact, preferred_other: f.preferred_other.trim(), nature: f.nature.trim(),
-              assistance: f.assistance, assistance_other: f.assistance_other.trim(), is_urgent: f.is_urgent, urgent_details: f.urgent_details.trim(),
-              referral: f.referral, referral_other: f.referral_other.trim(), practice_areas: f.practice_areas, practice_other: f.practice_other.trim(),
-            },
+        const saved = await fileIntake(this.me, {
+          appointment_id: this.appointment?.id || '',
+          date_received: f.date_received, contact_mode: f.contact_mode, contact_mode_other: f.contact_mode_other,
+          full_name: f.full_name, address: f.address, mobile_no: f.mobile_no, email: f.email,
+          urgency: f.urgency, disposition: f.disposition, disposition_other: f.disposition_other,
+          source: f.on_paper ? 'PAPER' : 'DIGITAL', paper_number: f.paper_number, late_reason: f.late_reason,
+          not_duplicate: f.not_duplicate, schedule_date: f.schedule_date, schedule_time: f.schedule_time,
+          lsp_id: f.lsp_id, sl_id: f.sl_id, remarks: f.remarks,
+          answers: {
+            preferred_contact: f.preferred_contact, preferred_other: f.preferred_other.trim(), nature: f.nature.trim(),
+            assistance: f.assistance, assistance_other: f.assistance_other.trim(), is_urgent: f.is_urgent, urgent_details: f.urgent_details.trim(),
+            referral: f.referral, referral_other: f.referral_other.trim(), practice_areas: f.practice_areas, practice_other: f.practice_other.trim(),
           },
-        });
+        }, { practitioners: this.practitioners, lawyers: this.lawyers, lateDays: this.lateDays });
         this.dirty = false;
         location.href = `clinic-annex-c.html?saved#${saved.id}`;
       } catch (err) {
-        const fields = err?.response?.data || {};
-        this.errors = Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value?.message || 'Check this field.']));
+        const fields = err?.fields || err?.response?.data || {};
+        this.errors = Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value?.message || value || 'Check this field.']));
         this.formError = Object.keys(this.errors).length ? 'Please fix the highlighted fields.'
           : err?.status === 0 ? 'Couldn\'t reach the server. Check your internet connection and try again. Nothing was saved.'
+          : err?.status === 400 ? 'The server refused this, so nothing was saved. Reload the page and check it hasn\'t been filed already.'
           : err?.response?.message || 'Something went wrong. Nothing was saved. Please try again.';
         this.focusFirstError();
       } finally {
