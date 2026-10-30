@@ -180,24 +180,45 @@
                   </div>
                   <p x-show="!settingsLoaded" class="field-hint" x-t>Loading available dates…</p>
                   <p x-show="form.date" class="mt-2 text-sm"><span class="text-muted" x-t>Selected:</span> <strong x-text="formatDate(form.date)"></strong></p>
+
+
+
+                  <!-- Time -->
+                  <div x-field="time">
+                    <span id="time-label" class="field-label mt-2" x-t>Time slot</span>
+                    <p x-show="!form.date" class="field-hint" x-t>Pick a date first.</p>
+                    <div x-show="form.date" class="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-labelledby="time-label">
+                      <template x-for="c in slotChoices" :key="c.slot">
+                        <label class="pill justify-center" :class="c.taken && 'is-taken'">
+                          <input type="radio" name="time" :value="c.slot" x-model="form.time" :disabled="c.taken" class="accent-copper" :aria-invalid="!!errors.time">
+                          <span x-text="formatSlot(c.slot)"></span>
+                          <span x-show="c.taken" class="text-xs" x-text="$t('Not available')"></span>
+                        </label>
+                      </template>
+                    </div>
+                    <p x-show="form.date && slotChoices.some((c) => c.taken)" class="field-hint" x-t>Slots marked "Not available" are already taken or have passed. Please choose one of the open slots.</p>
+                    <p x-show="form.date && !availableSlots.length" class="field-hint" x-t>No more slots on this day. Please pick another date.</p>
+                  </div>
+
+
                 </div>
 
-                <!-- Time -->
-                <div x-field="time">
-                  <span id="time-label" class="field-label" x-t>Time slot</span>
-                  <p x-show="!form.date" class="field-hint" x-t>Pick a date first.</p>
-                  <div x-show="form.date" class="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-labelledby="time-label">
-                    <template x-for="c in slotChoices" :key="c.slot">
-                      <label class="pill justify-center" :class="c.taken && 'is-taken'">
-                        <input type="radio" name="time" :value="c.slot" x-model="form.time" :disabled="c.taken" class="accent-copper" :aria-invalid="!!errors.time">
-                        <span x-text="formatSlot(c.slot)"></span>
-                        <span x-show="c.taken" class="text-xs" x-text="$t('Not available')"></span>
-                      </label>
-                    </template>
+                <div>
+                  <span id="time-label" class="field-label" x-t>Check our location:</span>
+                  <p class="field-hint -mt-0.5 mb-3" x-t>Check the map below to locate Sto. Niño Mactan College – Legal Clinic, Soong, Lapu-Lapu City.</p>
+
+                  <div class="w-full overflow-hidden rounded-xl shadow-lg">
+                    <!-- <iframe width="100%" height="100%" src="https://www.google.com/maps?q=Santo+Nino+Mactan+College&amp;z=15&amp;t=m&amp;hl=en&amp;output=embed" style="border:0;display:block;width:100%;height:100%;" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Google Map of SNMC Law"></iframe> -->
+                    <iframe width="100%" height="100%" src="https://www.google.com/maps?q=Santo+Nino+Mactan+College&amp;z=15&amp;t=m&amp;hl=en&amp;output=embed" class="w-full h-72 sm:h-96 md:h-[450px] border-0" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Google Map of SNMC Law"></iframe>
                   </div>
-                  <p x-show="form.date && slotChoices.some((c) => c.taken)" class="field-hint" x-t>Slots marked "Not available" are already taken or have passed. Please choose one of the open slots.</p>
-                  <p x-show="form.date && !availableSlots.length" class="field-hint" x-t>No more slots on this day. Please pick another date.</p>
                 </div>
+
+
+
+
+
+
+
               </div>
 
               <div x-field="firstTime">
