@@ -9,6 +9,7 @@
 
 const LOGIN_NOTICES = {
   'signed-out': 'You\'ve been signed out.',
+  idle: 'You were signed out after an hour with no activity. Please sign in again.',
   expired: 'Your session has ended. Please sign in again.',
   unverified: 'Your email address hasn\'t been verified yet.',
   offline: 'Couldn\'t reach the server to check your session. Please sign in again.',

@@ -1,15 +1,18 @@
 /*
  * Appointments page (clinic-appointments.html) + appointment helpers shared with the dashboard.
- * Usage: <body x-data="appointments">. Needs auth.js, crud.js and intake.js (makeAppointmentReference, normalizeMobile);
- * load BEFORE Alpine.
+ * Usage: <body x-data="appointments">. Needs auth.js, crud.js and intake.js (normalizeMobile); load BEFORE Alpine.
  *
  * PocketBase:
- *  - appointments           one booking: reference, title, email, mobile_no, scheduled_at, json (form answers)
+ *  - appointments           one booking: reference, title, email, mobile_no, scheduled_at, json (form answers),
+ *                           attachments, and the flags the server sets (client_urgent, possible_duplicate)
  *  - appointments_status    history log, one row per change: app_status, remarks, lsp_id → practitioners,
  *                           sl_id → lawyers, user_id → the staff member who made the change
- *  - appointments_overview  view: every appointment with its latest status / LSP / SL (the list reads this)
+ *  - appointments_overview  view: every appointment with its latest status / LSP / SL and its Annex C (the list reads this)
+ *  - intake_requests        Annex C: filed on clinic-intake.html, see intake-c.js
+ *  - audit_log              who changed what; only the server writes to it
  * Changing the status or the assignment adds a new status row; the history itself is never edited here.
- * Staff can add appointments, update them and add status rows; only admins can delete.
+ * New appointments start on clinic-intake.html, so a walk-in always has its Annex C. The server enforces the status
+ * rules (pocketbase/pb_hooks/clinic-guards.pb.js); what's here only explains them before someone tries.
  */
 
 // Must match the `app_status` select values in PocketBase.
@@ -22,6 +25,45 @@ const APPT_STATUSES = [
 ];
 
 const apptStatus = (value) => APPT_STATUSES.find((s) => s.value === value) || APPT_STATUSES[0];
+
+// Must match the `urgency` select values on intake_requests (Annex C).
+const APPT_URGENCIES = [
+  { value: 'HIGH', label: 'High', badge: 'bg-red-600/10 text-red-800 ring-red-600/25' },
+  { value: 'MEDIUM', label: 'Medium', badge: 'bg-amber/15 text-[#8a5a1c] ring-amber/30' },
+  { value: 'LOW', label: 'Low', badge: 'bg-black/5 text-muted ring-black/10' },
+];
+const apptUrgency = (value) => APPT_URGENCIES.find((u) => u.value === value);
+
+// How the Annex C codes read. The form itself is in intake-c.js.
+const ANNEX_C_LABELS = {
+  modes: [
+    { value: 'WALK_IN', label: 'Walk-in' }, { value: 'TELEPHONE', label: 'Telephone' }, { value: 'EMAIL', label: 'Email' },
+    { value: 'ONLINE', label: 'Online Form' }, { value: 'REFERRAL', label: 'Referral' },
+    { value: 'OUTREACH', label: 'Legal Aid Caravan / Outreach' }, { value: 'OTHER', label: 'Other' },
+  ],
+  dispositions: [
+    { value: 'REGISTRATION', label: 'Proceed to Registration' }, { value: 'IMMEDIATE_REFERRAL', label: 'Immediate Referral' },
+    { value: 'EMERGENCY', label: 'Emergency Handling' }, { value: 'INTERVIEW', label: 'Schedule Preliminary Interview' },
+    { value: 'OTHER', label: 'Other' },
+  ],
+};
+
+// When Annex C became required (intake_controls.gate_from): older appointments don't need one. '' = can't tell (the
+// server files aren't installed yet), so nothing is held back here.
+async function loadGateFrom() {
+  try {
+    const { items } = await pb.collection('intake_controls').getList(1, 1, { requestKey: null });
+    return items[0]?.gate_from || '';
+  } catch {
+    return '';
+  }
+}
+
+// Must this appointment have its Annex C before it can start or finish?
+const intakeGated = (row, gateFrom) => !!gateFrom && !!row && !row.intake_id && row.created >= gateFrom;
+// ...and is someone actually waiting to do it? Not once it's closed.
+const needsReceiving = (row, gateFrom) => intakeGated(row, gateFrom) && row.app_status !== 'DONE' && row.app_status !== 'CANCELLED';
+const statusNeedsIntake = (value) => value === 'WIP' || value === 'DONE';
 
 // Appointment times are clinic (Manila) times, whatever time zone the viewer's device is in.
 const CLINIC_TZ = 'Asia/Manila';
@@ -60,7 +102,7 @@ const ANSWER_SECTIONS = {
   appointment: 'Appointment', B_personal: 'B · Personal information', C_household: 'C · Household & income',
   D_sectors: 'D · Sector', E_conflictCheck: 'E · Conflict check', F_legalIssue: 'F · Legal issue',
   G_caseFacts: 'G · Case facts', H_privacyConsent: 'H · Data privacy consent', I_declaration: 'I · Declaration',
-  K_documents: 'K · Documents',
+  K_documents: 'K · Documents', annexD: 'Annex D · Online request',
 };
 const ANSWER_LABELS = { dob: 'Date of birth', residentOfLapuLapu: 'Resident of Lapu-Lapu City', mobile: 'Mobile', addressPhone: 'Address / phone' };
 const humanize = (key) => ANSWER_LABELS[key] || key.replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, (c) => c.toUpperCase()).replace(/ ([A-Z])(?=[a-z])/g, (m, c) => ' ' + c.toLowerCase());
@@ -86,25 +128,23 @@ function answerSections(json) {
   return sections.filter((s) => s.rows.length);
 }
 
-const emptyNewAppointment = () => ({
-  name: '', concern: '', mobile: '', email: '', date: '', time: '',
-  app_status: 'SCHEDULED', lsp_id: '', sl_id: '', remarks: '',
-});
-
 document.addEventListener('alpine:init', () => {
   Alpine.data('appointments', () => crudPage({
     collection: 'appointments_overview',
     writeCollection: 'appointments',
     singular: 'appointment',
     plural: 'appointments',
-    searchFields: ['reference', 'title', 'email', 'mobile_no', 'lsp_name', 'sl_name'],
-    filters: { tab: 'pending', statusFilter: '', lspFilter: '', slFilter: '' },
+    searchFields: ['reference', 'title', 'email', 'mobile_no', 'lsp_name', 'sl_name', 'paper_ref_written'],
+    filters: { tab: 'pending', statusFilter: '', lspFilter: '', slFilter: '', urgencyFilter: '' },
     sortKey: 'scheduled_at',
     sortDir: 'asc',
   }, {
     statuses: APPT_STATUSES,
+    urgencies: APPT_URGENCIES,
+    gateFrom: '',
     tabs: [
       { value: 'pending', label: 'Pending', hint: 'Waiting to be confirmed or assigned' },
+      { value: 'receive', label: 'To receive', hint: 'No Annex C yet, and still open' },
       { value: 'scheduled', label: 'Scheduled', hint: 'Confirmed or in progress, today onward' },
       { value: 'followup', label: 'Follow-ups', hint: 'Returning clients (not their first visit), today onward' },
       { value: 'past', label: 'Past', hint: 'The appointment date has passed' },
@@ -118,15 +158,23 @@ document.addEventListener('alpine:init', () => {
       { key: 'scheduled_at', label: 'When', sortable: true },
       { key: 'title', label: 'Client', sortable: true },
       { key: 'app_status', label: 'Status', sortable: true },
+      { key: 'urgency_rank', label: 'Urgency', sortable: true },
       { key: 'lsp_name', label: 'LSP', sortable: true },
-      { key: 'sl_name', label: 'Supervising lawyer', sortable: true },
-      { key: 'created', label: 'Received', sortable: true },
+      { key: 'sl_name', label: 'Lawyer', sortable: true },
+      { key: 'created', label: 'Submitted', sortable: true, wide: true }, // on wider screens only, so the rest fits a 1280 laptop
     ],
 
     // Detail dialog
     current: null, // appointments_overview row
     booking: null, // appointments record (answers in .json)
+    intake: null, // intake_requests record (Annex C), if received
     history: [],
+    changes: [], // audit_log rows for this appointment
+    fileToken: '', // lets staff open the client's uploads, which are protected
+    voidOpen: false,
+    voidReason: '',
+    voidError: '',
+    voiding: false,
     detailLoading: false,
     detailError: '',
     update: { app_status: 'PENDING', lsp_id: '', sl_id: '', remarks: '' },
@@ -138,15 +186,10 @@ document.addEventListener('alpine:init', () => {
     savingBooking: false,
     bookingError: '',
 
-    // New appointment dialog
-    newForm: emptyNewAppointment(),
-    newErrors: {},
-    creating: false,
-    createError: '',
-
     init() {
       pb.authStore.onChange(() => (this.me = pb.authStore.record));
       this.loadPeople();
+      loadGateFrom().then((gate) => { this.gateFrom = gate; if (this.tab === 'receive') this.load(); });
       // Past appointments read best newest first; the others soonest first.
       this.$watch('tab', (t) => (this.sortDir = t === 'past' && this.sortKey === 'scheduled_at' ? 'desc' : this.sortKey === 'scheduled_at' ? 'asc' : this.sortDir));
       // clinic-appointments.html#<id> opens that appointment (links from the dashboard).
@@ -191,13 +234,18 @@ document.addEventListener('alpine:init', () => {
       const today = manilaTodayStartUTC();
       const live = pb.filter('(scheduled_at = "" || scheduled_at >= {:t})', { t: today });
       if (this.tab === 'pending') parts.push('app_status = "PENDING"', live);
-      else if (this.tab === 'scheduled') parts.push('(app_status = "SCHEDULED" || app_status = "WIP")', live);
+      else if (this.tab === 'receive') {
+        parts.push('(intake_id = null || intake_id = "") && app_status != "DONE" && app_status != "CANCELLED"');
+        if (this.gateFrom) parts.push(pb.filter('created >= {:g}', { g: this.gateFrom }));
+      } else if (this.tab === 'scheduled') parts.push('(app_status = "SCHEDULED" || app_status = "WIP")', live);
       else if (this.tab === 'followup') {
         parts.push('app_status != "DONE" && app_status != "CANCELLED"', live);
         parts.push(this.followIds.length ? '(' + this.followIds.map((id) => pb.filter('id = {:id}', { id })).join(' || ') + ')' : 'id = ""');
       } else if (this.tab === 'past') parts.push(pb.filter('scheduled_at != "" && scheduled_at < {:t}', { t: today }));
       if (this.statusFilter === 'open') parts.push('app_status != "DONE" && app_status != "CANCELLED"');
       else if (this.statusFilter) parts.push(pb.filter('app_status = {:s}', { s: this.statusFilter }));
+      if (this.urgencyFilter === 'client') parts.push('client_urgent = true');
+      else if (this.urgencyFilter) parts.push(pb.filter('urgency = {:u}', { u: this.urgencyFilter }));
       for (const [key, value] of [['lsp_id', this.lspFilter], ['sl_id', this.slFilter]]) {
         if (value === 'none') parts.push(`(${key} = null || ${key} = "")`);
         else if (value) parts.push(pb.filter(`${key} = {:id}`, { id: value }));
@@ -213,9 +261,38 @@ document.addEventListener('alpine:init', () => {
 
     statusLabel: (value) => apptStatus(value).label,
     statusClass: (value) => apptStatus(value).badge,
+    urgencyOf: apptUrgency,
     formatSchedule: (value, opts) => formatSchedule(value, opts),
     personName,
     answerSections,
+
+    needsReceiving(row) {
+      return needsReceiving(row, this.gateFrom);
+    },
+
+    // In progress and Done wait for Annex C (the server refuses them too).
+    statusLocked(value) {
+      return statusNeedsIntake(value) && intakeGated(this.current, this.gateFrom);
+    },
+
+    // Annex C rows and labels for the card in the dialog.
+    get intakeRows() {
+      const i = this.intake;
+      if (!i) return [];
+      const label = (list, value) => list.find((item) => item.value === value)?.label || value || '—';
+      return [
+        ['Date received', formatSchedule(i.date_received, { time: false })],
+        ['Received by', i.received_by_name || '—'],
+        ['Filed', formatSchedule(i.received_at)],
+        ['Mode of contact', label(ANNEX_C_LABELS.modes, i.contact_mode)],
+        ['Urgency', label(APPT_URGENCIES, i.urgency)],
+        ['Disposition', label(ANNEX_C_LABELS.dispositions, i.disposition) + (i.disposition_other ? `: ${i.disposition_other}` : '')],
+      ];
+    },
+
+    attachmentUrl(name) {
+      return pb.files.getURL(this.booking, name, { token: this.fileToken });
+    },
 
     personOption(p) {
       return `${p.lname}, ${p.fname}${p.level ? ` (${p.level})` : ''}${p.status && p.status !== 'active' ? ` · ${p.status}` : ''}`;
@@ -228,7 +305,11 @@ document.addEventListener('alpine:init', () => {
       const ticket = (this._openTicket = (this._openTicket || 0) + 1);
       this.current = null;
       this.booking = null;
+      this.intake = null;
       this.history = [];
+      this.changes = [];
+      this.fileToken = '';
+      this.voidOpen = false;
       this.detailError = '';
       this.updateError = '';
       this.editingBooking = false;
@@ -243,10 +324,18 @@ document.addEventListener('alpine:init', () => {
             filter: pb.filter('app_id = {:id}', { id }), sort: '-created', expand: 'user_id,lsp_id,sl_id', requestKey: null,
           }),
         ]);
+        const [intake, changes, fileToken] = await Promise.all([
+          row.intake_id ? pb.collection('intake_requests').getOne(row.intake_id, { requestKey: null }) : null,
+          pb.collection('audit_log').getFullList({ filter: pb.filter('target_id = {:id}', { id }), sort: '-created', requestKey: null }).catch(() => []),
+          booking.attachments?.length ? pb.files.getToken({ requestKey: null }) : '',
+        ]);
         if (ticket !== this._openTicket) return;
         this.current = row;
         this.booking = booking;
+        this.intake = intake;
         this.history = log;
+        this.changes = changes;
+        this.fileToken = fileToken;
         this.update = { app_status: row.app_status || 'PENDING', lsp_id: row.lsp_id || '', sl_id: row.sl_id || '', remarks: '' };
       } catch (err) {
         if (ticket !== this._openTicket) return;
@@ -292,10 +381,37 @@ document.addEventListener('alpine:init', () => {
         await this.open(c.id);
         this.load();
       } catch (err) {
-        this.updateError = this.messageFor(err, 'save');
+        // The server's own rules come back as a field error, with a sentence saying what to do.
+        this.updateError = Object.values(this.fieldErrorsFrom(err))[0] || this.messageFor(err, 'save');
       } finally {
         this.updating = false;
       }
+    },
+
+    // Keeps the Annex C and says why; the appointment goes back to "to receive". Admins only (the server checks).
+    async voidIntake() {
+      if (!this.voidReason.trim()) { this.voidError = 'Say why this is being voided.'; return; }
+      this.voiding = true;
+      this.voidError = '';
+      try {
+        await pb.send(`/api/clinic/intakes/${this.intake.id}/void`, { method: 'POST', body: { reason: this.voidReason.trim() } });
+        this.voidReason = '';
+        this.flash('Annex C voided.');
+        await this.open(this.current.id);
+        this.load();
+      } catch (err) {
+        this.voidError = Object.values(this.fieldErrorsFrom(err))[0] || this.messageFor(err, 'save');
+      } finally {
+        this.voiding = false;
+      }
+    },
+
+    // One line per audit_log row, e.g. "title, email".
+    changeSummary(entry) {
+      if (entry.action === 'delete') return 'deleted';
+      if (entry.action === 'intake_create' || entry.action === 'intake_receive') return 'Annex C filed';
+      if (entry.action === 'intake_void') return `Annex C voided: ${entry.changes?.reason || ''}`;
+      return Object.keys(entry.changes || {}).map((key) => key.replace(/_/g, ' ')).join(', ') || entry.action;
     },
 
     historyPerson(entry, key) {
@@ -349,62 +465,6 @@ document.addEventListener('alpine:init', () => {
       } finally {
         this.savingBooking = false;
       }
-    },
-
-    // ---------- New appointment (walk-ins, phone calls) ----------
-
-    openCreate() {
-      this.newForm = emptyNewAppointment();
-      this.newErrors = {};
-      this.createError = '';
-      this.$refs.newDialog.showModal();
-    },
-
-    async createAppointment() {
-      const f = this.newForm;
-      const e = {};
-      if (!f.name.trim()) e.name = 'Enter the client\'s name.';
-      this.validateContact({ mobile: f.mobile.trim(), email: f.email.trim(), date: f.date, time: f.time }, e);
-      this.newErrors = e;
-      if (Object.keys(e).length) return;
-      this.creating = true;
-      this.createError = '';
-      const reference = makeAppointmentReference();
-      let record;
-      try {
-        record = await pb.collection('appointments').create({
-          reference,
-          title: [f.name.trim(), f.concern.trim()].filter(Boolean).join(' — '),
-          email: f.email.trim(),
-          mobile_no: normalizeMobile(f.mobile),
-          scheduled_at: f.date ? manilaToUTC(f.date, f.time) : '',
-          json: { source: 'staff', addedBy: this.me?.name || this.me?.email || '', addedAt: new Date().toISOString(), concern: f.concern.trim() },
-        });
-      } catch (err) {
-        // PocketBase names the fields title / mobile_no; this form calls them name / mobile.
-        const { title: name, mobile_no: mobile, email } = this.fieldErrorsFrom(err);
-        this.newErrors = Object.fromEntries(Object.entries({ name, mobile, email }).filter(([, message]) => message));
-        this.createError = Object.keys(this.newErrors).length ? 'Please fix the highlighted fields.' : this.messageFor(err, 'save');
-        this.creating = false;
-        return;
-      }
-      // The appointment exists from here on: close the dialog whatever happens, so it isn't added twice.
-      let note = '';
-      if (f.app_status !== 'PENDING' || f.lsp_id || f.sl_id || f.remarks.trim()) {
-        try {
-          await pb.collection('appointments_status').create({
-            app_id: record.id, user_id: this.me.id, app_status: f.app_status,
-            lsp_id: f.lsp_id, sl_id: f.sl_id, remarks: f.remarks.trim(),
-          });
-        } catch {
-          note = ' Its status and assignment couldn\'t be saved: set them again below.';
-        }
-      }
-      this.creating = false;
-      this.$refs.newDialog.close();
-      this.flash(`${reference} was added.${note}`);
-      this.load();
-      this.open(record.id);
     },
   }));
 });

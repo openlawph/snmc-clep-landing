@@ -28,7 +28,7 @@
   <script src="assets/js/auth.js"></script><!-- page-specific: checks the session before showing the page -->
   <script src="assets/js/components/dashboard-sidebar.js" defer></script><!-- page-specific: staff sidebar -->
   <script src="assets/js/crud.js" defer></script><!-- page-specific: shared table / delete logic -->
-  <script src="assets/js/intake.js" defer></script><!-- page-specific: makeAppointmentReference() -->
+  <script src="assets/js/intake.js" defer></script><!-- page-specific: normalizeMobile() -->
   <script src="assets/js/appointments.js" defer></script><!-- page-specific, must come before Alpine -->
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.5/dist/cdn.min.js" integrity="sha384-FYLKjwG3aohNhNZoVG8sY/5ntunm+MqylL90Q+rT3OM7AwV9/BKFjk/RjoIpIgsI" crossorigin="anonymous" defer></script>
   <!-- ===== /Shared head ===== -->
@@ -42,10 +42,10 @@
         <svg class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
       <h1 class="truncate text-2xl">Appointments</h1>
-      <button type="button" class="btn btn-primary ml-auto shrink-0 px-4 py-2" @click="openCreate()">
+      <a href="clinic-intake.html" class="btn btn-primary ml-auto shrink-0 px-4 py-2">
         <svg class="size-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        New<span class="hidden sm:inline"> appointment</span>
-      </button>
+        New<span class="hidden sm:inline"> intake</span>
+      </a>
     </header>
 
     <main class="space-y-6 px-4 py-8 sm:px-6 lg:px-8">
@@ -66,7 +66,7 @@
           </div>
 
           <!-- Controls -->
-          <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_auto]">
+          <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]">
             <label class="relative block sm:col-span-2 xl:col-span-1">
               <span class="sr-only">Search appointments</span>
               <svg class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -78,6 +78,14 @@
                 <option value="">All statuses</option>
                 <option value="open">Open (not done or cancelled)</option>
                 <template x-for="s in statuses" :key="s.value"><option :value="s.value" x-text="s.label"></option></template>
+              </select>
+            </label>
+            <label>
+              <span class="sr-only">Urgency</span>
+              <select x-model="urgencyFilter" class="field">
+                <option value="">Any urgency</option>
+                <option value="client">Client says urgent</option>
+                <template x-for="u in urgencies" :key="u.value"><option :value="u.value" x-text="u.label"></option></template>
               </select>
             </label>
             <label>
@@ -106,8 +114,9 @@
             <thead class="bg-cream/60 text-xs uppercase tracking-wider text-muted">
               <tr>
                 <template x-for="col in columns" :key="col.key">
-                  <th scope="col" class="px-5 py-3 font-semibold" :aria-sort="col.sortable ? ariaSort(col.key) : null">
-                    <button type="button" @click="sortBy(col.key)" class="inline-flex items-center gap-1.5 uppercase tracking-wider hover:text-ink"
+                  <th scope="col" class="px-3 py-3 first:pl-5 last:pr-5 font-semibold" :class="col.wide && 'hidden min-[1344px]:table-cell'" :aria-sort="col.sortable ? ariaSort(col.key) : null">
+                    <span x-show="!col.sortable" x-text="col.label"></span>
+                    <button x-show="col.sortable" type="button" @click="sortBy(col.key)" class="inline-flex items-center gap-1.5 uppercase tracking-wider hover:text-ink"
                             :class="sortKey === col.key && 'text-ink'">
                       <span x-text="col.label"></span>
                       <svg class="size-3.5 transition" :class="sortKey !== col.key ? 'opacity-30' : (sortDir === 'desc' ? 'rotate-180' : '')"
@@ -115,30 +124,37 @@
                     </button>
                   </th>
                 </template>
-                <th scope="col" class="px-5 py-3 text-right font-semibold"><span class="sr-only">Actions</span></th>
+                <th scope="col" class="px-3 py-3 first:pl-5 last:pr-5 text-right font-semibold"><span class="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody class="divide-y divide-black/5" :class="loading && rows.length && 'opacity-50'">
               <template x-for="row in rows" :key="row.id">
                 <tr class="cursor-pointer hover:bg-cream/50" @click="open(row.id)">
-                  <td class="whitespace-nowrap px-5 py-3">
+                  <td class="whitespace-nowrap px-3 py-3 first:pl-5 last:pr-5">
                     <span x-show="row.scheduled_at" class="block font-semibold" x-text="formatSchedule(row.scheduled_at, { time: false })"></span>
                     <span x-show="row.scheduled_at" class="text-muted" x-text="formatSchedule(row.scheduled_at).split(' · ')[1]"></span>
                     <span x-show="!row.scheduled_at" class="italic text-muted">No date yet</span>
                   </td>
-                  <td class="px-5 py-3">
-                    <span class="block max-w-xs truncate font-semibold" x-text="row.title"></span>
+                  <td class="px-3 py-3 first:pl-5 last:pr-5">
+                    <span class="block max-w-[13rem] truncate font-semibold" x-text="row.title"></span>
                     <span class="block text-xs text-muted">
                       <span class="font-mono" x-text="row.reference"></span><span x-show="row.reference && (row.mobile_no || row.email)"> · </span><span x-text="row.mobile_no || row.email"></span>
                     </span>
                   </td>
-                  <td class="whitespace-nowrap px-5 py-3">
+                  <td class="whitespace-nowrap px-3 py-3 first:pl-5 last:pr-5">
                     <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1" :class="statusClass(row.app_status)" x-text="statusLabel(row.app_status)"></span>
+                    <span x-show="needsReceiving(row)" class="block pt-1 text-xs font-semibold text-red-700">To receive</span>
+                    <span x-show="row.intake_id" class="block pt-1 text-xs text-emerald-800">Annex C ✓<span x-show="row.encoded_late" class="ml-1 rounded-full bg-amber/15 px-1.5 py-0.5 text-[11px] font-semibold text-[#8a5a1c]">Late</span></span>
                   </td>
-                  <td class="whitespace-nowrap px-5 py-3" :class="!row.lsp_name && 'italic text-muted'" x-text="row.lsp_name || 'Not assigned'"></td>
-                  <td class="whitespace-nowrap px-5 py-3" :class="!row.sl_name && 'italic text-muted'" x-text="row.sl_name || 'Not assigned'"></td>
-                  <td class="whitespace-nowrap px-5 py-3 text-muted" x-text="formatDate(row.created)"></td>
-                  <td class="whitespace-nowrap px-5 py-3 text-right">
+                  <td class="whitespace-nowrap px-3 py-3 first:pl-5 last:pr-5">
+                    <span x-show="urgencyOf(row.urgency)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1" :class="urgencyOf(row.urgency)?.badge" x-text="urgencyOf(row.urgency)?.label"></span>
+                    <span x-show="row.client_urgent && !row.urgency" class="inline-flex rounded-full bg-red-600/10 px-2.5 py-0.5 text-xs font-semibold text-red-800 ring-1 ring-red-600/25">Client: urgent</span>
+                    <span x-show="!row.urgency && !row.client_urgent" class="text-muted">—</span>
+                  </td>
+                  <td class="whitespace-nowrap px-3 py-3 first:pl-5 last:pr-5" :class="!row.lsp_name && 'italic text-muted'" x-text="row.lsp_name || 'Not assigned'"></td>
+                  <td class="whitespace-nowrap px-3 py-3 first:pl-5 last:pr-5" :class="!row.sl_name && 'italic text-muted'" x-text="row.sl_name || 'Not assigned'"></td>
+                  <td class="hidden whitespace-nowrap px-3 py-3 first:pl-5 last:pr-5 text-muted min-[1344px]:table-cell" x-text="formatDate(row.created)"></td>
+                  <td class="whitespace-nowrap px-3 py-3 first:pl-5 last:pr-5 text-right">
                     <button type="button" class="rounded-sm px-2.5 py-1.5 font-semibold text-copper-dark hover:bg-black/5" @click.stop="open(row.id)"
                             :aria-label="'Open ' + (row.reference || row.title)">Open</button>
                   </td>
@@ -157,7 +173,7 @@
               <tr x-show="!loading && !loadError && !rows.length" x-cloak>
                 <td :colspan="columns.length + 1" class="px-5 py-12 text-center text-muted">
                   No appointments match these filters.
-                  <button type="button" class="ml-1 font-semibold text-copper-dark hover:underline" @click="tab = 'all'; statusFilter = ''; lspFilter = ''; slFilter = ''; search = ''">Show all</button>
+                  <button type="button" class="ml-1 font-semibold text-copper-dark hover:underline" @click="tab = 'all'; statusFilter = ''; lspFilter = ''; slFilter = ''; urgencyFilter = ''; search = ''">Show all</button>
                 </td>
               </tr>
             </tbody>
@@ -229,6 +245,8 @@
           <p class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted" x-show="current">
             <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1"
                   :class="statusClass(current?.app_status)" x-text="statusLabel(current?.app_status)"></span>
+            <span x-show="urgencyOf(current?.urgency)" class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1" :class="urgencyOf(current?.urgency)?.badge" x-text="(urgencyOf(current?.urgency)?.label || '') + ' urgency'"></span>
+            <span x-show="current?.client_urgent" class="inline-flex rounded-full bg-red-600/10 px-2.5 py-0.5 text-xs font-semibold text-red-800 ring-1 ring-red-600/25">Client says urgent</span>
             <span x-text="current?.scheduled_at ? formatSchedule(current.scheduled_at) : 'No date yet'"></span>
           </p>
         </div>
@@ -242,6 +260,8 @@
 
         <!-- Action links: own row on mobile, inline on sm+ -->
         <div x-show="current" class="order-3 -ml-3 flex w-full flex-wrap gap-x-1 sm:order-2 sm:ml-0 sm:w-auto sm:flex-nowrap">
+          <a x-show="current?.intake_id" :href="'clinic-annex-c.html#' + current?.intake_id" target="_blank" rel="noopener"
+            class="rounded-sm px-3 py-2 text-sm font-semibold text-copper-dark hover:bg-black/5">Annex C</a>
           <a :href="'clinic-intake-print.html#' + current?.id" target="_blank" rel="noopener"
             class="rounded-sm px-3 py-2 text-sm font-semibold text-copper-dark hover:bg-black/5">Print intake form</a>
           <a :href="'clinic-ulas-form.html#' + current?.id"
@@ -266,6 +286,44 @@
 
         <!-- ---------- Status & assignment ---------- -->
         <div class="space-y-6 lg:order-2">
+          <!-- ---------- Annex C ---------- -->
+          <section class="card" :class="needsReceiving(current) && 'ring-2 ring-copper'">
+            <h3 class="text-xl">Intake (Annex C)</h3>
+            <template x-if="!current.intake_id">
+              <div>
+                <p class="mt-1 text-sm text-muted" x-text="needsReceiving(current) ? 'Not received yet. Receive it when you confirm the booking, or when the client arrives. It has to be done before this can be In progress or Done.' : ['DONE', 'CANCELLED'].includes(current.app_status) ? 'This appointment is closed with no Annex C on file. You can still file one.' : 'This appointment is from before Annex C, so it doesn\'t need one. You can still file one.'"></p>
+                <a :href="'clinic-intake.html#' + current.id" class="btn btn-primary mt-4 w-full">Receive intake</a>
+              </div>
+            </template>
+            <template x-if="intake">
+              <div>
+                <dl class="mt-3 grid grid-cols-[7.5rem_1fr] gap-x-4 gap-y-1.5 text-sm">
+                  <template x-for="[label, value] in intakeRows" :key="label">
+                    <div class="contents"><dt class="text-muted" x-text="label"></dt><dd x-text="value"></dd></div>
+                  </template>
+                </dl>
+                <p x-show="intake.source === 'PAPER'" class="mt-3 rounded-sm bg-cream px-3 py-2 text-sm">
+                  Encoded from a paper form<span x-show="intake.paper_ref_written && intake.paper_ref_written !== intake.reference"> marked <strong class="font-mono" x-text="intake.paper_ref_written"></strong></span><span x-show="intake.unissued_paper"> (not an issued number)</span>.
+                </p>
+                <p x-show="intake.encoded_late" class="mt-3 rounded-sm bg-amber/15 px-3 py-2 text-sm ring-1 ring-amber/30">Filed late: <span x-text="intake.late_reason"></span></p>
+                <a :href="'clinic-annex-c.html#' + intake.id" target="_blank" rel="noopener" class="btn btn-ghost mt-4 w-full text-ink">Print / save Annex C</a>
+                <div x-show="isAdmin" class="mt-3 text-right">
+                  <button x-show="!voidOpen" type="button" class="text-sm font-semibold text-red-700 hover:underline" @click="voidOpen = true; voidError = ''">Void this Annex C…</button>
+                  <div x-show="voidOpen" class="text-left">
+                    <label for="void-reason" class="field-label">Why is this being voided?</label>
+                    <textarea id="void-reason" rows="2" x-model="voidReason" class="field"></textarea>
+                    <p x-show="voidError" x-text="voidError" role="alert" class="field-error"></p>
+                    <p class="field-hint">The record stays, marked as void, and the appointment goes back to "To receive".</p>
+                    <div class="mt-3 flex justify-end gap-3">
+                      <button type="button" class="btn btn-ghost text-ink" @click="voidOpen = false">Keep it</button>
+                      <button type="button" class="btn bg-red-700 text-white hover:bg-red-800" :disabled="voiding" @click="voidIntake()" x-text="voiding ? 'Voiding…' : 'Void'"></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </section>
+
           <form class="card space-y-5" @submit.prevent="saveUpdate()">
             <div>
               <h3 class="text-xl">Status &amp; assignment</h3>
@@ -275,9 +333,10 @@
               <span class="field-label">Status</span>
               <div class="flex flex-wrap gap-2">
                 <template x-for="s in statuses" :key="s.value">
-                  <label class="pill"><input type="radio" class="accent-copper" :value="s.value" x-model="update.app_status"> <span x-text="s.label"></span></label>
+                  <label class="pill" :class="statusLocked(s.value) && 'cursor-not-allowed opacity-50'"><input type="radio" class="accent-copper" :value="s.value" x-model="update.app_status" :disabled="statusLocked(s.value)"> <span x-text="s.label"></span></label>
                 </template>
               </div>
+              <p x-show="statusLocked('WIP')" class="field-hint">In progress and Done open up once the intake (Annex C) is received.</p>
             </div>
             <div>
               <label for="u-lsp" class="field-label">Law student practitioner (LSP)</label>
@@ -323,6 +382,15 @@
                 </li>
               </template>
             </ol>
+            <!-- Written by the server (audit_log), so it can't be tidied up afterwards -->
+            <details x-show="changes.length" class="mt-5 border-t border-black/10 pt-4 text-sm">
+              <summary class="cursor-pointer font-semibold">Changes to this record (<span x-text="changes.length"></span>)</summary>
+              <ul class="mt-3 space-y-2">
+                <template x-for="entry in changes" :key="entry.id">
+                  <li><span class="text-muted" x-text="formatSchedule(entry.created)"></span> · <span x-text="entry.user_name || 'Someone'"></span>: <span x-text="changeSummary(entry)"></span></li>
+                </template>
+              </ul>
+            </details>
           </section>
         </div>
 
@@ -342,6 +410,9 @@
               <dt class="text-muted">Received</dt><dd x-text="formatSchedule(booking.created)"></dd>
               <dt class="text-muted">Source</dt><dd x-text="booking.json?.source === 'staff' ? 'Added by staff' + (booking.json.addedBy ? ' (' + booking.json.addedBy + ')' : '') : booking.json?.formNo ? 'Online booking form' : '—'"></dd>
             </dl>
+            <p x-show="!editingBooking && current.possible_duplicate" class="mt-4 rounded-sm bg-amber/15 px-3 py-2 text-sm ring-1 ring-amber/30">
+              This number was used in another booking in the last 30 days. It may be the same person: search for it in the list before going on.
+            </p>
 
             <form x-show="editingBooking" @submit.prevent="saveBooking()" class="mt-4 space-y-4" novalidate>
               <div>
@@ -379,6 +450,16 @@
             </form>
           </section>
 
+          <section x-show="booking.attachments?.length" class="card">
+            <h3 class="text-xl">Supporting documents</h3>
+            <p class="mt-1 text-sm text-muted">Uploaded by the client. Only signed-in staff can open these.</p>
+            <ul class="mt-3 space-y-1 text-sm">
+              <template x-for="name in booking.attachments || []" :key="name">
+                <li class="truncate"><a class="font-semibold text-copper-dark hover:underline" :href="attachmentUrl(name)" target="_blank" rel="noopener" x-text="name"></a></li>
+              </template>
+            </ul>
+          </section>
+
           <section class="card">
             <h3 class="text-xl">Form answers</h3>
             <p class="mt-1 text-sm text-muted">What the client entered. Unanswered questions are left out.</p>
@@ -400,92 +481,12 @@
             </div>
           </section>
 
-          <div x-show="isAdmin" class="flex justify-end">
+          <div x-show="isAdmin && !current.intake_id" class="flex justify-end">
             <button type="button" class="rounded-sm px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" @click="askDelete(current)">Delete appointment…</button>
           </div>
         </div>
       </div>
     </template>
-  </dialog>
-
-  <!-- ================= New appointment dialog ================= -->
-  <dialog x-ref="newDialog" aria-labelledby="new-title"
-          class="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-md bg-paper p-0 text-ink shadow-xl backdrop:bg-black/50">
-    <form @submit.prevent="createAppointment()" novalidate class="p-6 sm:p-8">
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <p class="eyebrow">New appointment</p>
-          <h2 id="new-title" class="mt-2 text-3xl">Add a walk-in or phone booking</h2>
-        </div>
-        <button type="button" class="-mr-2 -mt-2 rounded-sm p-2 text-muted hover:bg-black/5 hover:text-ink" @click="$refs.newDialog.close()" aria-label="Close">
-          <svg class="size-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-        </button>
-      </div>
-
-      <div class="mt-6 grid gap-5 sm:grid-cols-2">
-        <div class="sm:col-span-2">
-          <label for="n-name" class="field-label">Client's name</label>
-          <input id="n-name" type="text" x-model="newForm.name" class="field" :aria-invalid="!!newErrors.name" autofocus>
-          <p x-show="newErrors.name" x-text="newErrors.name" class="field-error"></p>
-        </div>
-        <div class="sm:col-span-2">
-          <label for="n-concern" class="field-label">Concern <span class="font-normal text-muted">(short, optional)</span></label>
-          <input id="n-concern" type="text" x-model="newForm.concern" class="field" placeholder="e.g. Unpaid wages, VAWC, land dispute">
-        </div>
-        <div>
-          <label for="n-mobile" class="field-label">Mobile</label>
-          <input id="n-mobile" type="tel" x-model="newForm.mobile" class="field" placeholder="0917 000 0000" :aria-invalid="!!newErrors.mobile">
-          <p x-show="newErrors.mobile" x-text="newErrors.mobile" class="field-error"></p>
-        </div>
-        <div>
-          <label for="n-email" class="field-label">Email <span class="font-normal text-muted">(optional)</span></label>
-          <input id="n-email" type="email" x-model="newForm.email" class="field" :aria-invalid="!!newErrors.email">
-          <p x-show="newErrors.email" x-text="newErrors.email" class="field-error"></p>
-        </div>
-        <div>
-          <label for="n-date" class="field-label">Date</label>
-          <input id="n-date" type="date" x-model="newForm.date" class="field" :aria-invalid="!!newErrors.date">
-          <p x-show="newErrors.date" x-text="newErrors.date" class="field-error"></p>
-        </div>
-        <div>
-          <label for="n-time" class="field-label">Time</label>
-          <input id="n-time" type="time" x-model="newForm.time" class="field">
-        </div>
-        <div class="sm:col-span-2">
-          <span class="field-label">Status</span>
-          <div class="flex flex-wrap gap-2">
-            <template x-for="s in statuses.filter((s) => s.value !== 'CANCELLED')" :key="s.value">
-              <label class="pill"><input type="radio" class="accent-copper" :value="s.value" x-model="newForm.app_status"> <span x-text="s.label"></span></label>
-            </template>
-          </div>
-        </div>
-        <div>
-          <label for="n-lsp" class="field-label">LSP <span class="font-normal text-muted">(optional)</span></label>
-          <select id="n-lsp" x-model="newForm.lsp_id" class="field">
-            <option value="">Not assigned</option>
-            <template x-for="p in practitioners" :key="p.id"><option :value="p.id" x-text="personOption(p)"></option></template>
-          </select>
-        </div>
-        <div>
-          <label for="n-sl" class="field-label">Supervising lawyer <span class="font-normal text-muted">(optional)</span></label>
-          <select id="n-sl" x-model="newForm.sl_id" class="field">
-            <option value="">Not assigned</option>
-            <template x-for="l in lawyers" :key="l.id"><option :value="l.id" x-text="personOption(l)"></option></template>
-          </select>
-        </div>
-        <div class="sm:col-span-2">
-          <label for="n-remarks" class="field-label">Remarks <span class="font-normal text-muted">(optional)</span></label>
-          <textarea id="n-remarks" rows="2" x-model="newForm.remarks" class="field"></textarea>
-        </div>
-      </div>
-      <p class="field-hint mt-3">The client's full intake form is still filled in at the clinic.</p>
-
-      <p x-show="createError" x-text="createError" role="alert" class="field-error mt-5"></p>
-      <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <button type="button" class="btn btn-ghost text-ink" @click="$refs.newDialog.close()">Cancel</button>
-        <button type="submit" class="btn btn-primary" :disabled="creating" x-text="creating ? 'Adding…' : 'Add appointment'"></button>
-      </div>
-    </form>
   </dialog>
 
   <!-- ================= Delete dialog ================= -->

@@ -94,7 +94,7 @@
         <div class="row"><span>Full Name (Last, First, Middle): <span class="v" x-text="fullName || ' '"></span></span><span>Nickname / Alias: <span class="v" x-text="B.nickname || ' '"></span></span></div>
         <div class="row">
           <span>Date of Birth (MM/DD/YYYY): <span class="v" x-text="mdy(B.dateOfBirth) || ' '"></span></span>
-          <span>Age / Sex: <span class="v" x-text="B.age || ' '"></span> / <span x-text="box(B.sex === 'Female') + ' Female  ' + box(B.sex === 'Male') + ' Male'"></span></span>
+          <span>Age / Sex: <span class="v" x-text="B.age || ' '"></span> / <span x-text="box(B.sex === 'Female') + ' Female  ' + box(B.sex === 'Male') + ' Male' + (B.sex === 'Prefer not to say' ? '  ' + box(true) + ' Prefer not to say' : '')"></span></span>
         </div>
         <div class="row">
           <span class="w2">Civil Status: <template x-for="s in options.civilStatus"><span x-text="box(B.civilStatus === s) + ' ' + s + '  '"></span></template></span>
@@ -138,15 +138,18 @@
         <h2 class="sec">SECTION F: LEGAL ISSUE &amp; NATURE OF CONCERN</h2>
         <p>Practice Area / Category (check all that apply):</p>
         <div class="opts">
-          <template x-for="s in options.practiceAreas"><span x-text="box(has(F.practiceAreas, s)) + ' ' + s"></span></template>
-          <span>Other: <span class="v" x-text="F.other || '            '"></span></span>
+          <template x-for="s in options.practiceAreas"><span x-text="box(has(areas.ticked, s)) + ' ' + s"></span></template>
+          <span>Other: <span class="v" x-text="areasOther || '            '"></span></span>
         </div>
       </section>
 
       <!-- ================= Page 2 ================= -->
       <section class="page">
         <p>Requested Assistance / Service:</p>
-        <div class="opts"><template x-for="s in options.assistance"><span x-text="box(has(F.requestedAssistance, s)) + ' ' + s"></span></template></div>
+        <div class="opts">
+          <template x-for="s in options.assistance"><span x-text="box(has(help.ticked, s)) + ' ' + s"></span></template>
+          <span x-show="helpOther">Also requested: <span class="v" x-text="helpOther"></span></span>
+        </div>
         <p style="margin-top:5px"><b>Opposing Party / Adverse Parties Information (For Conflict Checks):</b></p>
         <div class="row">
           <span class="w2">Name(s): <span class="v" x-text="F.opposingParty?.names || ' '"></span></span>
@@ -167,8 +170,8 @@
         <div class="row"><span>5. Are there pending hearings, deadlines, or court dates? Date: <span class="v" x-text="mdy(detail(G.pendingHearing, 'date')) || ' '"></span></span><span>Court / Venue: <span class="v" x-text="detail(G.pendingHearing, 'courtVenue') || ' '"></span></span></div>
         <p>6. Referral Source / How did you learn about the Clinic?</p>
         <div class="opts">
-          <template x-for="s in options.referralSources"><span x-text="box(has(G.referralSources, s)) + ' ' + s"></span></template>
-          <span x-show="G.referralOther" x-text="'[ ✓ ] Other: ' + G.referralOther"></span>
+          <template x-for="s in options.referralSources"><span x-text="box(has(heard.ticked, s)) + ' ' + s"></span></template>
+          <span x-show="heardOther" x-text="'[ ✓ ] Other: ' + heardOther"></span>
         </div>
 
         <h2 class="sec">SECTION H: DATA PRIVACY CONSENT (RA 10173)</h2>
@@ -185,12 +188,12 @@
           <span>Witness (Clinic Staff / Student): <span class="line"></span></span>
           <span>Date: <span class="line"></span></span>
         </div>
-        <p class="note" x-show="a.I_declaration?.signature" style="margin-top:6px">Typed signature on the online form: <b x-text="a.I_declaration.signature"></b> (<span x-text="mdy(a.I_declaration.date)"></span>). The applicant still signs the printed copy.</p>
+        <p class="note" x-show="a.I_declaration?.signature" style="margin-top:6px">Typed signature on the online form: <b x-text="a.I_declaration?.signature"></b> (<span x-text="mdy(a.I_declaration?.date)"></span>). The applicant still signs the printed copy.</p>
 
         <h2 class="sec">SECTION J: FOR CLINIC STAFF USE ONLY (ASSESSMENT &amp; ACTION)</h2>
         <div class="row"><span class="all">Preliminary Assessment (Issues): <span class="v fill">&nbsp;</span></span></div>
         <div class="row"><span class="all">Causes of Action / Defenses: <span class="v fill">&nbsp;</span></span></div>
-        <p>Urgency Assessment: [   ] High (Prejudice immediate)   [   ] Medium   [   ] Low</p>
+        <p x-text="'Urgency Assessment: ' + box(row.urgency === 'HIGH') + ' High (Prejudice immediate)   ' + box(row.urgency === 'MEDIUM') + ' Medium   ' + box(row.urgency === 'LOW') + ' Low'"></p>
         <p>Reason for Urgency: <span class="v">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>
         <p>Eligibility - Means Test: [   ] Appears Qualified   [   ] Indigent Cert Attached   [   ] PAO Means Test</p>
         <p>Eligibility - Merits Test: [   ] Prima Facie Legal Basis   [   ] Needs Evaluation</p>
@@ -203,6 +206,13 @@
         <div class="opts">
           <template x-for="d in options.documents"><span x-text="box(has(a.K_documents?.checklist, d)) + ' ' + d"></span></template>
           <span>Additional Required Documents: <span class="v" x-text="a.K_documents?.additional || '                    '"></span></span>
+        </div>
+
+        <!-- Not part of SNMC-CIF-001: what Annex D also asked online, so it isn't lost on the printed copy -->
+        <div x-show="preferredContact || urgencyFlags.length">
+          <h2 class="sec">ALSO ON THE ONLINE REQUEST (ANNEX "D")</h2>
+          <p x-show="preferredContact">Preferred method of contact: <span class="v" x-text="preferredContact"></span></p>
+          <p x-show="urgencyFlags.length">Urgency: <span x-text="urgencyFlags.join(' ')"></span><span x-show="D.urgency?.date"> Date: <span class="v" x-text="mdy(D.urgency?.date)"></span></span></p>
         </div>
       </section>
     </div>

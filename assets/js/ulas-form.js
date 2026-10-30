@@ -195,19 +195,20 @@ if (typeof document !== 'undefined') document.addEventListener('alpine:init', ()
       const c = a.C_household || {};
       const fx = a.F_legalIssue || {};
       const g = a.G_caseFacts || {};
-      const name = [b.firstName, b.middleName, b.lastName].filter(Boolean).join(' ') || row.title || '';
+      // Titles read "Name — concern", so only the first part is the name.
+      const name = b.fullName || [b.firstName, b.middleName, b.lastName].filter(Boolean).join(' ') || (row.title || '').split(' — ')[0];
       const self = Array.isArray(c.members) ? c.members.find((m) => /self/i.test(m.relationship || '')) : null;
       const total = Number(c.totalMonthlyIncome);
       const members = Number(c.totalMembers) || 0;
       const areas = [...(fx.practiceAreas || []), fx.other].filter(Boolean).join(', ');
-      const help = (fx.requestedAssistance || []).join(', ');
+      const help = [...(fx.requestedAssistance || []), fx.requestedOther].filter(Boolean).join(', ');
       const docs = a.K_documents || {};
       const when = row.scheduled_at ? manilaParts(row.scheduled_at).date : manilaParts(new Date().toISOString()).date;
       const noProperty = c.otherProperty === 'No';
       return {
         city: b.city || 'Lapu-Lapu',
         name,
-        address: [b.address, b.barangay, b.city].filter(Boolean).join(', '),
+        address: [b.address, b.barangay, b.city, b.province].filter(Boolean).join(', '),
         addressShort: [b.barangay, b.city].filter(Boolean).join(', '), // for the short blanks in the opening paragraph
         contact: [b.mobile || row.mobile_no, b.email || row.email].filter(Boolean).join(' / '),
         income: [b.occupation, self?.source].filter((x, i, arr) => x && arr.indexOf(x) === i).join(' / ') || 'N/A',

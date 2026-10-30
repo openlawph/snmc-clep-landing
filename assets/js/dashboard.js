@@ -8,6 +8,9 @@
  * switches between the upcoming table and a month calendar. Clicking an appointment in either slides
  * in a sheet where staff can set the status and assign an LSP and a supervising lawyer (each save adds
  * a row to `appointments_status`, like the Appointments page). The sheet links to the full record there.
+ *
+ * "Needs attention" is what the nightly email reports (pocketbase/pb_hooks/clinic-daily.pb.js), live. It stays out of
+ * the way when there's nothing to do.
  */
 
 const OPEN_FILTER = 'app_status != "DONE" && app_status != "CANCELLED"';
@@ -34,17 +37,20 @@ document.addEventListener('alpine:init', () => {
       plural: 'upcoming appointments',
       searchFields: ['reference', 'title', 'mobile_no', 'email', 'lsp_name', 'sl_name'],
       filters: { statusFilter: 'open', assignFilter: '' },
-      sortKey: 'scheduled_at',
+      sortKey: 'urgency_rank,scheduled_at', // most urgent first, then soonest; the list can switch to soonest first
       sortDir: 'asc',
     }, {
       statuses: APPT_STATUSES,
       me: Auth.user,
       practitioners: [],
       lawyers: [],
+      gateFrom: '',
+      attention: [], // [{ key, label, count, items: [{ id, reference, href }] }]; only what has something in it
       columns: [
         { key: 'scheduled_at', label: 'When' },
         { key: 'title', label: 'Client' },
         { key: 'app_status', label: 'Status' },
+        { key: 'urgency', label: 'Urgency' },
         { key: 'lsp_name', label: 'LSP' },
         { key: 'sl_name', label: 'Supervising lawyer' },
       ],
@@ -53,6 +59,8 @@ document.addEventListener('alpine:init', () => {
         { key: 'upcoming', label: 'Upcoming (open)', value: '–' },
         { key: 'pending', label: 'Pending', value: '–' },
         { key: 'unassigned', label: 'Need an LSP or lawyer', value: '–' },
+        { key: 'receive', label: 'To receive (Annex C)', value: '–' },
+        { key: 'high', label: 'High urgency', value: '–' },
       ],
 
       // List / calendar
@@ -74,9 +82,13 @@ document.addEventListener('alpine:init', () => {
       updating: false,
       updateError: '',
 
-      init() {
+      async init() {
         pb.authStore.onChange(() => (this.me = pb.authStore.record));
+        this.$watch('sortKey', () => this.goTo(1));
+        this.gateFrom = await loadGateFrom();
+        if (!this.gateFrom) this.sortKey = 'scheduled_at'; // the server files aren't installed: there's no urgency to sort by
         this.loadStats();
+        this.loadAttention();
         this.loadPeople();
         this.$watch('view', (v) => {
           try { localStorage.setItem(VIEW_KEY, v); } catch { /* private window: the choice just isn't remembered */ }
@@ -110,15 +122,59 @@ document.addEventListener('alpine:init', () => {
           upcoming: `${pb.filter('scheduled_at >= {:a}', { a: today })} && ${OPEN_FILTER}`,
           pending: 'app_status = "PENDING"',
           unassigned: `${OPEN_FILTER} && ${UNASSIGNED_FILTER}`,
+          receive: `(intake_id = null || intake_id = "") && ${OPEN_FILTER} && ${pb.filter('created >= {:g}', { g: this.gateFrom })}`,
+          high: `(urgency = "HIGH" || client_urgent = true) && ${OPEN_FILTER}`,
         };
         await Promise.all(this.stats.map(async (stat) => {
           try { stat.value = await count(filters[stat.key]); } catch { stat.value = '?'; }
         }));
       },
 
+      // What has slipped. Each query failing on its own (say, on an older server) just leaves its line out.
+      async loadAttention() {
+        if (!this.gateFrom) return; // the server files aren't installed yet
+        const today = manilaTodayStartUTC();
+        const open = `${OPEN_FILTER} && ${pb.filter('created >= {:g}', { g: this.gateFrom })}`;
+        const lines = [
+          { key: 'urgent', label: 'Urgent, with no LSP or lawyer yet', filter: `(urgency = "HIGH" || client_urgent = true) && ${UNASSIGNED_FILTER} && ${OPEN_FILTER}` },
+          { key: 'overdue', label: 'Date has passed but still open', filter: `scheduled_at != "" && ${pb.filter('scheduled_at < {:t}', { t: today })} && ${open}` },
+          { key: 'undated', label: 'No date yet', filter: `scheduled_at = "" && ${open}` },
+          { key: 'duplicate', label: 'Possibly the same person twice', filter: `possible_duplicate = true && ${open}` },
+          { key: 'late', label: 'Filed late', filter: `encoded_late = true && ${open}` },
+        ];
+        const found = await Promise.all(lines.map(async (line) => {
+          try {
+            const res = await pb.collection('appointments_overview').getList(1, 4, { filter: line.filter, sort: 'scheduled_at', fields: 'id,reference', requestKey: null });
+            return { ...line, count: res.totalItems, items: res.items.map((r) => ({ id: r.id, reference: r.reference, href: `clinic-appointments.html#${r.id}` })) };
+          } catch {
+            return { ...line, count: 0, items: [] };
+          }
+        }));
+        try {
+          const { items: [controls] } = await pb.collection('intake_controls').getList(1, 1, { requestKey: null });
+          const cutoff = new Date(Date.now() - (controls?.late_days ?? 3) * 86400000).toISOString().replace('T', ' ');
+          const paper = await pb.collection('paper_forms').getList(1, 4, { filter: pb.filter('status = "ISSUED" && created < {:c}', { c: cutoff }), sort: 'created', requestKey: null });
+          found.push({
+            key: 'paper', label: 'Paper forms given out but never filed in', count: paper.totalItems,
+            items: paper.items.map((p) => ({ id: p.id, reference: `${p.reference} (${p.issued_by_name || 'unknown'})`, href: 'clinic-settings.html#paper' })),
+          });
+        } catch { /* leaves the line out, like the others */ }
+        this.attention = found.filter((line) => line.count);
+      },
+
       statusLabel: (value) => apptStatus(value).label,
       statusClass: (value) => apptStatus(value).badge,
+      urgencyOf: apptUrgency,
       formatSchedule: (value, opts) => formatSchedule(value, opts),
+
+      needsReceiving(row) {
+        return needsReceiving(row, this.gateFrom);
+      },
+
+      // In progress and Done wait for Annex C (the server refuses them too).
+      statusLocked(value) {
+        return statusNeedsIntake(value) && intakeGated(this.current, this.gateFrom);
+      },
 
       // ---------- Calendar ----------
 
@@ -270,8 +326,10 @@ document.addEventListener('alpine:init', () => {
           await this.openRow(c);
           this.load();
           this.loadStats();
+          this.loadAttention();
         } catch (err) {
-          this.updateError = this.messageFor(err, 'save');
+          // The server's own rules come back as a field error, with a sentence saying what to do.
+          this.updateError = Object.values(this.fieldErrorsFrom(err))[0] || this.messageFor(err, 'save');
         } finally {
           this.updating = false;
         }

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en" data-auth-required><!-- protected: only signed-in, verified staff (see assets/js/auth.js) -->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New intake (Annex C) · SNMC Law Legal Clinic</title>
+  <meta name="robots" content="noindex, nofollow"><!-- staff page: keep it out of search results -->
+
+  <!-- ===== Shared head: keep identical on every page ===== -->
+  <!-- Where this page may load scripts, styles, images and data from. Add a host here when you add a CDN library or API (README → "Security"). -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://capi.snmclaw.com; connect-src 'self' https://capi.snmclaw.com; frame-src https://challenges.cloudflare.com https://maps.google.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
+  <link rel="icon" type="image/svg+xml" href="assets/img/snmc-legal-aid.svg">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="assets/js/theme.js"></script>
+  <script src="assets/js/preloader.js"></script><!-- logo preloader: not deferred, it covers the first paint -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3/dist/index.global.js" integrity="sha384-2ql948lIdLcGEE0/qxNiudyTjgauA3RDJERu5xW75kFCvSl5a9odyQYCb6tEjnmB" crossorigin="anonymous" defer></script><!-- deferred: the preloader covers the page until the styles are built -->
+  <script src="assets/js/components.js" defer></script>
+  <script src="assets/js/components/site-header.js" defer></script>
+  <script src="assets/js/components/site-footer.js" defer></script>
+  <script src="assets/js/components/page-intro.js" defer></script>
+  <script src="assets/js/components/legal-notice.js" defer></script>
+  <script src="assets/js/components/contact-info.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.28.1/dist/pocketbase.umd.js" integrity="sha384-Pr74Q4nJqBcqXYMrsOS8tSw8t8N0Nayn7pWqFRdz9MsePI7uo55HNdxwrCcIRD8e" crossorigin="anonymous"></script><!-- page-specific: PocketBase SDK -->
+  <script src="assets/js/auth.js"></script><!-- page-specific: checks the session before showing the page -->
+  <script src="assets/js/components/dashboard-sidebar.js" defer></script><!-- page-specific: staff sidebar -->
+  <script src="assets/js/intake.js" defer></script><!-- page-specific: choices, normalizeMobile -->
+  <script src="assets/js/appointments.js" defer></script><!-- page-specific: Manila time helpers -->
+  <script src="assets/js/intake-c.js" defer></script><!-- page-specific, must come before Alpine -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.5/dist/cdn.min.js" integrity="sha384-FYLKjwG3aohNhNZoVG8sY/5ntunm+MqylL90Q+rT3OM7AwV9/BKFjk/RjoIpIgsI" crossorigin="anonymous" defer></script>
+  <!-- ===== /Shared head ===== -->
+</head>
+<body x-data="annexC" class="bg-cream text-ink">
+  <dashboard-sidebar active="intake"></dashboard-sidebar>
+
+  <div class="lg:pl-64">
+    <header class="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-black/10 bg-cream/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+      <button type="button" class="-ml-2 rounded-sm p-2 lg:hidden" @click="$dispatch('open-sidebar')" aria-label="Open menu">
+        <svg class="size-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <h1 class="truncate text-2xl" x-text="appointment ? 'Receive intake' : 'New intake'"></h1>
+      <a href="clinic-annex-c.html?issue" class="ml-auto shrink-0 text-sm font-semibold text-copper-dark hover:underline">Print blank forms</a>
+    </header>
+
+    <main class="px-4 py-8 pb-16 sm:px-6 lg:px-8">
+      <p x-show="loading" class="text-muted">Loading…</p>
+      <p x-show="loadError" x-cloak x-text="loadError" class="rounded-md bg-red-50 px-5 py-4 text-sm text-red-800 ring-1 ring-red-200"></p>
+
+      <form x-show="!loading && !loadError" x-cloak @submit.prevent="save()" @input="dirty = true" novalidate class="mx-auto max-w-4xl space-y-6">
+        <div class="rounded-md bg-paper px-5 py-4 text-sm leading-relaxed ring-1 ring-black/5">
+          <p class="eyebrow">Annex "C" · Request for Legal Assistance Form</p>
+          <p class="mt-2" x-show="!appointment">File every request here, as soon as it comes in. This also creates the appointment. Afterwards you can print it for the applicant to sign, or save it as a PDF.</p>
+          <p class="mt-2" x-show="appointment">
+            Receiving <strong class="font-mono" x-text="appointment?.reference"></strong>.
+            Check these details with the client, complete the office use section, then save. Afterwards you can print it for them to sign, or save it as a PDF.
+          </p>
+        </div>
+
+        <!-- ---------- Intake ---------- -->
+        <section class="card space-y-5" aria-labelledby="c-intake">
+          <h2 id="c-intake" class="text-xl">Intake</h2>
+          <div class="grid gap-5 sm:grid-cols-2">
+            <div>
+              <span class="field-label">Intake Reference No.</span>
+              <p class="field bg-cream font-mono text-sm" x-text="appointment?.reference || 'Given when you save'"></p>
+            </div>
+            <div>
+              <label for="c-date" class="field-label">Date Received <span class="text-red-700">*</span></label>
+              <input id="c-date" type="date" x-model="form.date_received" class="field" :aria-invalid="!!errors.date_received">
+              <p x-show="errors.date_received" x-text="errors.date_received" class="field-error"></p>
+            </div>
+          </div>
+          <div>
+            <span class="field-label">Mode of Initial Contact <span class="text-red-700">*</span></span>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="m in options.modes" :key="m.value">
+                <label class="pill"><input type="radio" name="contact_mode" :value="m.value" x-model="form.contact_mode" class="accent-copper"><span x-text="m.label"></span></label>
+              </template>
+            </div>
+            <input x-show="form.contact_mode === 'OTHER'" type="text" x-model="form.contact_mode_other" aria-label="Other mode of contact" placeholder="Other mode of contact" class="field mt-3 max-w-md">
+          </div>
+
+          <!-- Paper forms: filing late must stay easier than not filing at all, so a number we don't recognise isn't refused -->
+          <div class="rounded-md bg-cream p-4">
+            <label class="flex cursor-pointer items-center gap-3 text-sm font-semibold">
+              <input type="checkbox" x-model="form.on_paper" class="size-4 accent-copper"> This was filled in on a paper form first
+            </label>
+            <div x-show="form.on_paper" x-transition class="mt-4">
+              <label for="c-paper" class="field-label">Number on the paper form <span class="font-normal text-muted">(if it has one)</span></label>
+              <input id="c-paper" type="text" x-model="form.paper_number" class="field max-w-xs font-mono" placeholder="SNMC-2026-M0001" :aria-invalid="!!errors.paper_number">
+              <p x-show="errors.paper_number" x-text="errors.paper_number" class="field-error"></p>
+              <p class="field-hint">A number from "Print blank forms" becomes the reference. For anything else, the system gives a new paper number and keeps what you typed so it can be searched. Write the new number on the paper.</p>
+            </div>
+          </div>
+          <div x-show="isLate" x-cloak>
+            <label for="c-late" class="field-label">Why wasn't this filed sooner? <span class="text-red-700">*</span></label>
+            <textarea id="c-late" rows="2" x-model="form.late_reason" class="field" :aria-invalid="!!errors.late_reason"></textarea>
+            <p x-show="errors.late_reason" x-text="errors.late_reason" class="field-error"></p>
+            <p class="field-hint" x-text="`Received ${receivedDaysAgo} days ago. This intake will be marked as filed late, with your reason.`"></p>
+          </div>
+        </section>
+
+        <!-- ---------- I. Applicant ---------- -->
+        <section class="card space-y-5" aria-labelledby="c-applicant">
+          <h2 id="c-applicant" class="text-xl">I. Applicant information</h2>
+          <div>
+            <label for="c-name" class="field-label">Full Name <span class="text-red-700">*</span></label>
+            <input id="c-name" type="text" x-model="form.full_name" @change="checkDuplicates()" class="field" :aria-invalid="!!errors.full_name">
+            <p x-show="errors.full_name" x-text="errors.full_name" class="field-error"></p>
+          </div>
+          <div>
+            <label for="c-address" class="field-label">Residential Address</label>
+            <input id="c-address" type="text" x-model="form.address" class="field">
+          </div>
+          <div class="grid gap-5 sm:grid-cols-2">
+            <div>
+              <label for="c-mobile" class="field-label">Mobile Number</label>
+              <input id="c-mobile" type="tel" x-model="form.mobile_no" @change="checkDuplicates()" class="field" placeholder="0917 000 0000" :aria-invalid="!!errors.mobile_no">
+              <p x-show="errors.mobile_no" x-text="errors.mobile_no" class="field-error"></p>
+            </div>
+            <div>
+              <label for="c-email" class="field-label">Email Address <span class="font-normal text-muted">(if any)</span></label>
+              <input id="c-email" type="email" x-model="form.email" class="field" :aria-invalid="!!errors.email">
+              <p x-show="errors.email" x-text="errors.email" class="field-error"></p>
+            </div>
+          </div>
+          <div>
+            <span class="field-label">Preferred Mode of Communication</span>
+            <div class="flex flex-wrap items-center gap-2">
+              <template x-for="o in options.preferredContact" :key="o">
+                <label class="pill"><input type="checkbox" :value="o" x-model="form.preferred_contact" class="accent-copper"><span x-text="o"></span></label>
+              </template>
+              <input type="text" x-model="form.preferred_other" aria-label="Other mode of communication" placeholder="Other" class="field w-auto min-w-40 flex-1">
+            </div>
+          </div>
+
+          <div x-show="duplicates.length" x-cloak class="rounded-md bg-amber/15 p-4 text-sm ring-1 ring-amber/30">
+            <p class="font-semibold">Is this the same person? This name or number was filed in the last 30 days:</p>
+            <ul class="mt-2 space-y-1">
+              <template x-for="d in duplicates" :key="d.id">
+                <li><a class="font-semibold text-copper-dark hover:underline" :href="'clinic-appointments.html#' + d.id" target="_blank" rel="noopener"><span class="font-mono" x-text="d.reference"></span> · <span x-text="d.title"></span></a></li>
+              </template>
+            </ul>
+            <label x-show="!appointment" class="mt-3 flex cursor-pointer items-center gap-3 font-semibold">
+              <input type="checkbox" x-model="form.not_duplicate" class="size-4 accent-copper" :aria-invalid="!!errors.not_duplicate"> This is a different person
+            </label>
+            <p x-show="errors.not_duplicate" x-text="errors.not_duplicate" class="field-error"></p>
+          </div>
+        </section>
+
+        <!-- ---------- II–V. The request ---------- -->
+        <section class="card space-y-5" aria-labelledby="c-request">
+          <h2 id="c-request" class="text-xl">II–V. The request</h2>
+          <div>
+            <label for="c-nature" class="field-label">II. General nature of request <span class="text-red-700">*</span></label>
+            <p class="field-hint -mt-0.5 mb-2">Please briefly describe the legal assistance you are seeking.</p>
+            <textarea id="c-nature" rows="4" x-model="form.nature" class="field" :aria-invalid="!!errors.nature"></textarea>
+            <p x-show="errors.nature" x-text="errors.nature" class="field-error"></p>
+          </div>
+          <div>
+            <span class="field-label">III. Type of legal assistance requested <span class="text-red-700">*</span></span>
+            <div class="grid gap-2 sm:grid-cols-2">
+              <template x-for="o in options.assistance" :key="o.value">
+                <label class="pill"><input type="checkbox" :value="o.value" x-model="form.assistance" class="accent-copper" :aria-invalid="!!errors.assistance"><span><span x-text="o.value"></span> <span class="text-xs text-muted" x-text="'(' + o.hint + ')'"></span></span></label>
+              </template>
+            </div>
+            <input type="text" x-model="form.assistance_other" aria-label="Other assistance" placeholder="Other" class="field mt-3 max-w-md">
+            <p x-show="errors.assistance" x-text="errors.assistance" class="field-error"></p>
+          </div>
+          <div>
+            <span class="field-label">IV. Is there an upcoming deadline or urgent legal concern?</span>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="o in ['Yes', 'No']" :key="o">
+                <label class="pill"><input type="radio" name="is_urgent" :value="o" x-model="form.is_urgent" class="accent-copper"><span x-text="o"></span></label>
+              </template>
+            </div>
+            <div x-show="form.is_urgent === 'Yes'" x-transition class="mt-3">
+              <label for="c-urgent" class="field-label text-xs">If yes, please specify</label>
+              <input id="c-urgent" type="text" x-model="form.urgent_details" class="field">
+            </div>
+          </div>
+          <div>
+            <span class="field-label">V. How did you learn about the Law Clinic?</span>
+            <div class="flex flex-wrap items-center gap-2">
+              <template x-for="o in options.referral" :key="o">
+                <label class="pill"><input type="checkbox" :value="o" x-model="form.referral" class="accent-copper"><span x-text="o"></span></label>
+              </template>
+            </div>
+            <input type="text" x-model="form.referral_other" aria-label="Other source" placeholder="Other" class="field mt-3 max-w-md">
+          </div>
+        </section>
+
+        <!-- ---------- VI + Office use ---------- -->
+        <section class="card space-y-5" aria-labelledby="c-office">
+          <h2 id="c-office" class="text-xl">VI. Initial screening and office use</h2>
+          <div>
+            <span class="field-label">Practice Area <span class="text-red-700">*</span></span>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="o in options.practiceAreas" :key="o">
+                <label class="pill"><input type="checkbox" :value="o" x-model="form.practice_areas" class="accent-copper" :aria-invalid="!!errors.practice_areas"><span x-text="o"></span></label>
+              </template>
+            </div>
+            <input type="text" x-model="form.practice_other" aria-label="Other practice area" placeholder="Other" class="field mt-3 max-w-md">
+            <p x-show="errors.practice_areas" x-text="errors.practice_areas" class="field-error"></p>
+          </div>
+          <div>
+            <span class="field-label">Urgency <span class="text-red-700">*</span></span>
+            <div class="grid gap-2">
+              <template x-for="o in options.urgency" :key="o.value">
+                <label class="pill"><input type="radio" name="urgency" :value="o.value" x-model="form.urgency" class="accent-copper" :aria-invalid="!!errors.urgency"><span><strong x-text="o.label"></strong> <span class="text-xs text-muted" x-text="'(' + o.hint + ')'"></span></span></label>
+              </template>
+            </div>
+            <p x-show="errors.urgency" x-text="errors.urgency" class="field-error"></p>
+          </div>
+          <div class="grid gap-5 sm:grid-cols-2">
+            <div>
+              <label for="c-lsp" class="field-label">Assigned to: LSP</label>
+              <select id="c-lsp" x-model="form.lsp_id" class="field" :aria-invalid="!!errors.lsp_id">
+                <option value="">Not assigned</option>
+                <template x-for="p in practitioners" :key="p.id"><option :value="p.id" x-text="personOption(p)" :selected="p.id === form.lsp_id"></option></template>
+              </select>
+              <p x-show="errors.lsp_id" x-text="errors.lsp_id" class="field-error"></p>
+            </div>
+            <div>
+              <label for="c-sl" class="field-label">Assigned to: Supervising lawyer</label>
+              <select id="c-sl" x-model="form.sl_id" class="field" :aria-invalid="!!errors.sl_id">
+                <option value="">Not assigned</option>
+                <template x-for="l in lawyers" :key="l.id"><option :value="l.id" x-text="personOption(l)" :selected="l.id === form.sl_id"></option></template>
+              </select>
+              <p x-show="errors.sl_id" x-text="errors.sl_id" class="field-error"></p>
+            </div>
+            <div>
+              <label for="c-sdate" class="field-label">Interview Schedule: date</label>
+              <input id="c-sdate" type="date" x-model="form.schedule_date" class="field" :aria-invalid="!!errors.schedule_date">
+              <p x-show="errors.schedule_date" x-text="errors.schedule_date" class="field-error"></p>
+            </div>
+            <div>
+              <label for="c-stime" class="field-label">Interview Schedule: time</label>
+              <input id="c-stime" type="time" x-model="form.schedule_time" class="field">
+            </div>
+          </div>
+          <p x-show="slotTaken >= slotCapacity" x-cloak class="rounded-sm bg-amber/15 px-4 py-2 text-sm ring-1 ring-amber/30" x-text="`${slotTaken} already booked at this time. You can still save this, for example for a walk-in.`"></p>
+          <div>
+            <span class="field-label">Received by</span>
+            <p class="field bg-cream text-sm" x-text="me?.name || me?.email"></p>
+            <p class="field-hint">Taken from your sign-in. The date and time are recorded when you save.</p>
+          </div>
+          <div>
+            <span class="field-label">Disposition <span class="text-red-700">*</span></span>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="o in options.dispositions" :key="o.value">
+                <label class="pill"><input type="radio" name="disposition" :value="o.value" x-model="form.disposition" class="accent-copper" :aria-invalid="!!errors.disposition"><span x-text="o.label"></span></label>
+              </template>
+            </div>
+            <input x-show="form.disposition === 'OTHER'" type="text" x-model="form.disposition_other" aria-label="Other disposition" placeholder="Other disposition" class="field mt-3 max-w-md">
+            <p x-show="errors.disposition" x-text="errors.disposition" class="field-error"></p>
+            <p x-show="form.disposition === 'IMMEDIATE_REFERRAL' && !form.schedule_date" class="field-hint">With no interview date, this closes the appointment as Done when you save.</p>
+          </div>
+          <div>
+            <label for="c-remarks" class="field-label">Remarks <span class="font-normal text-muted">(optional, added to the history)</span></label>
+            <textarea id="c-remarks" rows="2" x-model="form.remarks" class="field"></textarea>
+          </div>
+        </section>
+
+        <p x-show="formError" x-text="formError" role="alert" class="rounded-sm bg-red-50 p-3 text-sm text-red-800 ring-1 ring-red-200"></p>
+        <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <a href="clinic-dashboard.html" class="btn btn-ghost text-ink">Cancel</a>
+          <button type="submit" class="btn btn-primary" :disabled="saving" x-text="saving ? 'Saving…' : 'Save and print'"></button>
+        </div>
+      </form>
+    </main>
+  </div>
+</body>
+</html>

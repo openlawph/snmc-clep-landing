@@ -116,7 +116,8 @@
               <li><strong class="text-ink">Ask</strong>: show the question on the booking form. A step with every question off is skipped.</li>
               <li><strong class="text-ink">Required</strong>: clients can't continue without answering it.</li>
               <li><strong class="text-ink">Always ask</strong> (lock): the question stays on and its settings can't be changed until someone unlocks it. Use it for anything the clinic has decided on.</li>
-              <li>Date, time, data privacy consent and the declaration are needed for every booking, so they're always asked and required.</li>
+              <li>Date, time, data privacy consent, the acknowledgments and the declaration are needed for every booking, so they're always asked and required.</li>
+              <li><span class="rounded-full bg-copper/10 px-2 py-0.5 text-[11px] font-semibold text-copper-dark">Annex D</span>: the clinic's online form asks this too, so think twice before turning it off.</li>
             </ul>
 
             <div class="mt-6 grid gap-4 2xl:grid-cols-2">
@@ -152,7 +153,9 @@
                         <div class="min-w-0">
                           <p class="text-sm" :class="!isShown(field) && 'text-muted line-through decoration-black/30'">
                             <span x-text="field.label"></span><span x-show="isRequired(field)" class="text-red-700"> *</span>
+                            <span x-show="field.annexD" class="ml-1 whitespace-nowrap rounded-full bg-copper/10 px-2 py-0.5 text-[11px] font-semibold text-copper-dark">Annex D</span>
                           </p>
+                          <p x-show="needsSpamCheck(field)" class="text-xs font-semibold text-[#8a5a1c]">Stays off until the spam check (Turnstile) is set up</p>
                           <p x-show="field.core" class="text-xs text-muted">Needed for every booking</p>
                           <p x-show="!field.core && isLocked(field)" class="text-xs font-semibold text-copper-dark">Always asked · unlock to change</p>
                           <p x-show="field.canRequire === false" class="text-xs text-muted">Always has an answer, so it can't be required</p>
@@ -190,6 +193,80 @@
               </template>
             </div>
           </section>
+
+          <!-- ---------- Reference numbers & safeguards (saved on its own, to intake_controls) ---------- -->
+          <section x-show="controls" class="card" id="paper" aria-labelledby="controls-title">
+            <h2 id="controls-title" class="text-2xl">Reference numbers &amp; safeguards</h2>
+            <p class="mt-1 text-sm text-muted">Online bookings and e-filed intakes share one series. Paper forms have their own, so a number written by hand can never clash with one the system gave out. If numbers were used by hand outside the system, move the next number past them.</p>
+
+            <form class="mt-5 space-y-5" @submit.prevent="saveControls()" novalidate>
+              <div class="grid gap-5 sm:grid-cols-3">
+                <div>
+                  <label for="ctl-prefix" class="field-label">Prefix</label>
+                  <input id="ctl-prefix" type="text" x-model="controlsForm.ref_prefix" :disabled="!isAdmin" class="field uppercase disabled:bg-cream" :aria-invalid="!!controlErrors.ref_prefix">
+                  <p x-show="controlErrors.ref_prefix" x-text="controlErrors.ref_prefix" class="field-error"></p>
+                </div>
+                <div>
+                  <label for="ctl-next" class="field-label">Next number</label>
+                  <input id="ctl-next" type="number" :min="controls?.ref_next" x-model="controlsForm.ref_next" :disabled="!isAdmin" class="field disabled:bg-cream" :aria-invalid="!!controlErrors.ref_next">
+                  <p x-show="controlErrors.ref_next" x-text="controlErrors.ref_next" class="field-error"></p>
+                  <p class="field-hint">Next: <span class="font-mono" x-text="nextReferencePreview"></span></p>
+                </div>
+                <div>
+                  <label for="ctl-paper" class="field-label">Next paper number</label>
+                  <input id="ctl-paper" type="number" :min="controls?.ref_paper_next" x-model="controlsForm.ref_paper_next" :disabled="!isAdmin" class="field disabled:bg-cream" :aria-invalid="!!controlErrors.ref_paper_next">
+                  <p x-show="controlErrors.ref_paper_next" x-text="controlErrors.ref_paper_next" class="field-error"></p>
+                  <p class="field-hint">Next: <span class="font-mono" x-text="nextPaperPreview"></span></p>
+                </div>
+              </div>
+              <p class="field-hint -mt-2">Numbers only go forward, and start again at 1 each new year. Existing references never change.</p>
+
+              <div class="grid gap-5 sm:grid-cols-3">
+                <div>
+                  <label for="ctl-late" class="field-label">Days before "filed late"</label>
+                  <input id="ctl-late" type="number" min="0" max="60" x-model="controlsForm.late_days" :disabled="!isAdmin" class="field disabled:bg-cream" :aria-invalid="!!controlErrors.late_days">
+                  <p class="field-hint">After this, a reason is required, and paper numbers not filed in get flagged.</p>
+                </div>
+                <div>
+                  <label for="ctl-capacity" class="field-label">Clients per time slot</label>
+                  <input id="ctl-capacity" type="number" min="1" max="50" x-model="controlsForm.slot_capacity" :disabled="!isAdmin" class="field disabled:bg-cream" :aria-invalid="!!controlErrors.slot_capacity">
+                  <p class="field-hint">A full slot can't be booked online. Staff can still add a walk-in to it.</p>
+                </div>
+                <div>
+                  <label for="ctl-mobile" class="field-label">Open bookings per mobile number</label>
+                  <input id="ctl-mobile" type="number" min="1" max="50" x-model="controlsForm.max_open_per_mobile" :disabled="!isAdmin" class="field disabled:bg-cream" :aria-invalid="!!controlErrors.max_open_per_mobile">
+                  <p class="field-hint">Online only. Stops one number filling the calendar.</p>
+                </div>
+              </div>
+              <div>
+                <label for="ctl-emails" class="field-label">Who gets the alert emails</label>
+                <input id="ctl-emails" type="text" x-model="controlsForm.alert_emails" :disabled="!isAdmin" class="field disabled:bg-cream" placeholder="Leave empty for every admin. Separate several with commas." :aria-invalid="!!controlErrors.alert_emails">
+                <p class="field-hint">Urgent requests straight away, and a nightly email only if something has slipped. They never contain client names or case facts.</p>
+              </div>
+              <p x-show="controlError" x-text="controlError" role="alert" class="field-error"></p>
+              <div x-show="isAdmin" class="flex justify-end">
+                <button type="submit" class="btn btn-primary" :disabled="!controlsDirty || savingControls" x-text="savingControls ? 'Saving…' : 'Save these settings'"></button>
+              </div>
+            </form>
+
+            <div class="mt-6 border-t border-black/10 pt-5">
+              <div class="flex flex-wrap items-baseline justify-between gap-3">
+                <h3 class="text-lg">Paper numbers given out, not filed in yet</h3>
+                <a href="clinic-annex-c.html?issue" class="text-sm font-semibold text-copper-dark hover:underline">Print blank forms</a>
+              </div>
+              <p x-show="!paperOpen.length" class="mt-2 text-sm text-muted">None. Every number given out has been filed in.</p>
+              <ul x-show="paperOpen.length" class="mt-3 divide-y divide-black/5 text-sm">
+                <template x-for="form in paperOpen" :key="form.id">
+                  <li class="flex flex-wrap items-center gap-x-4 gap-y-1 py-2">
+                    <span class="font-mono font-semibold" x-text="form.reference"></span>
+                    <span class="min-w-0 flex-1" :class="paperAge(form) > (controls?.late_days ?? 3) && 'font-semibold text-red-700'" x-text="`${form.issued_by_name || 'Unknown'}, ${paperAge(form)} day${paperAge(form) === 1 ? '' : 's'} ago`"></span>
+                    <a class="font-semibold text-copper-dark hover:underline" :href="'clinic-annex-c.html?blank=' + encodeURIComponent(form.reference)">Reprint</a>
+                    <button x-show="isAdmin" type="button" class="font-semibold text-red-700 hover:underline" @click="askVoid(form)">Void…</button>
+                  </li>
+                </template>
+              </ul>
+            </div>
+          </section>
         </div>
       </template>
     </main>
@@ -223,6 +300,20 @@
     <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
       <button type="button" class="btn btn-ghost text-ink" @click="$refs.unlockDialog.close()" autofocus>Keep it locked</button>
       <button type="button" class="btn btn-primary" @click="confirmUnlock()">Unlock</button>
+    </div>
+  </dialog>
+
+  <!-- Void a paper number -->
+  <dialog x-ref="voidDialog" aria-labelledby="void-title"
+          class="m-auto w-[calc(100%-2rem)] max-w-md rounded-md bg-paper p-6 text-ink shadow-xl backdrop:bg-black/50 sm:p-8">
+    <h2 id="void-title" class="text-2xl">Void <span class="font-mono text-xl" x-text="voidTarget?.reference"></span>?</h2>
+    <p class="mt-3 leading-relaxed text-muted">The number can't be used after this. It stays on record, with your reason.</p>
+    <label for="void-reason" class="field-label mt-4">Reason</label>
+    <textarea id="void-reason" rows="2" x-model="voidReason" class="field" placeholder="e.g. Form spoiled, or lost"></textarea>
+    <p x-show="voidError" x-text="voidError" role="alert" class="field-error"></p>
+    <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+      <button type="button" class="btn btn-ghost text-ink" @click="$refs.voidDialog.close()" autofocus>Keep it</button>
+      <button type="button" class="btn bg-red-700 text-white hover:bg-red-800" :disabled="voiding" @click="confirmVoid()" x-text="voiding ? 'Voiding…' : 'Void this number'"></button>
     </div>
   </dialog>
 

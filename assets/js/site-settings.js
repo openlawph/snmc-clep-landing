@@ -11,6 +11,7 @@
  *  - office_days, office_open, office_close   office hours, shown on the public site
  *  - intake_days, intake_open, intake_close   when the online booking form is open to visitors; outside these
  *                                             hours PocketBase refuses their bookings too (appointments create rule)
+ *  - hotline              the emergency number on the public form (Annex D sends people there)
  * Days are 'mon'…'sun', times 'HH:MM', Manila time.
  */
 document.addEventListener('alpine:init', () => {
@@ -23,7 +24,7 @@ document.addEventListener('alpine:init', () => {
       { key: 'intake', title: 'Online booking hours',
         hint: 'Visitors can only open the booking form during these hours. Outside them they see when it opens again, and PocketBase refuses online bookings too. Signed-in staff can always use the form. Shorter hours give spammers and other abusers less time to try.' },
     ],
-    form: { maintenance: false, message: '', untilDate: '', untilTime: '', office: { days: [], open: '', close: '' }, intake: { days: [], open: '', close: '' } },
+    form: { maintenance: false, message: '', untilDate: '', untilTime: '', hotline: '', office: { days: [], open: '', close: '' }, intake: { days: [], open: '', close: '' } },
     now: clinicNow(), // updated every 30 seconds, for the "open now" line
     savedJSON: '',
     updated: '',
@@ -66,7 +67,7 @@ document.addEventListener('alpine:init', () => {
       const hours = (prefix) => ({ days: record[`${prefix}_days`] || [], open: record[`${prefix}_open`] || '', close: record[`${prefix}_close`] || '' });
       this.form = {
         maintenance: !!record.maintenance, message: record.maintenance_message || '', untilDate: until.date, untilTime: until.time,
-        office: hours('office'), intake: hours('intake'),
+        hotline: record.hotline || '', office: hours('office'), intake: hours('intake'),
       };
       this.updated = record.updated || '';
       this.savedJSON = JSON.stringify(this.payload());
@@ -79,6 +80,7 @@ document.addEventListener('alpine:init', () => {
         maintenance: f.maintenance,
         maintenance_message: f.message.trim(),
         maintenance_until: f.untilDate ? manilaToUTC(f.untilDate, f.untilTime || '09:00') : '',
+        hotline: f.hotline.trim(),
         office_days: inWeekOrder(f.office.days), office_open: f.office.open, office_close: f.office.close,
         intake_days: inWeekOrder(f.intake.days), intake_open: f.intake.open, intake_close: f.intake.close,
       };

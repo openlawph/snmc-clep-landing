@@ -78,11 +78,19 @@
               </div>
             </div>
 
-            <p class="mx-auto mt-4 max-w-md leading-relaxed text-muted" x-t>Please <strong>take a screenshot</strong> or a <strong>photo</strong> of this page or QR code now. You will need to present it at reception on your appointment day. Bring a valid ID and all documents about your problem to your appointment.</p>
+            <p class="mx-auto mt-4 max-w-md leading-relaxed text-muted" x-t.html>Please <strong>take a screenshot</strong> or a <strong>photo</strong> of this page or QR code now. You will need to present it at reception on your appointment day. Bring a valid ID and all documents about your problem to your appointment.</p>
+            <p class="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted" x-t>A representative of the Clinic may contact you if additional information is required or to schedule a preliminary interview. This request does not create a lawyer-client relationship.</p>
+            <!-- Annex D's emergencies: the clinic has been emailed, but the client shouldn't wait for a call back -->
+            <div x-show="urgencyEmergency" class="mx-auto mt-6 max-w-md rounded-md bg-red-50 p-4 text-left text-sm text-red-900 ring-1 ring-red-200" role="alert">
+              <p class="font-semibold" x-t>You told us this is urgent. Please do not wait for us to call.</p>
+              <p class="mt-1" x-t>Contact the Clinic now, or go to the nearest Public Attorney's Office or Integrated Bar of the Philippines chapter.</p>
+              <p class="mt-2 font-semibold" x-text="hotline ? $t('Emergency hotline: {number}', { number: hotline }) : $t('Email: {email}', { email: SITE.email })"></p>
+            </div>
             <dl class="mx-auto mt-8 grid max-w-md gap-2 rounded-md bg-cream p-5 text-left text-sm">
               <div class="flex justify-between gap-4"><dt class="text-muted" x-t>Date</dt><dd class="text-right font-semibold" x-text="formatDate(form.date)"></dd></div>
               <div class="flex justify-between gap-4"><dt class="text-muted" x-t>Time</dt><dd class="text-right font-semibold" x-text="form.time && formatSlot(form.time)"></dd></div>
               <div class="flex justify-between gap-4"><dt class="text-muted" x-t>Where</dt><dd class="text-right font-semibold">SNMC School of Law, Soong, Lapu-Lapu City</dd></div>
+              <div class="flex justify-between gap-4"><dt class="text-muted" x-t>Date submitted</dt><dd class="text-right font-semibold" x-text="formatDate(today)"></dd></div>
             </dl>
 
 
@@ -144,6 +152,20 @@
             <!-- ================= Step 1: Appointment ================= -->
             <fieldset x-show="step === 1" class="mt-8 space-y-8">
               <legend class="sr-only" x-t>Book a slot</legend>
+
+              <!-- Annex D: what this request is, and what to do in an emergency -->
+              <div class="space-y-3 text-sm leading-relaxed">
+                <div class="rounded-md bg-cream p-4">
+                  <p class="form-section mb-2" x-t>Online Request for Legal Assistance</p>
+                  <p class="font-semibold" x-t>Thank you for contacting the SNMCI Legal Clinic.</p>
+                  <p class="mt-1" x-t>This online form is intended only for requesting an initial assessment of your legal concern. Submission of this form does not create a lawyer-client relationship, guarantee acceptance of your request, or entitle you to legal representation. All requests remain subject to evaluation under the policies of the Law Clinic, Rule 138-A of the Rules of Court, and the Code of Professional Responsibility and Accountability.</p>
+                  <p class="mt-2" x-t>Please complete this form as accurately and completely as possible. A representative of the Clinic may contact you if additional information is required or to schedule a preliminary interview.</p>
+                </div>
+                <div class="rounded-md bg-red-50 p-4 text-red-900 ring-1 ring-red-200">
+                  <p x-t>If your concern involves an imminent arrest, detention, a court hearing within the next forty-eight (48) hours, or any other emergency requiring immediate legal intervention, please contact the Clinic immediately through the emergency hotline or visit the nearest Public Attorney's Office or Integrated Bar of the Philippines chapter.</p>
+                  <p class="mt-2 font-semibold" x-text="hotline ? $t('Emergency hotline: {number}', { number: hotline }) : $t('Email: {email}', { email: SITE.email })"></p>
+                </div>
+              </div>
 
               <div class="grid gap-8 md:grid-cols-[minmax(0,20rem)_1fr]">
                 <!-- Date: a month calendar where only open days can be picked -->
@@ -258,6 +280,11 @@
                 <input id="dob" type="date" x-model="form.dob" :max="today" class="field" :aria-invalid="!!errors.dob">
                 <p class="field-hint" x-show="age !== ''" x-text="$t('Age: {age}', { age })"></p>
               </div>
+              <!-- Annex D asks for the age. Only shown when the date of birth is turned off (shown() in intake.js). -->
+              <div class="sm:col-span-3" x-field="age">
+                <label for="ageInput" class="field-label" x-t>Age</label>
+                <input id="ageInput" type="number" min="0" max="120" x-model="form.ageInput" class="field" :aria-invalid="!!errors.age">
+              </div>
 
               <div class="sm:col-span-2" x-field="sex">
                 <span class="field-label" x-t>Sex</span>
@@ -314,17 +341,30 @@
                 <label for="email" class="field-label"><span x-t>Email</span> <span class="font-normal text-muted" x-show="!isRequired('email')" x-t>(optional)</span></label>
                 <input id="email" type="email" x-model="form.email" autocomplete="email" placeholder="you@email.com" class="field" :aria-invalid="!!errors.email">
               </div>
+              <div class="sm:col-span-6" x-field="preferredContact">
+                <span class="field-label" x-t>Preferred method of contact</span>
+                <div class="flex flex-wrap items-center gap-2">
+                  <template x-for="o in opt.preferredContact" :key="o">
+                    <label class="pill"><input type="checkbox" :value="o" x-model="form.preferredContact" class="accent-copper" :aria-invalid="!!errors.preferredContact"><span x-text="$t(o)"></span></label>
+                  </template>
+                  <input type="text" x-model="form.preferredContactOther" :aria-label="$t('Other method of contact')" :placeholder="$t('Others')" class="field w-auto min-w-40 flex-1">
+                </div>
+              </div>
               <div class="sm:col-span-6" x-field="address">
                 <label for="address" class="field-label" x-t>Complete address</label>
                 <input id="address" type="text" x-model="form.address" autocomplete="street-address" placeholder="House no., street, sitio / purok" x-t:placeholder class="field" :aria-invalid="!!errors.address">
               </div>
-              <div class="sm:col-span-3" x-field="barangay">
+              <div class="sm:col-span-2" x-field="barangay">
                 <label for="barangay" class="field-label" x-t>Barangay</label>
                 <input id="barangay" type="text" x-model="form.barangay" placeholder="e.g. Soong" x-t:placeholder class="field" :aria-invalid="!!errors.barangay">
               </div>
-              <div class="sm:col-span-3" x-field="city">
+              <div class="sm:col-span-2" x-field="city">
                 <label for="city" class="field-label" x-t>City / municipality</label>
                 <input id="city" type="text" x-model="form.city" class="field" :aria-invalid="!!errors.city">
+              </div>
+              <div class="sm:col-span-2" x-field="province">
+                <label for="province" class="field-label" x-t>Province</label>
+                <input id="province" type="text" x-model="form.province" class="field" :aria-invalid="!!errors.province">
               </div>
               <div class="sm:col-span-6" x-field="residentLLC">
                 <span class="field-label" x-t>Resident of Lapu-Lapu City?</span>
@@ -428,7 +468,7 @@
             <!-- ================= Step 4: Sections F + E — Legal issue & conflict check ================= -->
             <div x-show="step === 4" x-cloak class="mt-8 space-y-10">
               <fieldset x-field="practiceAreas">
-                <legend class="form-section mb-4 w-full"><span x-t>Practice area / category</span> <span class="font-normal normal-case tracking-normal text-muted" x-t>— check all that apply</span></legend>
+                <legend class="form-section mb-4 w-full"><span x-t>Which best describes your concern?</span> <span class="font-normal normal-case tracking-normal text-muted" x-t>— check all that apply</span></legend>
                 <div class="flex flex-wrap gap-2">
                   <template x-for="o in opt.practiceAreas" :key="o">
                     <label class="pill"><input type="checkbox" :value="o" x-model="form.practiceAreas" class="accent-copper" :aria-invalid="!!errors.practiceAreas"><span x-text="$t(o)"></span></label>
@@ -441,11 +481,36 @@
               </fieldset>
 
               <fieldset x-field="assistance">
-                <legend class="form-section mb-4 w-full" x-t>Requested assistance / service</legend>
-                <div class="flex flex-wrap gap-2">
-                  <template x-for="o in opt.assistance" :key="o">
-                    <label class="pill"><input type="checkbox" :value="o" x-model="form.assistance" class="accent-copper" :aria-invalid="!!errors.assistance"><span x-text="$t(o)"></span></label>
+                <legend class="form-section mb-4 w-full" x-t>What assistance are you requesting?</legend>
+                <div class="grid gap-2 sm:grid-cols-2">
+                  <template x-for="o in opt.assistance" :key="o.value">
+                    <label class="pill"><input type="checkbox" :value="o.value" x-model="form.assistance" class="accent-copper" :aria-invalid="!!errors.assistance"><span><span x-text="$t(o.value)"></span> <span class="text-xs font-normal text-muted" x-text="'(' + $t(o.hint) + ')'"></span></span></label>
                   </template>
+                </div>
+                <div class="mt-4 max-w-md">
+                  <label for="assistanceOther" class="field-label text-xs" x-t>Other</label>
+                  <input id="assistanceOther" type="text" x-model="form.assistanceOther" class="field">
+                </div>
+              </fieldset>
+
+              <!-- Annex D, Part III. The server flags the booking and emails the clinic for the emergencies. -->
+              <fieldset x-field="urgencyFlags">
+                <legend class="form-section mb-4 w-full" x-t>Urgency assessment</legend>
+                <p class="mb-3 text-sm font-semibold" x-t>Does your concern involve any of the following?</p>
+                <div class="grid gap-2 sm:grid-cols-2">
+                  <template x-for="o in opt.urgencyFlags" :key="o">
+                    <label class="pill"><input type="checkbox" :value="o" x-model="form.urgencyFlags" @change="urgencyChanged(o)" class="accent-copper" :aria-invalid="!!errors.urgencyFlags"><span x-text="$t(o)"></span></label>
+                  </template>
+                </div>
+                <div class="mt-4 max-w-xs">
+                  <label for="urgencyDate" class="field-label text-xs" x-t>If applicable, please indicate the date of the hearing or deadline.</label>
+                  <input id="urgencyDate" type="date" x-model="form.urgencyDate" :min="today" class="field" :aria-invalid="!!errors.urgencyDate">
+                  <p class="field-error" x-show="errors.urgencyDate" x-text="errors.urgencyDate"></p>
+                </div>
+                <div x-show="urgencyEmergency" x-transition class="mt-4 rounded-md bg-red-50 p-4 text-sm text-red-900 ring-1 ring-red-200" role="alert">
+                  <p class="font-semibold" x-t>Please do not wait for your appointment.</p>
+                  <p class="mt-1" x-t>Contact the Clinic now, or go to the nearest Public Attorney's Office or Integrated Bar of the Philippines chapter.</p>
+                  <p class="mt-2 font-semibold" x-text="hotline ? $t('Emergency hotline: {number}', { number: hotline }) : $t('Email: {email}', { email: SITE.email })"></p>
                 </div>
               </fieldset>
 
@@ -506,9 +571,10 @@
               <fieldset class="grid gap-6 sm:grid-cols-2">
                 <legend class="form-section mb-6 w-full" x-t>Narrative of facts</legend>
                 <div class="sm:col-span-2" x-field="narrative">
-                  <label for="narrative" class="field-label" x-t>Brief narrative of facts, in chronological order</label>
+                  <label for="narrative" class="field-label" x-t>Please briefly describe your concern, in chronological order (maximum 300 words)</label>
                   <textarea id="narrative" rows="7" x-model="form.narrative" class="field" :aria-invalid="!!errors.narrative"
                             placeholder="Tell us in your own words, from the beginning. Take your time — what happened, when, and who was involved." x-t:placeholder></textarea>
+                  <p class="field-hint text-right" :class="narrativeTooLong && 'font-semibold text-red-700'" x-text="$t('{n} of 300 words', { n: narrativeWords })" aria-live="polite"></p>
                 </div>
                 <div class="sm:col-span-2" x-field="personsInvolved">
                   <label for="personsInvolved" class="field-label" x-t>1. Who are the persons involved?</label>
@@ -559,7 +625,7 @@
                   </div>
                 </div>
                 <div class="sm:col-span-2" x-field="referralSources">
-                  <span class="field-label" x-t>6. How did you learn about the Clinic?</span>
+                  <span class="field-label" x-t>6. How did you learn about the Law Clinic?</span>
                   <div class="flex flex-wrap gap-2">
                     <template x-for="o in opt.referralSources" :key="o">
                       <label class="pill"><input type="checkbox" :value="o" x-model="form.referralSources" class="accent-copper"><span x-text="$t(o)"></span></label>
@@ -585,15 +651,27 @@
                     <input id="documentsOther" type="text" x-model="form.documentsOther" class="field">
                   </div>
                 </div>
+                <!-- Annex D, Part IV. Only shown once the spam check is on (shown() in intake.js); the server enforces that too. -->
                 <div x-field="attachments">
-                  <label class="mt-6 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-black/15 bg-white px-6 py-8 text-center transition hover:border-copper">
+                  <h4 class="form-section mt-6" x-t>Supporting documents</h4>
+                  <div class="mt-6 rounded-md bg-cream p-4 text-sm leading-relaxed">
+                    <p x-t>You may upload any documents that may help us understand your concern.</p>
+                    <p class="mt-1 font-semibold" x-t>Please do not upload identification cards, passwords, financial account information, or documents unrelated to your legal concern.</p>
+                    <p class="mt-1 text-muted" x-t>Examples include: demand letters, contracts, court notices, police reports, affidavits, and government communications.</p>
+                  </div>
+                  <label class="mt-3 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-black/15 bg-white px-6 py-8 text-center transition hover:border-copper">
                     <svg class="size-8 text-copper" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
-                    <span class="text-sm font-semibold"><span x-t>Attach copies</span><span x-show="isRequired('attachments')" class="text-red-700"> *</span> <span class="font-normal text-muted" x-show="!isRequired('attachments')" x-t>(optional)</span></span>
-                    <span class="text-xs text-muted" x-t>Files aren't uploaded online yet: the clinic only receives their names. Please bring copies and the originals to your appointment.</span>
-                    <input type="file" multiple accept="image/*,.pdf" class="sr-only" @change="onFiles">
+                    <span class="text-sm font-semibold"><span x-t>Upload files</span><span x-show="isRequired('attachments')" class="text-red-700"> *</span> <span class="font-normal text-muted" x-show="!isRequired('attachments')" x-t>(optional)</span></span>
+                    <span class="text-xs text-muted" x-t>PDF or photos, up to 5 files. Maximum file size: 5 MB.</span>
+                    <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" class="sr-only" @change="onFiles">
                   </label>
                   <ul class="mt-3 space-y-1 text-sm text-muted" x-show="form.files.length">
-                    <template x-for="name in form.files" :key="name"><li class="truncate">📎 <span x-text="name"></span></li></template>
+                    <template x-for="(name, i) in form.files" :key="name + i">
+                      <li class="flex items-center gap-2">
+                        <span class="min-w-0 flex-1 truncate">📎 <span x-text="name"></span></span>
+                        <button type="button" class="shrink-0 font-semibold text-copper-dark hover:underline" @click="removeFile(i)" x-text="$t('Remove')"></button>
+                      </li>
+                    </template>
                   </ul>
                 </div>
               </fieldset>
@@ -627,6 +705,22 @@
                   <label class="pill"><input type="radio" name="privacyConsent" value="disagree" x-model="form.privacyConsent" class="accent-copper"> <span x-t>I DO NOT AGREE.</span></label>
                 </div>
                 <p class="mt-3 rounded-sm bg-copper/10 p-3 text-sm" x-show="form.privacyConsent === 'disagree'" x-transition x-t>We cannot process an online request without your consent. You can still visit the clinic in person during office hours and our staff will assist you.</p>
+                <p class="mt-3 text-sm text-muted" x-t>Your information will be processed in accordance with the Data Privacy Act of 2012 and the Clinic's Privacy Policy.</p>
+              </fieldset>
+
+              <!-- Annex D, Part VI. Its other three lines are the consent above and the two declarations below. -->
+              <fieldset x-field="acknowledgments">
+                <legend class="form-section mb-4 w-full" x-t>I understand that:</legend>
+                <div class="space-y-3">
+                  <label class="flex cursor-pointer gap-3 rounded-md bg-white p-4 ring-1 ring-black/10">
+                    <input id="ack-application" type="checkbox" x-model="form.ackApplication" class="mt-1 size-4 shrink-0 accent-copper" :aria-invalid="!!errors.acknowledgments && !form.ackApplication">
+                    <span class="text-sm leading-relaxed" x-t>this online request is only an application for legal assistance;</span>
+                  </label>
+                  <label class="flex cursor-pointer gap-3 rounded-md bg-white p-4 ring-1 ring-black/10">
+                    <input id="ack-contact" type="checkbox" x-model="form.ackContact" class="mt-1 size-4 shrink-0 accent-copper" :aria-invalid="!!errors.acknowledgments && !form.ackContact">
+                    <span class="text-sm leading-relaxed" x-t>the Clinic may contact me for additional information or to schedule a preliminary interview.</span>
+                  </label>
+                </div>
               </fieldset>
 
               <!-- Section I -->
@@ -645,7 +739,7 @@
 
                 <div class="mt-6 grid gap-4 sm:grid-cols-[2fr_1fr]">
                   <div>
-                    <label for="signature" class="field-label" x-t>Applicant signature — type your full name</label>
+                    <label for="signature" class="field-label" x-t>Electronic signature — type your full name</label>
                     <input id="signature" type="text" x-model="form.signature" autocomplete="name" class="field font-display text-xl" :aria-invalid="!!errors.signature">
                     <p class="field-error" x-show="errors.signature" x-text="errors.signature"></p>
                   </div>
@@ -692,6 +786,12 @@
 
         <!-- ================= Sidebar (changes per step) ================= -->
         <aside class="space-y-4 xl:sticky xl:top-24 xl:self-start">
+          <!-- Annex D's emergency notice stays in sight after step 1, where it's in the main card -->
+          <div x-show="step !== 1 && !submitted" x-cloak class="rounded-md bg-red-50 p-5 text-sm leading-relaxed text-red-900 ring-1 ring-red-200">
+            <p class="font-semibold" x-t>In an emergency</p>
+            <p class="mt-1" x-t>For an imminent arrest, detention, or a court hearing within 48 hours, do not wait: contact the Clinic or the nearest Public Attorney's Office or Integrated Bar of the Philippines chapter.</p>
+            <p class="mt-2 font-semibold" x-text="hotline ? $t('Emergency hotline: {number}', { number: hotline }) : $t('Email: {email}', { email: SITE.email })"></p>
+          </div>
           <div x-show="step === 1 && !submitted" class="grid gap-4 md:grid-cols-3 xl:grid-cols-1">
             <div class="rounded-md bg-ink p-6 text-white">
               <h3 class="text-xl text-rose" x-t>Consultation days</h3>

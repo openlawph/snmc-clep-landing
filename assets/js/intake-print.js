@@ -12,6 +12,39 @@
 
 const BLANK_LINES = 5;
 
+// SNMC-CIF-001 is a fixed form, so its lists stay as printed even though the online form now uses Annex D's wording.
+const CIF_OPTIONS = {
+  practiceAreas: [
+    'Criminal', 'Civil', 'Labor / Employment', 'Family / Custody / VAWC', 'Administrative',
+    'Human Rights', 'Environmental', 'Land Dispute / Property', 'Cyberlibel / Online Harassment',
+    'Drug-Related Case (RA 9165)', 'Children in Conflict with the Law (CICL)',
+  ],
+  assistance: ['Legal Advice', 'Limited Legal Service / Drafting', 'Continuing Representation', 'Legal Referral'],
+  referralSources: ['Barangay VAWC', 'PNP', 'CSWDO', 'RTC', 'PAO', 'Friend / Relative', 'Social Media'],
+};
+
+// Which box on the form an online answer ticks. An answer the form has no box for is printed under "Other".
+const CIF_FROM_ONLINE = {
+  'Criminal Law': 'Criminal', 'Civil Dispute': 'Civil', 'Labor and Employment': 'Labor / Employment', 'Family Law': 'Family / Custody / VAWC',
+  'Violence Against Women and Children': 'Family / Custody / VAWC', 'Government or Administrative Matter': 'Administrative',
+  'Environmental Law': 'Environmental', 'Land or Property': 'Land Dispute / Property',
+  'Document Preparation': 'Limited Legal Service / Drafting', Representation: 'Continuing Representation', Referral: 'Legal Referral',
+  Court: 'RTC', "Public Attorney's Office": 'PAO', 'Friend or Relative': 'Friend / Relative',
+};
+
+// Answers (old or new wording) → { ticked: boxes on the form, others: answers with no box }.
+function cifSplit(kind, answers) {
+  const boxes = CIF_OPTIONS[kind];
+  const ticked = [];
+  const others = [];
+  for (const answer of Array.isArray(answers) ? answers : []) {
+    const box = boxes.includes(answer) ? answer : CIF_FROM_ONLINE[answer];
+    if (box && boxes.includes(box)) ticked.push(box);
+    else others.push(answer);
+  }
+  return { ticked, others };
+}
+
 document.addEventListener('alpine:init', () => {
   Alpine.data('intakePrint', () => ({
     loading: true,
@@ -19,7 +52,7 @@ document.addEventListener('alpine:init', () => {
     row: null,
     a: {}, // booking.json
     me: Auth.user,
-    options: INTAKE_OPTIONS,
+    options: { ...INTAKE_OPTIONS, ...CIF_OPTIONS },
 
     async init() {
       const id = location.hash.slice(1);
@@ -50,6 +83,14 @@ document.addEventListener('alpine:init', () => {
     get F() { return this.a.F_legalIssue || {}; },
     get G() { return this.a.G_caseFacts || {}; },
     get E() { return this.a.E_conflictCheck || {}; },
+    get D() { return this.a.annexD || {}; },
+
+    get areas() { return cifSplit('practiceAreas', this.F.practiceAreas); },
+    get help() { return cifSplit('assistance', this.F.requestedAssistance); },
+    get heard() { return cifSplit('referralSources', this.G.referralSources); },
+    get areasOther() { return [...this.areas.others, this.F.other].filter(Boolean).join(', '); },
+    get helpOther() { return [...this.help.others, this.F.requestedOther].filter(Boolean).join(', '); },
+    get heardOther() { return [...this.heard.others, this.G.referralOther].filter(Boolean).join(', '); },
 
     // Answers can be a string or a { details } object (the "Yes — details" questions).
     yes: (v) => (v && typeof v === 'object') || v === 'Yes',
@@ -69,7 +110,8 @@ document.addEventListener('alpine:init', () => {
 
     get fullName() {
       const b = this.B;
-      if (!b.lastName && !b.firstName) return this.row?.title || '';
+      if (b.fullName) return b.fullName; // started from Annex C, which has one line for the name
+      if (!b.lastName && !b.firstName) return (this.row?.title || '').split(' — ')[0];
       return [b.lastName, b.firstName, b.middleName].filter(Boolean).join(', ');
     },
 
@@ -97,7 +139,15 @@ document.addEventListener('alpine:init', () => {
     },
 
     get locationLine() {
-      return [this.B.barangay, this.B.city].filter(Boolean).join(' / ');
+      return [this.B.barangay, this.B.city, this.B.province].filter(Boolean).join(' / ');
+    },
+
+    get urgencyFlags() {
+      return (this.D.urgency?.flags || []).filter((flag) => !/none of the above/i.test(flag));
+    },
+
+    get preferredContact() {
+      return [...(this.D.preferredContact || []), this.D.preferredContactOther].filter(Boolean).join(', ');
     },
 
     get firstTimeNote() {

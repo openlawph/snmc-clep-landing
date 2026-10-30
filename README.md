@@ -26,6 +26,8 @@ services.html       Our Services (not linked in the nav for now)
 team.html           Our Team (not linked in the nav for now)
 donate.html         Donate (not linked in the nav for now)
 clinic-dashboard.html  Staff dashboard: counts + upcoming appointments (sign-in required, not linked publicly)
+clinic-intake.html  Staff: file an intake (Annex "C"), for a walk-in or to receive a booking
+clinic-annex-c.html Staff: Annex "C" to print or save as PDF, filled in or blank and numbered
 clinic-appointments.html Staff: all appointments; open one to change status, assign LSP + supervising lawyer, edit, delete
 clinic-users.html   Staff: list, add, edit and delete user accounts (sign-in required)
 clinic-lawyers.html Staff: list, add, edit and delete lawyers (sign-in required)
@@ -33,6 +35,9 @@ clinic-practitioners.html Staff: list, add, edit and delete law student practiti
 clinic-settings.html Staff: Intake Form Settings (open days, time slots, which questions the booking form asks)
 clinic-site-settings.html Staff: Site Settings (maintenance mode, office and online booking hours)
 login.html          Staff sign-in (PocketBase), not linked publicly
+pocketbase/
+  pb_migrations/    Database changes; run by themselves when PocketBase starts (see "Installing the server files")
+  pb_hooks/         Server rules: clinic-*.pb.js, turnstile.pb.js, semester-end.pb.js
 assets/
   js/theme.js       Colors, fonts and shared classes (.btn, .card, .field, .eyebrow…)
   js/components.js  SITE settings: phone, email, address, NAV LINKS + site_settings fetch, clinic hours helpers, scroll-reveal
@@ -44,6 +49,8 @@ assets/
   js/login.js       Logic for the sign-in page (Alpine component "login")
   js/dashboard.js   Logic for the clinic dashboard (Alpine component "dashboard")
   js/appointments.js Logic for the Appointments page (Alpine component "appointments") + shared appointment helpers
+  js/intake-c.js    Logic for the staff intake page (Alpine component "annexC") + Annex C's choices
+  js/annex-c-print.js Logic for printing Annex C (Alpine component "annexCPrint")
   js/crud.js        Shared logic for staff list pages: server-side search/sort/paging, delete dialog, error messages
   js/users.js       Logic for the Users page (Alpine component "users")
   js/lawyers.js     Logic for the Lawyers page (Alpine component "lawyers")
@@ -99,21 +106,25 @@ Add `data-reveal` to any element to fade it in on scroll (`data-reveal-delay="12
 
 ## Booking form
 
-`index.html` is the online version of the **Unified Client Intake Form (SNMC-CIF-001)**, split into 6 steps:
+`index.html` is the online version of the **Unified Client Intake Form (SNMC-CIF-001)** plus everything the **Online Request for Legal Assistance (Annex "D")** asks, split into 6 steps. Annex D's questions are added to the steps they belong to, and carry an "Annex D" badge in Intake Settings:
 
 | Step | Form sections |
 |---|---|
-| 1. Book a slot | Appointment date (calendar of open days) and time slot, set in Intake Settings |
-| 2. Personal information | B: applicant personal information |
+| 1. Book a slot | Annex D's intro and emergency notice · appointment date (calendar of open days) and time slot, set in Intake Settings · a map to the clinic |
+| 2. Personal information | B: applicant personal information · Annex D: preferred contact, province, age |
 | 3. Household & sector | C: household composition & financial eligibility · D: sector classification |
-| 4. Legal issue | F: practice area, requested assistance, opposing party · E: conflict check & prior consultation |
-| 5. Case facts | G: narrative & case facts · K: documents checklist + file picker (only file names are sent for now) |
-| 6. Consent & declaration | Review of all answers · H: data privacy consent · I: declaration + typed signature |
+| 4. Legal issue | F: practice area, requested assistance, opposing party · Annex D Part III: urgency · E: conflict check & prior consultation |
+| 5. Case facts | G: narrative & case facts (300 words at most, Annex D) · K: documents checklist · Annex D Part IV: file uploads |
+| 6. Consent & declaration | Review of all answers · H: data privacy consent · Annex D Part VI: acknowledgments · I: declaration + typed signature |
 
 Sections **A** (administrative) and **J** (staff assessment) are for clinic staff, so they are not on the public form.
 Checkbox and radio choices are in `INTAKE_OPTIONS` at the top of `assets/js/intake.js` (add the Bisaya wording to `assets/js/i18n-vs.js` too). `toPayload()` there groups the answers by form section (`B_personal`, `C_household`, …).
 
-The form checks each step (required questions, mobile/email format), then `sendRequest()` in `assets/js/intake.js` saves it as a record in the PocketBase `appointments` collection: a reference (e.g. SNMC-2026-4K7Q2D), a title (name + concern), mobile, email, the chosen date and time (`scheduled_at`, Manila time) and every answer in `json`. The client sees the reference on the "Request received" screen; staff see the booking on the Appointments page as **Pending**. If it can't be sent, the client gets a message and their answers stay on screen. Uploaded files aren't sent yet (only their names are). See "Spam protection" for the security check before Submit.
+The form checks each step (required questions, mobile/email format), then `sendRequest()` in `assets/js/intake.js` saves it as a record in the PocketBase `appointments` collection: a title (name + concern), mobile, email, the chosen date and time (`scheduled_at`, Manila time), every answer in `json` and any `attachments`. The server gives the reference (see "Reference numbers"). The client sees it on the "Request received" screen; staff see the booking on the Appointments page as **Pending**. If it can't be sent, the client gets a message and their answers stay on screen. See "Spam protection" for the security check before Submit.
+
+**Option wording:** the lists on the form now use Annex D's wording. The printed SNMC-CIF-001 keeps its own fixed lists; `CIF_FROM_ONLINE` in `assets/js/intake-print.js` says which box an online answer ticks, and `ANNEX_C_FROM_ONLINE` in `assets/js/intake-c.js` does the same for Annex C. Both are a best reading: **someone from the clinic should check them.**
+
+**Uploads** go to the staff-only `attachments` field (5 files, 5 MB each, PDF or photos; change the limits in `INTAKE_UPLOADS` and on the field together). The question stays off, and the server refuses visitors' files, until the spam check is set up, because anonymous uploads without it could fill the server's disk. To turn it on: finish "Spam protection", then switch it on in Intake Settings.
 
 ## Preview locally
 
@@ -137,22 +148,80 @@ Staff pages are named `clinic-*.html` and share `<dashboard-sidebar active="…"
 
 ### Appointments
 
-`clinic-appointments.html` lists every booking (online and walk-in) from the `appointments_overview` view: tabs (Pending / Scheduled / Follow-ups / Past / All; an appointment moves to Past once its date has passed, and Follow-ups are returning clients who answered "No" to "First time with the clinic?"), filters (status, LSP, supervising lawyer), sorting and paging run on the server. Opening one (or linking to `clinic-appointments.html#<id>`) shows:
+`clinic-appointments.html` lists every booking (online and walk-in) from the `appointments_overview` view: tabs (Pending / To receive / Scheduled / Follow-ups / Past / All; an appointment moves to Past once its date has passed, and Follow-ups are returning clients who answered "No" to "First time with the clinic?"), filters (status, urgency, LSP, supervising lawyer), sorting and paging run on the server. Opening one (or linking to `clinic-appointments.html#<id>`, which is what the QR code on the client's confirmation does) shows:
 
-- **Status & assignment:** pick the status, the LSP and the supervising lawyer, add remarks, **Save update**. Each save adds an `appointments_status` row with your name, so the history shows who changed what and when.
-- **History:** every update, newest first.
+- **Intake (Annex C):** **Receive intake** if it hasn't been received, otherwise who received it and when, with **Print / save Annex C**. Admins can void one, with a reason.
+- **Status & assignment:** pick the status, the LSP and the supervising lawyer, add remarks, **Save update**. Each save adds an `appointments_status` row with your name, so the history shows who changed what and when. In progress and Done wait for Annex C.
+- **History:** every update, newest first, then **Changes to this record** from the audit log.
 - **Print intake form:** opens `clinic-intake-print.html#<id>`, the SNMC-CIF-001 form filled in from the booking (Section A from the assignment, B–I and K from the client's answers, J left blank) for Print / Save as PDF.
 - **ULAS declaration:** opens `clinic-ulas-form.html#<id>`: the Supreme Court's ULAS Annex "B" Qualified Beneficiary Declaration with Annex "B-1" / "B-2" lawyer certifications, prefilled from the booking (name, address, income, grounds, supervising lawyer, dates). Staff correct anything, then **Create PDF** stamps the answers onto the untouched scan (`assets/forms/ulas-annex-b.pdf`, 149 KB, rebuilt from the original with `tools/optimize-annex-b.py`) using pdf-lib in the browser. Signatures, the jurat and roll numbers stay blank.
 - **Booking details:** reference, date and time, mobile, email; **Edit** changes them (the client isn't notified).
+- **Supporting documents:** what the client uploaded. Only signed-in staff can open these.
 - **Form answers:** everything the client entered online, by form section.
-- **Delete** (admins only) removes the booking and its history. To keep a record, set the status to **Cancelled** instead.
+- **Delete** (admins only) removes the booking and its history, and is refused once it has an Annex C. To keep a record, set the status to **Cancelled** instead.
 
-**New appointment** adds a walk-in or phone booking (name, concern, contact, date and time, and optionally the status, LSP and lawyer).
+### Intake (Annex C)
+
+Every request gets an Annex C: the staff's first step. **New intake** (in the sidebar, on the Dashboard and on Appointments) opens `clinic-intake.html`, which files it and creates the appointment together, so a walk-in always has both. For an online booking, **Receive intake** opens the same page filled in from what the client entered (`clinic-intake.html#<appointment id>`). It's saved through `POST /api/clinic/intakes`: nobody can write to `intake_requests` any other way. Afterwards `clinic-annex-c.html` shows it, word for word, to print for the client to sign or save as a PDF.
+
+**The rule:** every Annex C has exactly one appointment. An immediate referral with no interview date becomes an undated appointment and closes itself as Done. Appointments from before Annex C (older than `gate_from`) don't need one.
+
+**Paper forms:** **Print blank forms** issues numbers, recorded against whoever asked, and prints a form for each. When it's filed in later, tick "This was filled in on a paper form first":
+
+| Number on the paper | What happens |
+|---|---|
+| Issued, not yet encoded | It becomes the reference |
+| Unknown, wrong format, or none | The next paper number is given; what was written is kept (and can be searched), and it's flagged |
+| Already used, or voided | Refused, and it says why |
+
+Anything received more than "days before filed late" ago needs a reason and is marked as filed late. Only a number that's already been used or voided is ever refused: filing late has to stay easier than not filing at all.
+
+### Reference numbers
+
+Set in **Intake Settings → Reference numbers & safeguards** (`intake_controls`: staff can see it, admins change it, the public can't). The server gives every reference, whatever a request says, and it can't be changed afterwards.
+
+- **Online and e-filed:** `SNMC-2026-000123`. **Paper forms:** `SNMC-2026-M0042`, a separate series, so a handwritten number can't clash with one the system gave out. Both start again at 1 each new year. References from before this (`SNMC-2026-4K7Q2D`) stay as they are, and an old booking with none gets one when it is received.
+- **If numbers were used by hand outside the system,** move the next number past them. It only goes forward: the server refuses anything lower. To correct a real mistake, change it as a superuser in the PocketBase admin.
+
+### What the server enforces
+
+These are in `pocketbase/pb_hooks`, so they hold even for someone skipping the website:
+
+| Rule | Where |
+|---|---|
+| In progress / Done need a received Annex C (older appointments exempt) | `clinic-guards.pb.js` |
+| Done needs an LSP and a lawyer (except an immediate referral); Cancelled needs a remark | `clinic-guards.pb.js` |
+| An LSP or lawyer set to Inactive can't be newly assigned | `clinic-lib.js` |
+| Online: a full slot, a date or time not offered, over 300 words, or more than the set number of open bookings per mobile number is refused | `clinic-lib.js` |
+| A reference can't be changed; an appointment with an Annex C can't be deleted | `clinic-appointments.pb.js` |
+| Every change and delete on the records that matter goes in `audit_log`, which nobody can write to or delete from through the API | `clinic-guards.pb.js` |
+| Annex D's emergencies (detention, a threat to safety, a hearing within 48 hours) email the clinic straight away | `clinic-appointments.pb.js` |
+| Every night at 00:10 Manila: if anything has slipped or the setup is incomplete, one email to the admins. **No email means nothing to do.** It has references and counts only, never names or case facts. | `clinic-daily.pb.js` |
+
+Refusals carry a field error with a code (`slot_full`, `needs_intake`…). That matters: the booking form takes a refusal with **no** field error to mean online booking is closed, so a new rule has to use `refuse()` in `clinic-lib.js`.
+
+Staff pages also sign out after an hour with no activity (`auth.js`), so the audit log names the right person. **What none of this can catch:** a form that never touches the system. If someone uses an unnumbered photocopy and never files it in, the website can't know. Issued numbers narrow that gap but can't close it, and a PocketBase superuser can bypass all of it.
+
+### Installing the server files
+
+Needed once, and again whenever `pocketbase/` changes. The new pages don't work without them, so do it **in this order**:
+
+1. **Site Settings:** turn maintenance mode on.
+2. **PocketBase admin → Settings → Backups:** create a backup, and check that it's there.
+3. **On the server:** copy `pocketbase/pb_migrations` and `pocketbase/pb_hooks` next to `pb_data` (add to what's there; don't delete anything), then restart PocketBase. The migration runs by itself, once. It only adds things. This also switches on the semester job and the Turnstile hook, if they were not there already (see those sections).
+4. **Push the website** to GitHub (the new pages expect the new database).
+5. **Check:** make one test booking, and see it get a reference like `SNMC-2026-000001` and show on the Dashboard. File an Annex C for it.
+6. **PocketBase → Settings → Crons:** run `clinicDailyCheck` once; the email should arrive (it lists whatever setup is still missing).
+7. **Lawyers and LSPs pages:** check everyone is set to the right status. Someone set to Inactive can no longer be assigned, and Done needs an LSP and a lawyer, so with every lawyer Inactive nothing could be closed.
+8. **Site Settings:** add the emergency hotline, and turn maintenance mode off.
+
+**If something goes wrong:** turn maintenance on, restore the backup from step 2, remove the `clinic-*.pb.js` hooks and the migration file from the server, restart, and revert the website push. If PocketBase won't start after step 3, the migration failed and changed nothing (it runs in one transaction): remove the same files and restart.
 ## Sign-in and the dashboard
 
 - `login.html` signs staff in with email + password against the PocketBase `users` collection. It also handles "forgot password" and re-sending the verification email (both links in those emails open PocketBase's own confirmation pages). There is no sign-up: create staff accounts in the PocketBase admin at https://capi.snmclaw.com/_/.
 - Every `clinic-*.html` page has `data-auth-required` on its `<html>` tag. `assets/js/auth.js` keeps the page hidden, confirms the saved session with the server (`authRefresh`), and sends anyone who isn't signed in, or whose email isn't verified, to `login.html` (then back again after signing in). Add the same attribute and the two `<script>` tags (PocketBase SDK + `auth.js`) to protect another page.
-- The session is kept in the browser's localStorage (`pocketbase_auth`) by the SDK. Sign out clears it.
+- The session is kept in the browser's localStorage (`pocketbase_auth`) by the SDK. Sign out clears it, and so does an hour with no activity.
+- **Everyone needs their own account, LSPs included.** A shared sign-in makes the audit log and "Received by" meaningless.
 
 **Important:** the check in `auth.js` only hides the page. Anyone can still download the HTML, and the real protection for clinic data is PocketBase's **API rules**. In the PocketBase admin:
 
@@ -209,10 +278,11 @@ The admin login at https://capi.snmclaw.com/_/ is a PocketBase **superuser**, se
   - **Required:** clients can't continue without answering it (marked with a red * on the form). Questions that always have an answer (a pre-selected Yes/No) can't be required; for questions with a follow-up, "required" means the follow-up must be filled in when they answer Yes.
   - **Always ask (lock):** the question stays on and neither switch can be changed until someone unlocks it, which asks for confirmation. Use it for whatever the group has agreed on.
 
-  Date, time, data privacy consent and the declaration are always asked and required. The list is `INTAKE_FIELDS` in `assets/js/intake.js`; each key matches an `x-field="…"` in `index.html`, which shows/hides the question, adds the * and shows its error.
+  Date, time, data privacy consent, the acknowledgments and the declaration are always asked and required. The list is `INTAKE_FIELDS` in `assets/js/intake.js`; each key matches an `x-field="…"` in `index.html`, which shows/hides the question, adds the * and shows its error.
 - **Stored as:** `hidden_fields`, `required_fields` and `locked_fields` (lists of question keys) on the `intake_settings` record.
+- **Reference numbers & safeguards:** saved separately, on `intake_controls`: see "Reference numbers". This card also has how many clients fit in a time slot, how many open bookings a mobile number can have, when an intake counts as filed late, who gets the alert emails, and the paper numbers given out and not filed in yet (reprint, or void with a reason).
 
-If the settings can't be loaded, the form falls back to `INTAKE_DEFAULT_SETTINGS` (Tuesdays and Thursdays, 1:00–4:00 PM, every question shown; name, contact number and the facts of the case required and always asked).
+If the settings can't be loaded, the form falls back to `INTAKE_DEFAULT_SETTINGS` (Tuesdays and Thursdays, 1:00–4:00 PM, every question shown except uploads; name, contact number and the facts of the case required and always asked, urgency required).
 
 ## Languages (EN / VS)
 
@@ -233,13 +303,17 @@ All at https://capi.snmclaw.com. "Staff" = signed-in user with a verified email;
 | `lawyers` | Supervising lawyers (SL): name, email, contact no., active / archived cases, ULAS hours, status | Staff read, admins write |
 | `practitioners` | Law student practitioners (LSP): name, email, contact no., `level` (Level 1 / Level 2 under Rule 138-A), `year_level` (1st–4th year in law school), `semester_id` → semesters, active / archived cases, status | Staff read, admins write |
 | `semesters` | School terms: `school_year` (e.g. `2026-2027`), `semester` (1st semester / 2nd semester / Summer, one record per pair), `end_date`. LSPs in a semester are set to Inactive the night after its end date (see "LSPs and semesters") | Staff read, admins write |
-| `appointments` | A booking: `reference`, `title`, `email`, `mobile_no` (digits only), `scheduled_at`, `json` (the full form) | Anyone can create (the booking form) **only during the online booking hours, and not in maintenance mode** (see "Site Settings"); staff read, edit and always create; admins delete |
+| `appointments` | A booking: `reference` (the server gives it), `title`, `email`, `mobile_no` (digits only), `scheduled_at`, `json` (the full form), `attachments` (staff-only files), and the flags the server sets: `client_urgent`, `urgent_deadline`, `possible_duplicate` | Anyone can create (the booking form) **only during the online booking hours, and not in maintenance mode** (see "Site Settings"); staff read, edit and always create; admins delete, unless it has an Annex C |
 | `appointments_status` | History log, one row per change: `app_id` → appointment (deleted with it), `user_id` → who made the change, `app_status` (PENDING / SCHEDULED / WIP / DONE / CANCELLED), `remarks`, **`lsp_id` → practitioners**, **`sl_id` → lawyers** | Staff read and add rows (only in their own name); admins edit and delete |
-| `appointments_overview` (view) | **Every** appointment with its latest status (PENDING if none), `lsp_id` / `lsp_name`, `sl_id` / `sl_name` | Staff read |
+| `appointments_overview` (view) | **Every** appointment with its latest status (PENDING if none), `lsp_id` / `lsp_name`, `sl_id` / `sl_name`, the flags above, and its Annex C: `intake_id`, `urgency`, `disposition`, `received_at`, `encoded_late`, `intake_source`, `paper_ref_written` | Staff read |
+| `intake_requests` | Annex C, one per appointment: `reference`, `appointment_id`, `date_received`, `contact_mode`, `full_name`, `address`, `mobile_no`, `email`, `urgency`, `disposition`, `received_by` + `received_by_name`, `received_at`, `source`, `paper_ref_written`, `unissued_paper`, `encoded_late`, `late_reason`, `voided`, `void_reason`, `json` (the rest of the answers) | Staff read; only the server writes (`/api/clinic/intakes`) |
+| `paper_forms` | Paper numbers issued: `reference`, `status` (ISSUED / ENCODED / VOID), `issued_by` + `issued_by_name`, `intake_id`, `void_reason` | Staff read; only the server writes (`/api/clinic/paper-forms`) |
+| `intake_controls` | One record: `ref_prefix`, `ref_year`, `ref_next`, `ref_paper_next`, `late_days`, `slot_capacity`, `max_open_per_mobile`, `alert_emails`, `gate_from` | Staff read, admins update (counters forward only). The public can't read it |
+| `audit_log` | Who changed what: `target_collection`, `target_id`, `target_reference`, `action`, `user_id` + `user_name`, `changes` | Staff read; only the server writes |
 | `appointments_view` (view) | Each appointment's **latest** status row, with `lsp_id`, `sl_id`, `lsp_name`, `sl_name` | Staff read |
 | `appointments_pending` (view) | Appointments with no status row yet | Staff read |
 | `intake_settings` | One record: booking days, time slots, hidden / required / always-asked questions | Anyone reads, admins update |
-| `site_settings` | One record: `maintenance` (on/off), `maintenance_message`, `maintenance_until`; office hours `office_days` / `office_open` / `office_close` and online booking hours `intake_days` / `intake_open` / `intake_close` (days `mon`…`sun`, times `HH:MM` Manila time, all required) | Anyone reads, admins update |
+| `site_settings` | One record: `maintenance` (on/off), `maintenance_message`, `maintenance_until`; office hours `office_days` / `office_open` / `office_close` and online booking hours `intake_days` / `intake_open` / `intake_close` (days `mon`…`sun`, times `HH:MM` Manila time, all required); `hotline` | Anyone reads, admins update |
 
 **Assigning an LSP and a Supervising Lawyer:** add an `appointments_status` row for the appointment with `lsp_id` and `sl_id` set (along with the status). The newest row is the current assignment, so reassigning is just a new row, and the log keeps who changed it and when. When adding a row for any other reason (e.g. SCHEDULED → WIP), copy the current `lsp_id` / `sl_id` across so the assignment carries forward.
 
@@ -268,6 +342,8 @@ Do step 2 before step 3: once the secret is set, bookings without a token are re
 **2. Booking limit per connection (PocketBase).** PocketBase admin → **Settings** → **Rate limits** → add a rule: label `appointments:create`, audience **Guest only**, max **10** requests per **600** seconds. That's at most 10 online bookings per 10 minutes from one internet address; staff aren't affected. (Mobile networks often put many phones behind one address, so don't go much lower.) Without this rule only PocketBase's general `*:create` limit applies: 20 per 5 seconds, which a bot can easily live with.
 
 **3. Online booking hours (Site Settings).** Visitors can only book during the hours set there; PocketBase refuses their bookings at other times, even when they're sent straight to the API. This gives spam and abuse a smaller window and keeps the form open mainly while staff are around to notice. Already on (see "Site Settings").
+
+**4. Limits per booking (the server).** A full slot, a date or time that isn't offered, or more than the set number of open bookings per mobile number is refused (see "What the server enforces").
 
 What these don't do: none of them is what stops **SQL injection**. PocketBase never pastes what a visitor sends into its database queries (it passes values separately, as parameters), and its API rules decide who can read or change what. That, the rules in "Database", and not showing visitors' text as HTML ("Security") are the protection there. Limiting the hours only shrinks the window for spam and other abuse.
 
@@ -315,6 +391,10 @@ Two sets of days plus an opening and closing time, in Manila time (currently Mon
 
   (`intake_days:each ?= 'mon'` means "the list includes mon"; a plain `?=` compares the whole list.) This is a rule rather than a `pb_hooks` file so it works without copying anything to the server or restarting PocketBase, and it sits next to the maintenance check. The catch: a refused rule only says "Failed to create record", so the booking form asks for the settings again to tell the visitor why.
 
+### Emergency hotline
+
+Annex D sends people facing an imminent arrest, detention or a hearing within 48 hours to the emergency hotline, so the public form shows this number. Until it's filled in, the form shows the clinic's email instead.
+
 ## Error pages
 
 - **404:** GitHub Pages serves `404.html` for any address that doesn't exist, at that address (e.g. `/old/page.html`). It has `<base href="/">` so its styles and links work however deep the address is, says "We can't find that page" in English and Bisaya, and links to the booking page. It's a public page, so maintenance mode applies to it too.
@@ -336,14 +416,17 @@ Two sets of days plus an opening and closing time, in Manila time (currently Mon
 
 ## Beta launch checklist
 
-Things only an admin can do (outside this repo), in rough order of importance:
+Things only an admin can do (outside this repo), in rough order of importance. Together they're what lets the site run without anyone watching it; the nightly email reminds the admins about the ones it can check (backups, rate limit, spam check).
 
+0. **Install the server files** (see "Installing the server files"). Most of the rules don't exist until this is done.
 1. **GitHub → Settings → Pages → tick "Enforce HTTPS".** Right now `http://clinic.snmclaw.com` loads without encryption, so on public Wi-Fi the page (and what's typed into it) could be read or changed.
 2. **PocketBase superuser:** change the password (it was shared in a chat), and turn on **MFA** (`_superusers` collection → Options → Multi-factor authentication; it uses the email OTP, and mail is already set up).
 3. **Lock the `testing` collection:** its Create rule is empty, which means *anyone on the internet* can add records to it. Nothing on the site uses it: set its rules to superusers only (lock icon) or delete it.
-4. **Spam protection** (see above): the `appointments:create` rate limit, and the Turnstile keys + hook. Until both are done, the public booking form is protected only by PocketBase's general limits.
+4. **Spam protection** (see above): the site key is in `components.js`. Still needed: the `appointments:create` rate limit, and the Turnstile hook + secret on the server. Until both are done, the public booking form is protected only by PocketBase's general limits.
 5. **Backups:** PocketBase admin → Settings → Backups → turn on automatic backups (e.g. cron `0 3 * * *`, keep 7). They're currently off, so a broken server or a bad delete means lost bookings. Store them on S3 if you can (S3 is already set up for files) so a dead server doesn't take the backups with it.
 6. **Cloudflare:** make sure the PocketBase server only accepts connections from Cloudflare (firewall). PocketBase trusts the `CF-Connecting-IP` header for rate limits, so anyone who can reach the server directly could fake their address and get around the limits.
 7. **Semester job:** install `pocketbase/pb_hooks/semester-end.pb.js` (see "LSPs and semesters"), then add the current semester on the LSPs page.
 8. **Maintenance mode:** turn it **off** in Site Settings when the beta starts (it's on now). Check the **office and online booking hours** there too: both are Monday to Friday, 9:00 AM to 4:00 PM until someone changes them.
-9. **Content:** have a native Bisaya speaker review `assets/js/i18n-vs.js`; the attach-files box on step 5 tells clients that only file names are sent, so turn that question off in Intake Settings if you'd rather not show it until uploads work.
+9. **Content:** have a native Bisaya speaker review `assets/js/i18n-vs.js`, above all the "Annex D" section at the end, which is a draft. Add the real **emergency hotline** in Site Settings. Annex D and the form both mention **the Clinic's Privacy Policy**, but the site doesn't have one yet, and the footer link goes nowhere: the clinic needs to supply it.
+10. **Accounts:** one sign-in per person, LSPs included, and set who gets the alert emails (Intake Settings).
+11. **Slot capacity:** it starts at 1 client per time slot. Change it in Intake Settings if the clinic can see more.

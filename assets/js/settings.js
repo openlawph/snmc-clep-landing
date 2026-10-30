@@ -9,6 +9,10 @@
  *
  * Everything is saved to the single record in the PocketBase `intake_settings` collection.
  * Anyone can read it (the booking form needs it); only admins (role = "admin") can change it.
+ *
+ * The "Reference numbers & safeguards" card is saved separately, to `intake_controls` (staff read, admins change, the
+ * public can't see it). It only sends what changed, so saving it can't undo a number given out in the meantime, and the
+ * server refuses to move a counter backwards. See pocketbase/pb_hooks/clinic-guards.pb.js.
  */
 
 // Time slots admins can choose from: every 30 minutes, 7:00 AM to 7:00 PM.
@@ -41,10 +45,23 @@ document.addEventListener('alpine:init', () => {
     toast: '',
     unlockTarget: null, // question waiting for "Unlock?" confirmation
 
+    // Reference numbers & safeguards (intake_controls)
+    controls: null, // the saved record; null = not installed on the server yet
+    controlsForm: {},
+    controlErrors: {},
+    controlError: '',
+    savingControls: false,
+    paperOpen: [], // paper numbers issued and not filed in yet
+    voidTarget: null,
+    voidReason: '',
+    voidError: '',
+    voiding: false,
+
     init() {
       pb.authStore.onChange(() => (this.me = pb.authStore.record));
-      window.addEventListener('beforeunload', (e) => { if (this.dirty) e.preventDefault(); });
+      window.addEventListener('beforeunload', (e) => { if (this.dirty || this.controlsDirty) e.preventDefault(); });
       this.load();
+      this.loadControls();
     },
 
     get isAdmin() {
@@ -153,8 +170,14 @@ document.addEventListener('alpine:init', () => {
       return field.canRequire !== false && this.isShown(field) && this.required.includes(field.key);
     },
 
+    // Uploads stay off until the spam check is set up: anonymous uploads without it could fill the server's disk.
+    // The server refuses this too (it checks for the secret key; the site key is what this page can see).
+    needsSpamCheck(field) {
+      return !!field.needsSpamCheck && !window.SITE.turnstileSiteKey;
+    },
+
     canChangeAsk(field) {
-      return this.isAdmin && !this.isLocked(field);
+      return this.isAdmin && !this.isLocked(field) && !this.needsSpamCheck(field);
     },
 
     canChangeRequired(field) {
@@ -171,7 +194,7 @@ document.addEventListener('alpine:init', () => {
 
     // Locking makes sure the question is asked; unlocking asks for confirmation first.
     toggleLock(field) {
-      if (!this.isAdmin || field.core) return;
+      if (!this.isAdmin || field.core || this.needsSpamCheck(field)) return;
       if (this.locked.includes(field.key)) {
         this.unlockTarget = field;
         this.$refs.unlockDialog.showModal();
@@ -201,7 +224,7 @@ document.addEventListener('alpine:init', () => {
 
     // "All on" / "All off" for a step; locked questions stay as they are.
     setStep(step, shown) {
-      const keys = this.fieldsFor(step).filter((f) => !this.isLocked(f)).map((f) => f.key);
+      const keys = this.fieldsFor(step).filter((f) => !this.isLocked(f) && !this.needsSpamCheck(f)).map((f) => f.key);
       this.hidden = shown ? this.hidden.filter((k) => !keys.includes(k)) : [...new Set([...this.hidden, ...keys])];
     },
 
@@ -258,6 +281,99 @@ document.addEventListener('alpine:init', () => {
       this.toast = message;
       clearTimeout(this._toastTimer);
       this._toastTimer = setTimeout(() => (this.toast = ''), 4000);
+    },
+
+    // ---------- Reference numbers & safeguards ----------
+
+    async loadControls() {
+      try {
+        const { items: [record] } = await pb.collection('intake_controls').getList(1, 1, { requestKey: null });
+        if (!record) return;
+        this.applyControls(record);
+        this.paperOpen = await pb.collection('paper_forms').getFullList({ filter: 'status = "ISSUED"', sort: 'created', requestKey: null });
+      } catch (err) {
+        console.warn('[settings] the reference number settings aren\'t available:', err?.status);
+      }
+    },
+
+    applyControls(record) {
+      this.controls = record;
+      this.controlsForm = {
+        ref_prefix: record.ref_prefix, ref_next: record.ref_next, ref_paper_next: record.ref_paper_next, late_days: record.late_days,
+        slot_capacity: record.slot_capacity, max_open_per_mobile: record.max_open_per_mobile, alert_emails: record.alert_emails || '',
+      };
+    },
+
+    get controlsChanges() {
+      if (!this.controls) return {};
+      const changes = {};
+      for (const [key, value] of Object.entries(this.controlsForm)) {
+        const typed = typeof this.controls[key] === 'number' ? Number(value) : String(value).trim();
+        if (typed !== this.controls[key]) changes[key] = typed;
+      }
+      return changes;
+    },
+
+    get controlsDirty() {
+      return Object.keys(this.controlsChanges).length > 0;
+    },
+
+    get nextReferencePreview() {
+      const f = this.controlsForm;
+      const year = this.controls?.ref_year || new Date().getFullYear();
+      return `${f.ref_prefix}-${year}-${String(f.ref_next).padStart(6, '0')}`;
+    },
+
+    get nextPaperPreview() {
+      const f = this.controlsForm;
+      const year = this.controls?.ref_year || new Date().getFullYear();
+      return `${f.ref_prefix}-${year}-M${String(f.ref_paper_next).padStart(4, '0')}`;
+    },
+
+    async saveControls() {
+      if (!this.isAdmin || !this.controlsDirty) return;
+      this.savingControls = true;
+      this.controlError = '';
+      this.controlErrors = {};
+      try {
+        this.applyControls(await pb.collection('intake_controls').update(this.controls.id, this.controlsChanges));
+        this.flash('Saved.');
+      } catch (err) {
+        const fields = err?.response?.data || {};
+        this.controlErrors = Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value?.message || 'Check this field.']));
+        this.controlError = Object.keys(this.controlErrors).length ? 'Please fix the highlighted fields.'
+          : err?.status === 0 ? 'Couldn\'t reach the server. Check your internet connection and try again.'
+          : err?.response?.message || 'The settings couldn\'t be saved. Please try again.';
+      } finally {
+        this.savingControls = false;
+      }
+    },
+
+    paperAge(form) {
+      return Math.floor((Date.now() - new Date(form.created.replace(' ', 'T')).getTime()) / 86400000);
+    },
+
+    askVoid(form) {
+      this.voidTarget = form;
+      this.voidReason = '';
+      this.voidError = '';
+      this.$refs.voidDialog.showModal();
+    },
+
+    async confirmVoid() {
+      if (!this.voidReason.trim()) { this.voidError = 'Say why this number is being voided.'; return; }
+      this.voiding = true;
+      this.voidError = '';
+      try {
+        await pb.send(`/api/clinic/paper-forms/${this.voidTarget.id}/void`, { method: 'POST', body: { reason: this.voidReason.trim() } });
+        this.paperOpen = this.paperOpen.filter((p) => p.id !== this.voidTarget.id);
+        this.$refs.voidDialog.close();
+        this.flash(`${this.voidTarget.reference} was voided.`);
+      } catch (err) {
+        this.voidError = Object.values(err?.response?.data || {})[0]?.message || err?.response?.message || 'It couldn\'t be voided. Please try again.';
+      } finally {
+        this.voiding = false;
+      }
     },
   }));
 });

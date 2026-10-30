@@ -3,8 +3,8 @@
  * Usage: <form x-data="intake" …>. Must load BEFORE Alpine (it registers on `alpine:init`),
  * and after assets/js/i18n.js (client-facing text goes through $t / x-t so it can be shown in Bisaya).
  *
- * Fields follow the clinic's Unified Client Intake Form (Form No. SNMC-CIF-001).
- * The client fills in Sections B–I and K online. Sections A (administrative) and
+ * Fields follow the clinic's Unified Client Intake Form (Form No. SNMC-CIF-001) plus the Online Request for Legal
+ * Assistance (Annex "D"). The client fills in Sections B–I and K online. Sections A (administrative) and
  * J (assessment) are for clinic staff and are completed at the intake interview.
  *
  * Which days, times and questions the form offers, and which questions must be answered, come from
@@ -17,12 +17,13 @@
  *
  * submit() validates, builds the payload (toPayload) and saves it as a record in the PocketBase
  * `appointments` collection (sendRequest), then shows the "Request received" screen with the reference.
+ * The server (pocketbase/pb_hooks) gives the reference and refuses full slots, so the slots on screen are only a guide.
  */
 
-// Checkbox/radio choices, copied from the paper form. Edit here to change the options
+// Checkbox/radio choices, copied from the paper forms. Edit here to change the options
 // (and add the Bisaya wording to assets/js/i18n-vs.js). The English value is what gets saved.
 const INTAKE_OPTIONS = {
-  sex: ['Female', 'Male'],
+  sex: ['Female', 'Male', 'Prefer not to say'],
   civilStatus: ['Single', 'Married', 'Separated', 'Widowed'],
   education: ['No formal schooling', 'Elementary level', 'Elementary graduate', 'High school level', 'High school graduate', 'Vocational / Technical', 'College level', 'College graduate', 'Post-graduate'],
   relationships: ['Self', 'Spouse', 'Child', 'Parent', 'Sibling', 'Other dependent'],
@@ -32,13 +33,34 @@ const INTAKE_OPTIONS = {
     'Person Deprived of Liberty (PDL)', 'Probationer / Parolee / Pardonee', 'Survivor of Violence / Abuse',
     'Person with Diverse SOGIESC',
   ],
-  practiceAreas: [ // Section F
-    'Criminal', 'Civil', 'Labor / Employment', 'Family / Custody / VAWC', 'Administrative',
-    'Human Rights', 'Environmental', 'Land Dispute / Property', 'Cyberlibel / Online Harassment',
-    'Drug-Related Case (RA 9165)', 'Children in Conflict with the Law (CICL)',
+  preferredContact: ['Phone Call', 'SMS', 'Email'], // Annex D, Part I
+  practiceAreas: [ // Annex D, Part II, then the ones only Section F has
+    'Family Law', 'Criminal Law', 'Labor and Employment', 'Civil Dispute', 'Land or Property', 'Human Rights',
+    'Environmental Law', 'Violence Against Women and Children', 'Contracts', 'Government or Administrative Matter',
+    'Cyberlibel / Online Harassment', 'Drug-Related Case (RA 9165)', 'Children in Conflict with the Law (CICL)',
   ],
-  assistance: ['Legal Advice', 'Limited Legal Service / Drafting', 'Continuing Representation', 'Legal Referral'],
-  referralSources: ['Barangay VAWC', 'PNP', 'CSWDO', 'RTC', 'PAO', 'Friend / Relative', 'Social Media'], // Section G.6
+  assistance: [ // Annex D, Part II
+    { value: 'Legal Consultation', hint: 'initial discussion of a legal concern' },
+    { value: 'Legal Advice', hint: 'specific guidance on rights, remedies, or next steps' },
+    { value: 'Document Preparation', hint: 'drafting or reviewing legal documents' },
+    { value: 'Representation', hint: 'appearance or advocacy before a court, tribunal, agency, or other forum' },
+    { value: 'Mediation / ADR', hint: 'assistance in resolving disputes outside court' },
+    { value: 'Referral', hint: 'endorsement to another appropriate legal service provider or agency' },
+    { value: 'Legal Information', hint: 'general information on laws, procedures, or legal services' },
+  ],
+  urgencyFlags: [ // Annex D, Part III. The server reads these (urgencyOf in pb_hooks/clinic-lib.js): keep the wording.
+    'I am currently detained.',
+    'I have a court hearing within the next seven (7) days.',
+    'I received a subpoena, summons, or legal notice.',
+    'A filing deadline is approaching.',
+    'There is an immediate threat to my safety.',
+    'None of the above.',
+  ],
+  referralSources: [ // Annex D, Part V, then the ones only Section G.6 has
+    'Facebook', 'Website', 'Google Search', 'University', 'Barangay', 'Local Government Unit', 'Court',
+    'Public Attorney\'s Office', 'Integrated Bar of the Philippines', 'Friend or Relative', 'Community Activity',
+    'Barangay VAWC', 'PNP', 'CSWDO', 'Social Media',
+  ],
   documents: [ // Section K
     'Valid Government-Issued ID', 'Barangay Certificate of Indigency',
     'DSWD Certificate of Indigency', 'Latest Income Tax Return / Pay Slip',
@@ -51,10 +73,14 @@ const INTAKE_OPTIONS = {
 const INTAKE_DEFAULT_SETTINGS = {
   days: ['tue', 'thu'],
   time_slots: ['13:00', '14:00', '15:00', '16:00'], // 24-hour "HH:MM"
-  hidden_fields: [],
-  required_fields: ['lastName', 'firstName', 'mobile', 'narrative'],
+  hidden_fields: ['attachments'],
+  required_fields: ['lastName', 'firstName', 'mobile', 'narrative', 'urgencyFlags'],
   locked_fields: ['lastName', 'firstName', 'mobile', 'narrative'], // "Always ask": can't be turned off until unlocked
 };
+
+// What the file picker accepts. The server's limits are in the `attachments` field (pb_migrations): keep them in step.
+const INTAKE_UPLOADS = { maxFiles: 5, maxBytes: 5 * 1024 * 1024, types: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic'] };
+const INTAKE_NARRATIVE_MAX_WORDS = 300; // Annex D, Part II. The server checks it too.
 
 // Days the clinic can offer (never Sunday). `day` = Date#getDay(); `plural` is used in sentences.
 const INTAKE_WEEKDAYS = [
@@ -73,17 +99,19 @@ const INTAKE_STEPS = ['Book a slot', 'Personal information', 'Household & sector
 //   core: true        always asked and required (the booking can't work without it)
 //   canRequire: false the question always has an answer (a pre-selected choice), so "required" doesn't apply
 //   requiredNote      what "required" means for questions with a follow-up
+//   annexD: true      Annex D asks this too (Intake Settings shows a badge, so it isn't turned off by accident)
 // A step whose questions are all turned off is skipped.
 const INTAKE_FIELDS = [
   { key: 'date', step: 1, label: 'Preferred date', core: true },
   { key: 'time', step: 1, label: 'Time slot', core: true },
   { key: 'firstTime', step: 1, label: 'First time with the clinic?', canRequire: false },
-  { key: 'lastName', step: 2, label: 'Last name' },
-  { key: 'firstName', step: 2, label: 'First name' },
-  { key: 'middleName', step: 2, label: 'Middle name' },
+  { key: 'lastName', step: 2, label: 'Last name', annexD: true },
+  { key: 'firstName', step: 2, label: 'First name', annexD: true },
+  { key: 'middleName', step: 2, label: 'Middle name', annexD: true },
   { key: 'nickname', step: 2, label: 'Nickname / alias' },
   { key: 'dob', step: 2, label: 'Date of birth' },
-  { key: 'sex', step: 2, label: 'Sex' },
+  { key: 'age', step: 2, label: 'Age (asked only when date of birth is off)', annexD: true },
+  { key: 'sex', step: 2, label: 'Sex', annexD: true },
   { key: 'civilStatus', step: 2, label: 'Civil status' },
   { key: 'citizenship', step: 2, label: 'Citizenship' },
   { key: 'religion', step: 2, label: 'Religion' },
@@ -91,32 +119,36 @@ const INTAKE_FIELDS = [
   { key: 'language', step: 2, label: 'Language / dialect' },
   { key: 'occupation', step: 2, label: 'Occupation / employment' },
   { key: 'disability', step: 2, label: 'Disability' },
-  { key: 'mobile', step: 2, label: 'Contact number' },
-  { key: 'email', step: 2, label: 'Email' },
-  { key: 'address', step: 2, label: 'Complete address' },
+  { key: 'mobile', step: 2, label: 'Contact number', annexD: true },
+  { key: 'email', step: 2, label: 'Email', annexD: true },
+  { key: 'preferredContact', step: 2, label: 'Preferred method of contact', annexD: true },
+  { key: 'address', step: 2, label: 'Complete address', annexD: true },
   { key: 'barangay', step: 2, label: 'Barangay' },
-  { key: 'city', step: 2, label: 'City / municipality' },
+  { key: 'city', step: 2, label: 'City / municipality', annexD: true },
+  { key: 'province', step: 2, label: 'Province', annexD: true },
   { key: 'residentLLC', step: 2, label: 'Resident of Lapu-Lapu City?' },
   { key: 'household', step: 3, label: 'Household members & income', requiredNote: 'Required: every member needs a name.' },
   { key: 'property', step: 3, label: 'Property and assets', requiredNote: 'Required: the estimated value is needed when they answer Yes.' },
   { key: 'sectors', step: 3, label: 'Sector classification' },
-  { key: 'practiceAreas', step: 4, label: 'Practice area / category' },
-  { key: 'assistance', step: 4, label: 'Requested assistance / service' },
+  { key: 'practiceAreas', step: 4, label: 'Practice area / category', annexD: true },
+  { key: 'assistance', step: 4, label: 'Requested assistance / service', annexD: true },
+  { key: 'urgencyFlags', step: 4, label: 'Urgency assessment (and the date of a hearing or deadline)', annexD: true, requiredNote: 'Required: at least one box, and the date when there is a hearing or deadline.' },
   { key: 'opposingParty', step: 4, label: 'Opposing party (names, relationship, contact)', requiredNote: 'Required: the opposing party\'s name is needed.' },
   { key: 'represented', step: 4, label: 'Already represented by an attorney?', canRequire: false },
   { key: 'priorConsult', step: 4, label: 'Consulted the clinic or an attorney before?', requiredNote: 'Required: details are needed when they answer Yes.' },
   { key: 'opposingConsulted', step: 4, label: 'Has the opposing party consulted the clinic?', canRequire: false },
-  { key: 'narrative', step: 5, label: 'Narrative of facts', requiredNote: 'Required: at least a few sentences.' },
+  { key: 'narrative', step: 5, label: 'Narrative of facts (maximum 300 words)', annexD: true, requiredNote: 'Required: at least a few sentences.' },
   { key: 'personsInvolved', step: 5, label: 'Persons involved' },
   { key: 'incident', step: 5, label: 'When and where it happened', requiredNote: 'Required: the date is needed.' },
   { key: 'existingDocuments', step: 5, label: 'Documents that presently exist' },
   { key: 'caseFiled', step: 5, label: 'Complaint or case already filed?', requiredNote: 'Required: court and case number are needed when they answer Yes.' },
   { key: 'pendingHearing', step: 5, label: 'Pending hearings or deadlines?', requiredNote: 'Required: the date is needed when they answer Yes.' },
-  { key: 'referralSources', step: 5, label: 'How they learned about the clinic' },
+  { key: 'referralSources', step: 5, label: 'How they learned about the clinic', annexD: true },
   { key: 'documents', step: 5, label: 'Documents checklist' },
-  { key: 'attachments', step: 5, label: 'Attach copies (photo / PDF uploads)' },
-  { key: 'privacyConsent', step: 6, label: 'Data privacy consent', core: true },
-  { key: 'declaration', step: 6, label: 'Declarations and typed signature', core: true },
+  { key: 'attachments', step: 5, label: 'Supporting documents (photo / PDF uploads)', annexD: true, needsSpamCheck: true },
+  { key: 'privacyConsent', step: 6, label: 'Data privacy consent', core: true, annexD: true },
+  { key: 'acknowledgments', step: 6, label: 'Acknowledgments (application only, clinic may contact me)', core: true, annexD: true },
+  { key: 'declaration', step: 6, label: 'Declarations and typed signature', core: true, annexD: true },
 ];
 
 // How far ahead clients can book.
@@ -195,10 +227,13 @@ document.addEventListener('alpine:init', () => {
   // marks its first input aria-required / aria-invalid, and shows errors[key] under it.
   Alpine.directive('field', (el, { expression: key }, { effect }) => {
     const data = Alpine.$data(el);
+    // A question can sit inside another's block (time inside date on step 1): each only handles its own inputs.
     const error = document.createElement('p');
     error.className = 'field-error';
-    el.appendChild(error);
-    const control = el.querySelector('input, select, textarea'); // the calendar has none; its group has aria-invalid
+    const nested = el.querySelector('[x-field]');
+    if (nested) nested.before(error);
+    else el.appendChild(error);
+    const control = [...el.querySelectorAll('input, select, textarea')].find((c) => c.closest('[x-field]') === el); // the calendar has none; its group has aria-invalid
     effect(() => {
       const required = data.isRequired(key);
       const message = data.errors[key] || '';
@@ -240,8 +275,11 @@ document.addEventListener('alpine:init', () => {
     // Hours from Site Settings (components.js). Outside the online booking hours the form is closed to visitors.
     officeHours: window.SITE.officeHours, // until the ones from Site Settings load
     intakeHours: null, // { days, open, close }; null = not loaded (the form stays open and PocketBase decides)
+    hotline: '', // from Site Settings: Annex D's emergency notice
     now: clinicNow(), // updated every 30 seconds
     closed: false,
+    fullSlots: {}, // { 'YYYY-MM-DD': ['13:00', …] } already booked up; empty until loaded (the server still checks)
+    uploads: [], // the chosen File objects (form.files has their names)
 
     form: {
       // Step 1 — appointment
@@ -249,9 +287,10 @@ document.addEventListener('alpine:init', () => {
 
       // Step 2 — Section B: applicant personal information
       lastName: '', firstName: '', middleName: '', nickname: '',
-      dob: '', sex: '', civilStatus: '', citizenship: 'Filipino', religion: '',
+      dob: '', ageInput: '', sex: '', civilStatus: '', citizenship: 'Filipino', religion: '',
       education: '', language: '', occupation: '', disability: '',
-      mobile: '', email: '', address: '', barangay: '', city: 'Lapu-Lapu City', residentLLC: '',
+      mobile: '', email: '', preferredContact: [], preferredContactOther: '',
+      address: '', barangay: '', city: 'Lapu-Lapu City', province: 'Cebu', residentLLC: '',
 
       // Step 3 — Section C: household & financial eligibility
       household: [{ name: '', relationship: 'Self', source: '', amount: '' }],
@@ -262,7 +301,9 @@ document.addEventListener('alpine:init', () => {
 
       // Step 4 — Section F: legal issue
       practiceAreas: [], practiceOther: '',
-      assistance: [],
+      assistance: [], assistanceOther: '',
+      // Annex D, Part III: urgency
+      urgencyFlags: [], urgencyDate: '',
       opposingName: '', opposingRelationship: '', opposingContact: '',
       represented: 'No',
       // Section E: conflict check & prior consultation
@@ -279,8 +320,10 @@ document.addEventListener('alpine:init', () => {
       // Section K: documents the client has / will bring
       documents: [], documentsOther: '', files: [],
 
-      // Step 6 — Sections H & I
+      // Step 6 — Sections H & I, Annex D Part VI
       privacyConsent: '', // 'agree' | 'disagree'
+      ackApplication: false,
+      ackContact: false,
       declarationTrue: false,
       declarationNoRelationship: false,
       signature: '',
@@ -288,17 +331,19 @@ document.addEventListener('alpine:init', () => {
 
     init() {
       this.calendarMonth = this.today.slice(0, 7);
-      fetchIntakeSettings().then((settings) => {
+      fetchIntakeSettings().then(async (settings) => {
         this.settings = settings;
         this.settingsLoaded = true;
         // Drop a choice the new settings no longer allow (picked while the settings were loading).
         if (this.form.date && !this.isAvailable(this.form.date)) this.form.date = '';
         if (this.form.time && !this.availableSlots.includes(this.form.time)) this.form.time = '';
+        await this.loadFullSlots(this.calendarMonth);
         this.jumpToFirstOpenMonth();
       });
       fetchSiteSettings().then((record) => {
         this.officeHours = clinicHours(record, 'office') || this.officeHours;
         this.intakeHours = clinicHours(record, 'intake');
+        this.hotline = record?.hotline || '';
         // Decided once, so a visitor already filling in the form at closing time keeps it (see submit()).
         this.closed = !this.staffSignedIn && this.closedToVisitors;
       });
@@ -309,6 +354,22 @@ document.addEventListener('alpine:init', () => {
       }, 30000);
       // Show the security check when the client reaches the last step.
       this.$watch('step', (step) => { if (step === this.lastStep) this.mountCaptcha(); });
+      this.$watch('calendarMonth', (month) => this.loadFullSlots(month));
+    },
+
+    // Which slots of a month are booked up (pocketbase/pb_hooks/clinic-routes.pb.js). If it can't be loaded the
+    // calendar just offers them all, and the server refuses a full slot when the request is sent.
+    async loadFullSlots(month) {
+      try {
+        const res = await fetch(`${window.SITE.apiUrl}/api/clinic/slots?month=${encodeURIComponent(month)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const { full } = await res.json();
+        const keep = Object.fromEntries(Object.entries(this.fullSlots).filter(([date]) => !date.startsWith(month)));
+        this.fullSlots = { ...keep, ...full };
+        if (this.form.time && !this.availableSlots.includes(this.form.time)) this.form.time = '';
+      } catch (err) {
+        console.warn('[intake] could not load the booked slots:', err.message);
+      }
     },
 
     // ---------- Security check ----------
@@ -389,6 +450,8 @@ document.addEventListener('alpine:init', () => {
 
     shown(key) {
       const field = INTAKE_FIELDS.find((f) => f.key === key);
+      if (key === 'age' && this.shown('dob')) return false; // worked out from the date of birth instead
+      if (field?.needsSpamCheck && !this.captchaOn) return false; // the server refuses visitors' uploads without it
       return !!field?.core || this.settings.locked_fields.includes(key) || !this.settings.hidden_fields.includes(key);
     },
 
@@ -451,11 +514,11 @@ document.addEventListener('alpine:init', () => {
       return this.slotsFor(ymd).length > 0;
     },
 
-    // Today only offers slots that haven't started yet.
+    // Today only offers slots that haven't started yet, and no day offers one that's booked up.
     slotsFor(ymd) {
       const now = clinicNow();
-      if (ymd !== now.date) return this.settings.time_slots;
-      return this.settings.time_slots.filter((s) => s > now.time);
+      const full = this.fullSlots[ymd] || [];
+      return this.settings.time_slots.filter((s) => !full.includes(s) && (ymd !== now.date || s > now.time));
     },
 
     get availableSlots() {
@@ -525,7 +588,7 @@ document.addEventListener('alpine:init', () => {
     },
 
     get age() {
-      if (!this.form.dob) return '';
+      if (!this.form.dob) return this.form.ageInput;
       const [y, m, d] = this.form.dob.split('-').map(Number);
       const now = new Date();
       let age = now.getFullYear() - y;
@@ -537,12 +600,38 @@ document.addEventListener('alpine:init', () => {
       return this.form.household.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
     },
 
+    get narrativeWords() {
+      return this.form.narrative.trim().split(/\s+/).filter(Boolean).length;
+    },
+
+    get narrativeTooLong() {
+      return this.narrativeWords > INTAKE_NARRATIVE_MAX_WORDS;
+    },
+
+    // Annex D's emergencies: on screen straight away (the clinic also gets an email when the request is sent).
+    get urgencyEmergency() {
+      return this.form.urgencyFlags.some((flag) => /detained|threat/i.test(flag));
+    },
+
+    // A hearing or a filing deadline needs its date.
+    get urgencyNeedsDate() {
+      return this.form.urgencyFlags.some((flag) => /hearing|deadline/i.test(flag));
+    },
+
+    // "None of the above" can't go with anything else.
+    urgencyChanged(flag) {
+      const none = INTAKE_OPTIONS.urgencyFlags[INTAKE_OPTIONS.urgencyFlags.length - 1];
+      if (!this.form.urgencyFlags.includes(flag)) return;
+      this.form.urgencyFlags = flag === none ? [none] : this.form.urgencyFlags.filter((f) => f !== none);
+    },
+
     // What the last step still needs before the request can go, listed above the Submit button:
-    // consent, both declarations, the typed signature and (when on) the security check. Empty = ready.
+    // consent, acknowledgments, both declarations, the typed signature and (when on) the security check. Empty = ready.
     get missingToSubmit() {
       const f = this.form;
       return [
         f.privacyConsent !== 'agree' && { text: 'Agree to the data privacy terms', target: '[name="privacyConsent"][value="agree"]' },
+        !(f.ackApplication && f.ackContact) && { text: 'Tick both acknowledgments', target: f.ackApplication ? '#ack-contact' : '#ack-application' },
         !(f.declarationTrue && f.declarationNoRelationship) && { text: 'Tick both declarations', target: f.declarationTrue ? '#decl-relationship' : '#decl-true' },
         f.signature.trim().length < 3 && { text: 'Type your full name as your signature', target: '#signature' },
         this.captchaOn && !this.captchaToken && { text: 'Complete the security check', target: '[x-ref="captcha"]' },
@@ -570,8 +659,10 @@ document.addEventListener('alpine:init', () => {
         { step: 2, title: 'Personal information', rows: [
           ['lastName', 'Name', this.fullName],
           ['dob', 'Date of birth', f.dob && this.formatDate(f.dob) + (this.age !== '' ? ` (${tr('age {age}', { age: this.age })})` : '')],
+          ['age', 'Age', f.ageInput],
           ['mobile', 'Contact', [f.mobile, this.shown('email') && f.email].filter(Boolean).join(' · ')],
-          ['address', 'Address', [f.address, this.shown('barangay') && f.barangay, this.shown('city') && f.city].filter(Boolean).join(', ')],
+          ['preferredContact', 'Preferred contact', this.list(f.preferredContact, f.preferredContactOther)],
+          ['address', 'Address', [f.address, this.shown('barangay') && f.barangay, this.shown('city') && f.city, this.shown('province') && f.province].filter(Boolean).join(', ')],
         ] },
         { step: 3, title: 'Household', rows: [
           ['household', 'Members', f.household.length],
@@ -580,12 +671,14 @@ document.addEventListener('alpine:init', () => {
         ] },
         { step: 4, title: 'Legal issue', rows: [
           ['practiceAreas', 'Category', this.list(f.practiceAreas, f.practiceOther)],
-          ['assistance', 'Assistance', this.list(f.assistance)],
+          ['assistance', 'Assistance', this.list(f.assistance, f.assistanceOther)],
+          ['urgencyFlags', 'Urgency', [this.list(f.urgencyFlags), f.urgencyDate && this.formatDate(f.urgencyDate)].filter(Boolean).join(' · ')],
           ['opposingParty', 'Opposing party', f.opposingName],
         ] },
         { step: 5, title: 'Case facts', rows: [
           ['narrative', 'Narrative', f.narrative.length > 140 ? f.narrative.slice(0, 140) + '…' : f.narrative],
           ['documents', 'Documents', this.list(f.documents, f.documentsOther)],
+          ['attachments', 'Attached', f.files.join(', ')],
         ] },
       ];
       return blocks
@@ -616,8 +709,25 @@ document.addEventListener('alpine:init', () => {
       this.form.household.splice(i, 1);
     },
 
+    // Adds to what's already chosen; picking again doesn't lose the first files. The server checks all of this again.
     onFiles(event) {
-      this.form.files = [...event.target.files].map((f) => f.name);
+      const { maxFiles, maxBytes, types } = INTAKE_UPLOADS;
+      const notes = [];
+      for (const file of event.target.files) {
+        if (this.uploads.length >= maxFiles) { notes.push(this.tr('You can attach up to {n} files.', { n: maxFiles })); break; }
+        if (file.size > maxBytes) notes.push(this.tr('{name} is over {mb} MB.', { name: file.name, mb: maxBytes / 1024 / 1024 }));
+        else if (!types.includes(file.type)) notes.push(this.tr('{name} isn\'t a PDF or a photo.', { name: file.name }));
+        else this.uploads.push(file);
+      }
+      this.form.files = this.uploads.map((f) => f.name);
+      event.target.value = ''; // so the same file can be picked again after removing it
+      if (notes.length) this.errors = { ...this.errors, attachments: notes.join(' ') };
+      else delete this.errors.attachments;
+    },
+
+    removeFile(i) {
+      this.uploads.splice(i, 1);
+      this.form.files = this.uploads.map((f) => f.name);
     },
 
     // ---------- Validation and navigation ----------
@@ -648,6 +758,10 @@ document.addEventListener('alpine:init', () => {
         for (const [key, message] of Object.entries(textFields)) if (need(key) && blank(f[key])) e[key] = message ? tr(message) : answer;
         if (need('dob') && !f.dob) e.dob = tr('Enter your date of birth.');
         else if (f.dob && f.dob > this.today) e.dob = tr('Date of birth cannot be in the future.');
+        if (this.shown('age') && f.ageInput !== '' && !(Number(f.ageInput) >= 0 && Number(f.ageInput) <= 120)) e.age = tr('Enter your age in years.');
+        else if (need('age') && f.ageInput === '') e.age = tr('Enter your age in years.');
+        if (need('preferredContact') && !f.preferredContact.length && blank(f.preferredContactOther)) e.preferredContact = pickOne;
+        if (need('province') && blank(f.province)) e.province = answer;
         if (need('sex') && !f.sex) e.sex = tr('Choose one.');
         if (need('civilStatus') && !f.civilStatus) e.civilStatus = tr('Choose your civil status.');
         if (need('education') && !f.education) e.education = tr('Choose one.');
@@ -670,13 +784,17 @@ document.addEventListener('alpine:init', () => {
 
       if (step === 4) {
         if (need('practiceAreas') && !f.practiceAreas.length && blank(f.practiceOther)) e.practiceAreas = tr('Choose at least one category, or describe it under "Other / not sure".');
-        if (need('assistance') && !f.assistance.length) e.assistance = tr('Choose the kind of help you need.');
+        if (need('assistance') && !f.assistance.length && blank(f.assistanceOther)) e.assistance = tr('Choose the kind of help you need.');
+        if (need('urgencyFlags') && !f.urgencyFlags.length) e.urgencyFlags = tr('Tick what applies, or "None of the above".');
+        if (this.shown('urgencyFlags') && this.urgencyNeedsDate && !f.urgencyDate) e.urgencyDate = tr('Enter the date of the hearing or deadline.');
+        else if (this.shown('urgencyFlags') && f.urgencyDate && f.urgencyDate < this.today) e.urgencyDate = tr('This date has already passed.');
         if (need('opposingParty') && blank(f.opposingName)) e.opposingParty = tr('The other party\'s name is required for the conflict-of-interest check.');
         if (need('priorConsult') && f.priorConsult === 'Yes' && blank(f.priorConsultDetails)) e.priorConsultDetails = tr('Tell us who you consulted.');
       }
 
       if (step === 5) {
         if (need('narrative') && f.narrative.trim().length < 30) e.narrative = tr('Tell us a little more about what happened (a few sentences at least).');
+        else if (this.shown('narrative') && this.narrativeTooLong) e.narrative = this.tr('Please keep this to {n} words. You can tell us the rest at your interview.', { n: INTAKE_NARRATIVE_MAX_WORDS });
         if (need('personsInvolved') && blank(f.personsInvolved)) e.personsInvolved = answer;
         if (need('incident') && !f.incidentDate) e.incident = tr('Enter the date it happened.');
         else if (f.incidentDate && f.incidentDate > this.today) e.incident = tr('The date cannot be in the future.');
@@ -690,6 +808,7 @@ document.addEventListener('alpine:init', () => {
 
       if (step === 6) {
         if (f.privacyConsent !== 'agree') e.privacyConsent = tr('We can only process an online request if you agree to the data privacy terms.');
+        if (!f.ackApplication || !f.ackContact) e.acknowledgments = tr('Please tick both boxes.');
         if (!f.declarationTrue || !f.declarationNoRelationship) e.declaration = tr('Please tick both declarations.');
         if (f.signature.trim().length < 3) e.signature = tr('Type your full name as your signature.');
       }
@@ -740,7 +859,6 @@ document.addEventListener('alpine:init', () => {
       this.submitting = true;
       this.submitError = '';
       try {
-        // this.reference = await this.sendRequest(this.toPayload());
         const { id, reference } = await this.sendRequest(this.toPayload());
         this.reference = reference;
         this.appointmentId = id;
@@ -751,6 +869,7 @@ document.addEventListener('alpine:init', () => {
       } catch (err) {
         console.error('[intake] could not send the request:', err);
         this.resetCaptcha();
+        if (err.refused) return this.showRefusal(err.refused);
         this.submitError = err.closed ? this.closedMessage() : this.tr(err.offline
           ? 'We couldn\'t reach the clinic\'s server. Check your internet connection and try again.'
           : err.paused ? 'Online booking is paused while the site is under maintenance. Please try again later, or call or visit the clinic.'
@@ -760,6 +879,27 @@ document.addEventListener('alpine:init', () => {
       } finally {
         this.submitting = false;
       }
+    },
+
+    // The server said no for a reason the client can fix: go back to that question and say so. Their answers stay.
+    showRefusal(code) {
+      const refusals = {
+        slot_full: [1, 'time', 'Someone else just booked that time. Please choose another slot.'],
+        slot_invalid: [1, 'time', 'That date or time is no longer offered. Please choose another.'],
+        mobile_cap: [2, 'mobile', 'This number already has several upcoming bookings. Please call or visit the clinic instead.'],
+        narrative_long: [5, 'narrative', 'Please keep this to {n} words. You can tell us the rest at your interview.'],
+        uploads_off: [5, 'attachments', 'Files can\'t be uploaded right now. Please remove them and bring copies to your visit.'],
+        attachments: [5, 'attachments', 'One of the files couldn\'t be accepted. Please use a PDF or a photo of up to {mb} MB.'],
+      };
+      const [step, key, message] = refusals[code];
+      this.step = step;
+      this.errors = { [key]: this.tr(message, { n: INTAKE_NARRATIVE_MAX_WORDS, mb: INTAKE_UPLOADS.maxBytes / 1024 / 1024 }) };
+      if (code === 'slot_full' || code === 'slot_invalid') {
+        this.form.time = '';
+        this.loadFullSlots(this.form.date.slice(0, 7));
+      }
+      this.focusFirstError();
+      this.scrollTop();
     },
 
     // Shapes the answers by section of form SNMC-CIF-001, so staff can map them to the paper form.
@@ -777,7 +917,7 @@ document.addEventListener('alpine:init', () => {
           dateOfBirth: f.dob, age: this.age, sex: f.sex, civilStatus: f.civilStatus,
           citizenship: f.citizenship, religion: f.religion, education: f.education, language: f.language,
           occupation: f.occupation, disability: f.disability, mobile: f.mobile, email: f.email,
-          address: f.address, barangay: f.barangay, city: f.city, residentOfLapuLapu: f.residentLLC,
+          address: f.address, barangay: f.barangay, city: f.city, province: f.province, residentOfLapuLapu: f.residentLLC,
         },
         C_household: {
           members: f.household,
@@ -792,7 +932,7 @@ document.addEventListener('alpine:init', () => {
           opposingPartyConsultedClinic: f.opposingConsulted,
         },
         F_legalIssue: {
-          practiceAreas: f.practiceAreas, other: f.practiceOther, requestedAssistance: f.assistance,
+          practiceAreas: f.practiceAreas, other: f.practiceOther, requestedAssistance: f.assistance, requestedOther: f.assistanceOther,
           opposingParty: { names: f.opposingName, relationship: f.opposingRelationship, addressPhone: f.opposingContact },
           currentlyRepresentedByAttorney: f.represented,
         },
@@ -807,13 +947,19 @@ document.addEventListener('alpine:init', () => {
         H_privacyConsent: f.privacyConsent === 'agree' ? 'I AGREE' : 'I DO NOT AGREE',
         I_declaration: { signature: f.signature, date: this.today },
         K_documents: { checklist: f.documents, additional: f.documentsOther, attachedFiles: f.files },
+        annexD: {
+          preferredContact: f.preferredContact, preferredContactOther: f.preferredContactOther,
+          urgency: { flags: f.urgencyFlags, date: f.urgencyDate }, // the server reads these: urgencyOf in pb_hooks/clinic-lib.js
+          acknowledgments: { applicationOnly: f.ackApplication, clinicMayContact: f.ackContact },
+        },
       };
     },
 
     /*
      * Saves the request in PocketBase (`appointments`: anyone may create, only staff can read).
-     * Returns the reference number shown to the client.
-     * Note: `attachedFiles` only holds file NAMES; the files themselves aren't uploaded yet.
+     * Returns the record's id and the reference number shown to the client. The server gives the reference; the one
+     * sent here only counts if the hooks aren't installed on the server.
+     * With files attached it goes as multipart form data, otherwise as JSON.
      */
     async sendRequest(payload) {
       const f = this.form;
@@ -821,36 +967,50 @@ document.addEventListener('alpine:init', () => {
       const staff = staffSession();
       for (let attempt = 0; attempt < 3; attempt++) {
         const reference = makeAppointmentReference();
+        const data = {
+          reference,
+          title: [this.fullName || 'Online booking', areas || 'Legal consultation'].join(' — '),
+          email: f.email.trim(),
+          mobile_no: normalizeMobile(f.mobile),
+          scheduled_at: new Date(`${f.date}T${f.time}:00+08:00`).toISOString(), // clinic (Manila) time
+          // submittedByStaff marks a booking a signed-in staff member sent from this form (e.g. a test).
+          json: { ...payload, ...(staff && { submittedByStaff: staff.record.name || staff.record.email || 'staff' }) },
+          turnstile_token: this.captchaToken, // read (not stored) by the PocketBase hook
+        };
+        let body = JSON.stringify(data);
+        if (this.uploads.length) {
+          body = new FormData();
+          for (const [key, value] of Object.entries(data)) body.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
+          for (const file of this.uploads) body.append('attachments', file);
+        }
         let res;
         try {
           res = await fetch(`${window.SITE.apiUrl}/api/collections/appointments/records`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...(staff && { Authorization: staff.token }) },
-            body: JSON.stringify({
-              reference,
-              title: [this.fullName || 'Online booking', areas || 'Legal consultation'].join(' — '),
-              email: f.email.trim(),
-              mobile_no: normalizeMobile(f.mobile),
-              scheduled_at: new Date(`${f.date}T${f.time}:00+08:00`).toISOString(), // clinic (Manila) time
-              // submittedByStaff marks a booking a signed-in staff member sent from this form (e.g. a test).
-              json: { ...payload, reference, ...(staff && { submittedByStaff: staff.record.name || staff.record.email || 'staff' }) },
-              turnstile_token: this.captchaToken, // read (not stored) by the PocketBase hook
-            }),
+            // Without a Content-Type the browser sets the multipart one itself.
+            headers: { ...(!this.uploads.length && { 'Content-Type': 'application/json' }), ...(staff && { Authorization: staff.token }) },
+            body,
           });
         } catch (err) {
           throw Object.assign(new Error('offline'), { offline: true, cause: err });
         }
-        // if (res.ok) return reference;
         if (res.ok) {
           const record = await res.json();
-          return { id: record.id, reference };   // or record.reference if you prefer the server's value
+          return { id: record.id, reference: record.reference || reference };
         }
 
-        const body = await res.json().catch(() => ({}));
-        if (body?.data?.reference?.code !== 'validation_not_unique') {
+        const failure = await res.json().catch(() => ({}));
+        // Refusals with a field error are the server's own rules (pb_hooks), with a reason the client can fix.
+        const fieldErrors = failure?.data || {};
+        const code = Object.values(fieldErrors)[0]?.code;
+        if (['slot_full', 'slot_invalid', 'mobile_cap', 'narrative_long', 'uploads_off'].includes(code)) {
+          throw Object.assign(new Error(code), { refused: code });
+        }
+        if (fieldErrors.attachments) throw Object.assign(new Error('attachments'), { refused: 'attachments' });
+        if (fieldErrors.reference?.code !== 'validation_not_unique') {
           // A refused create rule only says "Failed to create record" (no field errors). For visitors the rule
           // checks maintenance mode and the online booking hours (Site Settings), so ask which one it was.
-          const refused = (res.status === 400 || res.status === 403) && !Object.keys(body?.data || {}).length && !/security check/i.test(body?.message || '');
+          const refused = (res.status === 400 || res.status === 403) && !Object.keys(fieldErrors).length && !/security check/i.test(failure?.message || '');
           const settings = refused && await fetchSiteSettings({ fresh: true });
           if (settings?.maintenance) throw Object.assign(new Error('online bookings are paused (maintenance mode)'), { paused: true });
           if (settings) {
@@ -858,7 +1018,7 @@ document.addEventListener('alpine:init', () => {
             this.now = clinicNow();
             throw Object.assign(new Error('online booking is closed (outside the booking hours)'), { closed: true });
           }
-          throw Object.assign(new Error(`HTTP ${res.status}: ${JSON.stringify(body)}`), { status: res.status, captcha: /security check/i.test(body?.message || '') });
+          throw Object.assign(new Error(`HTTP ${res.status}: ${JSON.stringify(failure)}`), { status: res.status, captcha: /security check/i.test(failure?.message || '') });
         }
         // That reference is already taken (very unlikely): try another.
       }
@@ -876,6 +1036,7 @@ document.addEventListener('alpine:init', () => {
       this.$nextTick(() => this.$root.scrollIntoView({ behavior: 'smooth', block: 'start' }));
     },
 
+    // Staff scan this to open the booking, where they press "Receive intake" (Annex C).
     get qrUrl() {
       return this.appointmentId
         ? new URL(`clinic-appointments.html#${this.appointmentId}`, location.href).href
@@ -888,14 +1049,12 @@ document.addEventListener('alpine:init', () => {
         if (!el || typeof QRCode === 'undefined') return;
         el.innerHTML = '';              // clear any previous code
         new QRCode(el, {
-          text: this.qrUrl,         // e.g. SNMC-2026-4K7Q2D (use your real property name)
+          text: this.qrUrl,
           width: 160,
           height: 160,
           correctLevel: QRCode.CorrectLevel.M,
         });
       });
     },
-
-
   }));
 });

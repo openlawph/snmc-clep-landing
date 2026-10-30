@@ -102,6 +102,17 @@
         </section>
       </template>
 
+      <!-- Annex D sends people with an emergency to this number -->
+      <template x-if="!loading && !loadError">
+        <section class="card max-w-3xl" aria-labelledby="hotline-title">
+          <h2 id="hotline-title" class="text-2xl">Emergency hotline</h2>
+          <p class="mt-1 text-sm leading-relaxed text-muted">Shown on the public booking form, for imminent arrests, detention, or a hearing within 48 hours. Until it's filled in, the form shows the clinic's email instead, which isn't much use in an emergency.</p>
+          <label for="s-hotline" class="field-label mt-5">Number</label>
+          <input id="s-hotline" type="tel" maxlength="60" x-model="form.hotline" :disabled="!isAdmin" class="field max-w-xs disabled:bg-cream" placeholder="0917 000 0000">
+          <p x-show="!form.hotline.trim()" class="mt-2 text-sm font-semibold text-[#8a5a1c]">No hotline number yet.</p>
+        </section>
+      </template>
+
       <!-- Office and online booking hours (site-settings.js: hourGroups, toggleDay, hoursError) -->
       <template x-if="!loading && !loadError">
         <section class="card max-w-3xl" aria-labelledby="hours-title">

@@ -17,6 +17,9 @@ const PB_URL = 'https://capi.snmclaw.com'; // keep in sync with SITE.apiUrl in c
 const AUTH_COLLECTION = 'users';
 const LOGIN_PAGE = 'login.html';
 const DEFAULT_AFTER_LOGIN = 'clinic-dashboard.html';
+// Clinic computers get shared, and the audit log has to name the right person: sign out after an hour of no activity.
+const IDLE_LIMIT_MS = 60 * 60 * 1000;
+const LAST_ACTIVE_KEY = 'clinic-last-active'; // in localStorage, so activity in any tab counts
 
 window.pb = new PocketBase(PB_URL);
 
@@ -51,7 +54,43 @@ window.Auth = {
       err.unverified = true;
       throw err;
     }
+    this.markActive();
     return record;
+  },
+
+  markActive() {
+    try { localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now())); } catch { /* private window: the idle check just doesn't run */ }
+  },
+
+  // No record of activity counts as active, so nobody gets signed out because of a browser setting.
+  isIdle() {
+    try {
+      const last = Number(localStorage.getItem(LAST_ACTIVE_KEY));
+      return !!last && Date.now() - last > IDLE_LIMIT_MS;
+    } catch {
+      return false;
+    }
+  },
+
+  signOutIfIdle() {
+    if (!this.isIdle()) return false;
+    this._idleOut = true;
+    pb.authStore.clear();
+    this.toLogin('idle');
+    return true;
+  },
+
+  watchIdle() {
+    this.markActive();
+    let stamped = Date.now();
+    const onActivity = () => {
+      if (Date.now() - stamped < 30000) return; // often enough, without writing on every mouse move
+      if (this.signOutIfIdle()) return; // e.g. a laptop waking up: the timer below hasn't had a chance to run
+      stamped = Date.now();
+      this.markActive();
+    };
+    ['pointerdown', 'keydown', 'scroll', 'visibilitychange'].forEach((name) => document.addEventListener(name, onActivity, { passive: true }));
+    setInterval(() => this.signOutIfIdle(), 60000);
   },
 
   signOut() {
@@ -78,6 +117,7 @@ window.Auth = {
       pb.authStore.clear();
       return this.toLogin(reason);
     }
+    if (this.signOutIfIdle()) return;
     try {
       await pb.collection(AUTH_COLLECTION).authRefresh();
     } catch (err) {
@@ -90,7 +130,8 @@ window.Auth = {
     }
     document.documentElement.classList.add('auth-ok');
     // Signed out in another tab, or the token was cleared: leave the page.
-    pb.authStore.onChange(() => { if (!this.isAllowed()) this.toLogin('signed-out'); });
+    pb.authStore.onChange(() => { if (!this.isAllowed() && !this._idleOut) this.toLogin('signed-out'); });
+    this.watchIdle();
   },
 };
 
