@@ -20,9 +20,9 @@ customElements.define('site-footer', class extends HTMLElement {
               </p>
             </div>
           </div>
-          <nav aria-label="Footer" class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-            ${nav.map((item) => `<a href="${item.href}" class="hover:text-white">${item.label}</a>`).join('')}
-          </nav>
+          <!-- <nav aria-label="Footer" class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm"> -->
+          <!--   ${nav.map((item) => `<a href="${item.href}" class="hover:text-white">${item.label}</a>`).join('')} -->
+          <!-- </nav> -->
         </div>
         <div class="border-t border-white/10">
           <div class="container-site flex flex-col gap-3 py-5 text-xs sm:flex-row sm:items-center sm:justify-between">
