@@ -190,26 +190,73 @@
   </div>
 
   <!-- ================= Detail dialog ================= -->
+  <!-- <dialog x-ref="detailDialog" @close="onDetailClosed()" aria-labelledby="detail-title" -->
+  <!--         class="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-5xl overflow-y-auto rounded-md bg-cream p-0 text-ink shadow-xl backdrop:bg-black/50"> -->
+
   <dialog x-ref="detailDialog" @close="onDetailClosed()" aria-labelledby="detail-title"
-          class="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-5xl overflow-y-auto rounded-md bg-cream p-0 text-ink shadow-xl backdrop:bg-black/50">
-    <div class="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-black/10 bg-cream/95 px-5 py-4 backdrop-blur sm:px-8">
-      <div class="min-w-0">
-        <p class="eyebrow"><span x-text="current?.reference || 'Appointment'"></span></p>
-        <h2 id="detail-title" class="mt-1 truncate text-2xl sm:text-3xl" x-text="current?.title || (detailLoading ? 'Loading…' : 'Appointment')"></h2>
-        <p class="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted" x-show="current">
-          <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1" :class="statusClass(current?.app_status)" x-text="statusLabel(current?.app_status)"></span>
-          <span x-text="current?.scheduled_at ? formatSchedule(current.scheduled_at) : 'No date yet'"></span>
-        </p>
-      </div>
-      <div class="-mr-2 flex shrink-0 items-center gap-1">
-        <a x-show="current" :href="'clinic-intake-print.html#' + current?.id" target="_blank" rel="noopener"
-           class="rounded-sm px-3 py-2 text-sm font-semibold text-copper-dark hover:bg-black/5">Print intake form</a>
-        <a x-show="current" :href="'clinic-ulas-form.html#' + current?.id" class="rounded-sm px-3 py-2 text-sm font-semibold text-copper-dark hover:bg-black/5">ULAS declaration</a>
-        <button type="button" class="rounded-sm p-2 text-muted hover:bg-black/5 hover:text-ink" @click="closeDetail()" aria-label="Close">
+    class="m-auto max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-5xl overflow-y-auto overflow-x-hidden overscroll-contain
+          rounded-md bg-cream p-0 text-ink shadow-xl backdrop:bg-black/50
+          sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100%-2rem)]">
+
+    <!-- <div class="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-black/10 bg-cream/95 px-5 py-4 backdrop-blur sm:px-8"> -->
+    <!--   <div class="min-w-0"> -->
+    <!--     <p class="eyebrow"><span x-text="current?.reference || 'Appointment'"></span></p> -->
+    <!--     <h2 id="detail-title" class="mt-1 truncate text-2xl sm:text-3xl" x-text="current?.title || (detailLoading ? 'Loading…' : 'Appointment')"></h2> -->
+    <!--     <p class="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted" x-show="current"> -->
+    <!--       <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1" :class="statusClass(current?.app_status)" x-text="statusLabel(current?.app_status)"></span> -->
+    <!--       <span x-text="current?.scheduled_at ? formatSchedule(current.scheduled_at) : 'No date yet'"></span> -->
+    <!--     </p> -->
+    <!--   </div> -->
+    <!--   <div class="-mr-2 flex shrink-0 items-center gap-1"> -->
+    <!--     <a x-show="current" :href="'clinic-intake-print.html#' + current?.id" target="_blank" rel="noopener" -->
+    <!--        class="rounded-sm px-3 py-2 text-sm font-semibold text-copper-dark hover:bg-black/5">Print intake form</a> -->
+    <!--     <a x-show="current" :href="'clinic-ulas-form.html#' + current?.id" class="rounded-sm px-3 py-2 text-sm font-semibold text-copper-dark hover:bg-black/5">ULAS declaration</a> -->
+    <!--     <button type="button" class="rounded-sm p-2 text-muted hover:bg-black/5 hover:text-ink" @click="closeDetail()" aria-label="Close"> -->
+    <!--       <svg class="size-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg> -->
+    <!--     </button> -->
+    <!--   </div> -->
+    <!-- </div> -->
+
+    <div class="sticky top-0 z-10 border-b border-black/10 bg-cream/95 px-4 py-3 backdrop-blur sm:px-8 sm:py-4">
+      <div class="flex flex-wrap items-start gap-x-3 gap-y-1">
+
+        <!-- Title block: row 1 on mobile -->
+        <div class="order-1 min-w-0 flex-1 basis-0">
+          <p class="eyebrow"><span x-text="current?.reference || 'Appointment'"></span></p>
+          <h2 id="detail-title"
+              class="mt-1 line-clamp-2 break-words text-xl leading-tight sm:truncate sm:text-3xl"
+              x-text="current?.title || (detailLoading ? 'Loading…' : 'Appointment')"></h2>
+          <p class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted" x-show="current">
+            <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1"
+                  :class="statusClass(current?.app_status)" x-text="statusLabel(current?.app_status)"></span>
+            <span x-text="current?.scheduled_at ? formatSchedule(current.scheduled_at) : 'No date yet'"></span>
+          </p>
+        </div>
+
+        <!-- Close: stays top-right on mobile, last on desktop -->
+        <button type="button"
+                class="order-2 -mr-2 shrink-0 rounded-sm p-2 text-muted hover:bg-black/5 hover:text-ink sm:order-3"
+                @click="closeDetail()" aria-label="Close">
           <svg class="size-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
         </button>
+
+        <!-- Action links: own row on mobile, inline on sm+ -->
+        <div x-show="current" class="order-3 -ml-3 flex w-full flex-wrap gap-x-1 sm:order-2 sm:ml-0 sm:w-auto sm:flex-nowrap">
+          <a :href="'clinic-intake-print.html#' + current?.id" target="_blank" rel="noopener"
+            class="rounded-sm px-3 py-2 text-sm font-semibold text-copper-dark hover:bg-black/5">Print intake form</a>
+          <a :href="'clinic-ulas-form.html#' + current?.id"
+            class="rounded-sm px-3 py-2 text-sm font-semibold text-copper-dark hover:bg-black/5">ULAS declaration</a>
+        </div>
+
       </div>
     </div>
+
+
+
+
+
+
+
 
     <p x-show="detailLoading && !current" class="px-8 py-12 text-center text-muted">Loading appointment…</p>
     <p x-show="detailError" x-text="detailError" class="mx-5 my-8 rounded-md bg-red-50 px-5 py-4 text-sm text-red-800 ring-1 ring-red-200 sm:mx-8"></p>
