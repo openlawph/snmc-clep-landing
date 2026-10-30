@@ -8,7 +8,7 @@
 
   <!-- ===== Shared head: keep identical on every page ===== -->
   <!-- Where this page may load scripts, styles, images and data from. Add a host here when you add a CDN library or API (README → "Security"). -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://capi.snmclaw.com; connect-src 'self' https://capi.snmclaw.com; frame-src https://challenges.cloudflare.com https://maps.google.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com https://cdnjs.cloudflare.com 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://capi.snmclaw.com; connect-src 'self' https://capi.snmclaw.com; frame-src https://challenges.cloudflare.com https://maps.google.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
   <link rel="icon" type="image/svg+xml" href="assets/img/snmc-legal-aid.svg">
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
@@ -31,6 +31,8 @@
   <script src="assets/js/intake.js" defer></script><!-- page-specific: makeAppointmentReference() -->
   <script src="assets/js/appointments.js" defer></script><!-- page-specific, must come before Alpine -->
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.5/dist/cdn.min.js" integrity="sha384-FYLKjwG3aohNhNZoVG8sY/5ntunm+MqylL90Q+rT3OM7AwV9/BKFjk/RjoIpIgsI" crossorigin="anonymous" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+  <script src="assets/js/qr-helper.js" defer></script>
   <!-- ===== /Shared head ===== -->
 </head>
 <body x-data="appointments" class="bg-cream text-ink">
@@ -246,7 +248,13 @@
             class="rounded-sm px-3 py-2 text-sm font-semibold text-copper-dark hover:bg-black/5">Print intake form</a>
           <a :href="'clinic-ulas-form.html#' + current?.id"
             class="rounded-sm px-3 py-2 text-sm font-semibold text-copper-dark hover:bg-black/5">ULAS declaration</a>
+
+          <a x-show="current" :href="'clinic-appointments.html#' + current?.id"
+            class="rounded-sm px-3 py-2 text-sm font-semibold text-copper-dark hover:bg-black/5"
+            @click.prevent="window.qrHelper.show(location.origin + location.pathname + '#' + current.id)">QR code</a>
+
         </div>
+
 
       </div>
     </div>

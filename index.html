@@ -29,7 +29,8 @@
   <script src="assets/js/i18n-vs.js" defer></script><!-- page-specific: Bisaya wording -->
   <script src="assets/js/intake.js" defer></script><!-- page-specific, must come before Alpine -->
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.5/dist/cdn.min.js" integrity="sha384-FYLKjwG3aohNhNZoVG8sY/5ntunm+MqylL90Q+rT3OM7AwV9/BKFjk/RjoIpIgsI" crossorigin="anonymous" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+  <script src="assets/js/qr-helper.js" defer></script>
   <!-- ===== /Shared head ===== -->
 </head>
 <body class="bg-cream text-ink">
@@ -58,7 +59,8 @@
     -->
     <section class="py-16 sm:py-20">
       <form x-data="intake" @submit.prevent="step !== lastStep ? next() : submit()" novalidate
-            class="container-site grid scroll-mt-24 gap-8 xl:grid-cols-[2fr_1fr]">
+            class="container-site grid scroll-mt-24 gap-8 xl:grid-cols-[2fr_1fr]"
+            x-effect="window.dispatchEvent(new CustomEvent('qr-wizard', { detail: { show: step === 1 } }))">
 
         <!-- ================= Main card ================= -->
         <div class="card min-w-0">
