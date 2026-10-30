@@ -19,7 +19,7 @@ window.SITE = {
 
   // Cloudflare Turnstile "security check" on the booking form. Paste the widget's SITE key here (it's public);
   // the SECRET key goes on the PocketBase server only (README → "Spam protection"). Empty = no check shown.
-  turnstileSiteKey: '',
+  turnstileSiteKey: '0x4AAAAAAFsFnKPgR0menbLl',
 
   // SNMC Legal Aid seal in full colour (SVG), for light backgrounds. The sign-in page, favicon and
   // preloader point at the same file.
