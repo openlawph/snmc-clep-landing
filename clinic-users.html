@@ -29,6 +29,7 @@
   <script src="assets/js/components/dashboard-sidebar.js" defer></script><!-- page-specific: staff sidebar -->
   <script src="assets/js/crud.js" defer></script><!-- page-specific: shared table / delete logic -->
   <script src="assets/js/users.js" defer></script><!-- page-specific, must come before Alpine -->
+  <script src="assets/js/invite.js" defer></script><!-- page-specific: invite form, must come before Alpine -->
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.5/dist/cdn.min.js" integrity="sha384-FYLKjwG3aohNhNZoVG8sY/5ntunm+MqylL90Q+rT3OM7AwV9/BKFjk/RjoIpIgsI" crossorigin="anonymous" defer></script>
   <!-- ===== /Shared head ===== -->
 </head>
@@ -54,7 +55,32 @@
         You can see and edit your own account here. Only admins can add, change or remove other users.
       </p>
 
+      <!-- Invite a user (staff can add non-admin users) -->
+      <section x-data="inviteUser" class="rounded-md bg-paper p-5 shadow-sm ring-1 ring-black/5 sm:p-6" aria-labelledby="invite-title">
+        <h2 id="invite-title" class="mb-3 text-lg font-semibold">Invite a user</h2>
+        <form @submit.prevent="submit()" novalidate class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto_auto]">
+          <label>
+            <span class="sr-only">Full name</span>
+            <input type="text" x-model="f.name" maxlength="255" placeholder="Full name" autocomplete="off" class="field">
+          </label>
+          <label>
+            <span class="sr-only">Email</span>
+            <input type="email" x-model="f.email" placeholder="Email" autocomplete="off" class="field">
+          </label>
+          <label>
+            <span class="sr-only">Role</span>
+            <select x-model="f.role" class="field">
+              <template x-for="r in roles" :key="r.value"><option :value="r.value" x-text="r.label"></option></template>
+            </select>
+          </label>
+          <button type="submit" class="btn btn-primary" :disabled="busy" x-text="busy ? 'Adding…' : 'Invite User'"></button>
+        </form>
+        <p x-show="msg" x-text="msg" role="status" class="mt-3 text-sm" :class="isError ? 'text-red-700' : 'text-emerald-800'"></p>
+      </section>
+
       <section class="rounded-md bg-paper shadow-sm ring-1 ring-black/5" aria-labelledby="users-title">
+
+
         <div class="flex flex-col gap-4 border-b border-black/10 p-5 sm:p-6">
           <div class="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="users-title" class="text-2xl">Accounts</h2>

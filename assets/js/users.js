@@ -12,6 +12,10 @@
 const USER_ROLES = [
   { value: 'admin', label: 'Admin' },
   { value: 'staff', label: 'Staff' },
+  { value: 'lawyer', label: 'Lawyer' },
+  { value: 'student',    label: 'Student' },
+  { value: 'client',    label: 'Client' },
+  { value: 'tester',    label: 'Tester' },
 ];
 
 // Must match the avatar field's settings in PocketBase.
