@@ -6,6 +6,7 @@
 
   // Admin is deliberately NOT listed here. PocketBase's Create rule also refuses it.
   const ROLES = [
+    { value: 'notset', label: 'Not Set' },
     { value: 'staff', label: 'Staff' },
     { value: 'student', label: 'Student' },
     { value: 'lawyer', label: 'Lawyer' },
