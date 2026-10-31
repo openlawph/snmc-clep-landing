@@ -801,7 +801,16 @@
           <div x-show="step !== 1 && !submitted" x-cloak class="rounded-md bg-red-50 p-5 text-sm leading-relaxed text-red-900 ring-1 ring-red-200">
             <p class="font-semibold" x-t>In an emergency</p>
             <p class="mt-1" x-t>For an imminent arrest, detention, or a court hearing within 48 hours, do not wait: contact the Clinic or the nearest Public Attorney's Office or Integrated Bar of the Philippines chapter.</p>
-            <p class="mt-2 font-semibold" x-text="hotline ? $t('Emergency hotline: {number}', { number: hotline }) : $t('Email: {email}', { email: SITE.email })"></p>
+            <!-- <p class="mt-2 font-semibold" x-text="hotline ? $t('Emergency hotline: {number}', { number: hotline }) : $t('Email: {email}', { email: SITE.email })"></p> -->
+
+            <p class="mt-2 font-semibold">
+              <span x-show="hotline" x-text="$t('Emergency hotline: {number}', { number: hotline })"></span>
+              <span x-show="!hotline">
+                <span x-text="$t('Email:')"></span>
+                <a :href="'mailto:' + SITE.email" class="no-underline hover:underline" x-text="SITE.email"></a>
+              </span>
+            </p>
+
           </div>
           <div x-show="step === 1 && !submitted" class="grid gap-4 md:grid-cols-3 xl:grid-cols-1">
             <div class="rounded-md bg-ink p-6 text-white">
