@@ -34,6 +34,7 @@ window.SITE = {
   // services.html, team.html and donate.html still exist; add them back here to relink them.
   nav: [
     { key: 'book', label: 'Book a Visit', href: 'index.html' },
+    { key: 'login', label: 'Staff Login', href: 'login.html' },
   ],
 };
 
