@@ -471,4 +471,44 @@ window.I18N_STRINGS.vs = {
   'That date or time is no longer offered. Please choose another.': 'Wala na kana nga petsa o oras. Palihug pagpili og lain.',
   'This number already has several upcoming bookings. Please call or visit the clinic instead.': 'Kini nga numero aduna nay daghang umaabot nga booking. Palihug tawagi o bisitaha na lang ang klinika.',
   "One of the files couldn't be accepted. Please use a PDF or a photo of up to {mb} MB.": 'Dili madawat ang usa sa mga file. Palihug gamit og PDF o litrato nga hangtod {mb} MB.',
+
+  // ---------- About the clinic (section before the form) ----------
+  // Lines marked * are the clinic's own Bisaya text from "About the Clinic" (BAHIN SA KLINIKA). The rest still need review.
+  'About the clinic': 'Bahin sa klinika', // *
+  'Need help with a legal concern?': 'Aduna ba moy legal nga problema o pangutana?', // *
+  "We're here to help.": 'Ania kami aron motabang.', // *
+  'We offer free legal advice, help in preparing legal documents, information about your rights, and, when appropriate, legal representation.':
+    'Naghatag kami og libreng legal nga tambag, tabang sa pag-andam og legal nga mga dokumento, impormasyon bahin sa inyong mga katungod, ug, kon angay, pagrepresentar sa inyong kaso.', // *
+  'What this online form is for': 'Unsa ang katuyoan niini nga online form',
+  "Tell us about your concern through this platform. We will assess your needs and explain how we can help, depending on your eligibility and the Clinic's capacity. If another office or agency can better assist you, we will guide you to the right office or agency.":
+    'Isugilon kanamo ang inyong pangutanang legal pinaagi niini nga plataporma. Among susihon ang inyong panginahanglan ug ipasabot kon unsang tabang ang among mahatag, depende sa inyong kwalipikasyon ug sa kapasidad sa Klinika. Kon adunay laing opisina o ahensiya nga mas makatabang kaninyo, among susihon kon asa kamo mahimong moduol.', // *
+  'Sending this form does not yet make you a client of the Clinic. Your request is evaluated first, at the intake interview.':
+    'Ang pagpadala niini nga form dili pa maghimo kaninyo nga kliyente sa Klinika. Susihon una ang inyong hangyo sa intake interview.',
+  'This platform is an initiative of the law student practitioners of Sto. Niño Mactan College of Law, under the supervision of lawyers.':
+    'Kini nga plataporma usa ka inisyatiba sa mga law student practitioner sa Sto. Niño Mactan College of Law, nga gigiyahan ug mga abogado.', // *
+  'Who we serve': 'Kinsa ang among gisilbihan',
+  'Our services are intended for individuals, groups, and communities who have limited resources or face difficulties accessing legal assistance.':
+    'Ang among serbisyo alang sa mga indibidwal, grupo, ug komunidad nga limitado ang pinansyal nga kahinguhaan o naglisod sa pagkuha og legal nga tabang.', // *
+  'Our focus is underserved and marginalized sectors, including:': 'Among gipangunahan ang mga sektor nga kulang sa serbisyo ug gipasagdan sa katilingban, sama sa:',
+  'Groups and communities': 'Mga grupo ug komunidad',
+  "We also work with people's organizations, civil society organizations, indigenous communities, local government units, and other public institutions.":
+    "Nakigtambayayong usab kami sa mga people's organization, civil society organization, komunidad sa mga lumad, local government unit, ug uban pang publikong institusyon.",
+  'Not sure you qualify?': 'Dili ka sigurado kon kwalipikado ka?',
+  'Start your booking': 'Sugdi ang imong booking',
+
+  // ---------- Our goals (section after the form) ----------
+  // From the CLEP Operations Manual, Goals and Objectives. Needs review by a native speaker.
+  'Our goals': 'Among mga tumong',
+  'What the Clinic works toward': 'Ang gitinguha sa Klinika',
+  'The Clinic is where experiential legal education, access to justice, and the formation of future lawyers converge.':
+    'Ang Klinika mao ang tagboanan sa praktikal nga pagtuon sa balaod, sa hustisya nga maabot sa tanan, ug sa paghulma sa umaabot nga mga abogado.',
+  'Legal aid for underserved sectors': 'Legal nga tabang alang sa mga sektor nga kulang sa serbisyo',
+  'The Clinic aims to provide competent, ethical, and supervised legal assistance to underserved sectors of society while advancing the educational objectives of the Clinical Legal Education Program (CLEP).':
+    'Ang Klinika nagtinguha nga mohatag og hanas, etikal, ug gigiyahan nga legal nga tabang ngadto sa mga sektor sa katilingban nga kulang sa serbisyo, samtang gipalambo ang mga tumong sa edukasyon sa Clinical Legal Education Program (CLEP).',
+  'Learning through public service': 'Pagkat-on pinaagi sa pag-alagad sa publiko',
+  'The Clinic renders legal services that integrate experiential learning with public service, ensuring that every engagement contributes both to client welfare and to the professional formation of Law Student Practitioners, consistent with Rule 138-A, the Code of Professional Responsibility and Accountability, and other applicable laws and issuances.':
+    'Ang Klinika mohatag og legal nga serbisyo nga naghiusa sa praktikal nga pagkat-on ug pag-alagad sa publiko, aron ang matag kaso makatabang sa kaayohan sa kliyente ug sa paghulma sa mga Law Student Practitioner isip propesyonal, subay sa Rule 138-A, sa Code of Professional Responsibility and Accountability, ug sa uban pang balaod ug kamandoan.',
+  'Service matched to our capacity': 'Serbisyo nga angay sa among kapasidad',
+  'The Clinic takes into account its designated practice areas, the competence and availability of its Supervising Lawyers, institutional resources, and the objectives of the Clinical Legal Education Program.':
+    'Gikonsiderar sa Klinika ang mga practice area nga gitakda niini, ang kahanas ug pagkaanaa sa mga Supervising Lawyer niini, ang kahinguhaan sa institusyon, ug ang mga tumong sa Clinical Legal Education Program.',
 };

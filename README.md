@@ -17,7 +17,7 @@ It's plain static HTML with no build step and no server-side code: upload the fi
 ## Structure
 
 ```
-index.html          Book a Visit (6-step intake wizard): the main page for now
+index.html          Book a Visit: "About the clinic" section, the 6-step intake wizard, then "Our goals" (the main page for now)
 book.html           Redirects to index.html so old links keep working
 404.html            "Page not found" (GitHub Pages shows it for any address that doesn't exist)
 home.html           Former home page (not linked in the nav for now)
@@ -126,6 +126,20 @@ The form checks each step (required questions, mobile/email format), then `sendR
 **Option wording:** the lists on the form now use Annex D's wording. The printed SNMC-CIF-001 keeps its own fixed lists; `CIF_FROM_ONLINE` in `assets/js/intake-print.js` says which box an online answer ticks, and `ANNEX_C_FROM_ONLINE` in `assets/js/intake-c.js` does the same for Annex C. Both are a best reading: **someone from the clinic should check them.**
 
 **Uploads** are built but off, and stay off until the spam check is on the server, because anonymous uploads without it could fill the disk. There's no `attachments` field on the server yet either, so a file sent anyway goes nowhere. `INTAKE_UPLOADS` in `assets/js/intake.js` says what it takes to turn them on.
+
+### Sections around the form
+
+The booking page has two plain-text sections around the wizard. They're static HTML in `index.html` (no settings, no database), translated with `x-t` like the rest of the page:
+
+| Section | Where | What it says | Source |
+|---|---|---|---|
+| `#about-clinic` | Between the title band and the form | What the clinic offers, what the online form is for (and that sending it doesn't make you a client yet), who the clinic serves (the Section D sector labels, plus the groups and communities it works with), and a **Start your booking** button that jumps to `#book` | "About the Clinic" (EN + Bisaya) and the CLEP Operations Manual |
+| `#clinic-goals` | Between the form and the footer | The clinic's three goals | CLEP Operations Manual, *Goals and Objectives* |
+
+- `#about-clinic` has its own **Language / Pinulongan** picker; it's the same setting as the one on the form's first page, so switching either switches both.
+- The sector chips repeat the labels in `INTAKE_OPTIONS.sectors`, so they reuse the form's Bisaya wording. If a sector is added or renamed there, update the chips too.
+- In `i18n-vs.js`, the lines marked `// *` are the clinic's own Bisaya from "About the Clinic"; the others (headings, the goals) still need a native speaker's review.
+- Public-facing text must be approved by the Clinic Director (Operations Manual, *Public Dissemination*), so run wording changes past them.
 
 ## Preview locally
 

@@ -1,0 +1,233 @@
+From 6f7a6263fb0ada96c35d0be039ee269f4c350db0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 19 Nov 2026 12:34:26 +0800
+Subject: [PATCH] Add "About the clinic" and "Our goals" sections to Book a
+ Visit
+
+Before the intake form: what the clinic offers, what the online form is
+for, who the clinic serves (Section D sectors, plus groups and
+communities), and a jump link to the form. After the form: the clinic's
+three goals from the CLEP Operations Manual.
+
+Wording comes from "About the Clinic" (EN + Bisaya, used verbatim) and
+the Operations Manual. New Bisaya lines that aren't the clinic's own are
+unmarked in i18n-vs.js and need native review. README documents both
+sections.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_0147reVrejrqwKLEXLtgQWzv
+---
+ README.md            | 16 +++++++-
+ assets/js/i18n-vs.js | 40 ++++++++++++++++++
+ index.html           | 98 +++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 152 insertions(+), 2 deletions(-)
+
+diff --git a/README.md b/README.md
+index ada5670..13e557a 100644
+--- a/README.md
++++ b/README.md
+@@ -17,7 +17,7 @@ It's plain static HTML with no build step and no server-side code: upload the fi
+ ## Structure
+ 
+ ```
+-index.html          Book a Visit (6-step intake wizard): the main page for now
++index.html          Book a Visit: "About the clinic" section, the 6-step intake wizard, then "Our goals" (the main page for now)
+ book.html           Redirects to index.html so old links keep working
+ 404.html            "Page not found" (GitHub Pages shows it for any address that doesn't exist)
+ home.html           Former home page (not linked in the nav for now)
+@@ -127,6 +127,20 @@ The form checks each step (required questions, mobile/email format), then `sendR
+ 
+ **Uploads** are built but off, and stay off until the spam check is on the server, because anonymous uploads without it could fill the disk. There's no `attachments` field on the server yet either, so a file sent anyway goes nowhere. `INTAKE_UPLOADS` in `assets/js/intake.js` says what it takes to turn them on.
+ 
++### Sections around the form
++
++The booking page has two plain-text sections around the wizard. They're static HTML in `index.html` (no settings, no database), translated with `x-t` like the rest of the page:
++
++| Section | Where | What it says | Source |
++|---|---|---|---|
++| `#about-clinic` | Between the title band and the form | What the clinic offers, what the online form is for (and that sending it doesn't make you a client yet), who the clinic serves (the Section D sector labels, plus the groups and communities it works with), and a **Start your booking** button that jumps to `#book` | "About the Clinic" (EN + Bisaya) and the CLEP Operations Manual |
++| `#clinic-goals` | Between the form and the footer | The clinic's three goals | CLEP Operations Manual, *Goals and Objectives* |
++
++- `#about-clinic` has its own **Language / Pinulongan** picker; it's the same setting as the one on the form's first page, so switching either switches both.
++- The sector chips repeat the labels in `INTAKE_OPTIONS.sectors`, so they reuse the form's Bisaya wording. If a sector is added or renamed there, update the chips too.
++- In `i18n-vs.js`, the lines marked `// *` are the clinic's own Bisaya from "About the Clinic"; the others (headings, the goals) still need a native speaker's review.
++- Public-facing text must be approved by the Clinic Director (Operations Manual, *Public Dissemination*), so run wording changes past them.
++
+ ## Preview locally
+ 
+ Any static server works, e.g.:
+diff --git a/assets/js/i18n-vs.js b/assets/js/i18n-vs.js
+index 70a9cb4..69852e4 100644
+--- a/assets/js/i18n-vs.js
++++ b/assets/js/i18n-vs.js
+@@ -471,4 +471,44 @@ window.I18N_STRINGS.vs = {
+   'That date or time is no longer offered. Please choose another.': 'Wala na kana nga petsa o oras. Palihug pagpili og lain.',
+   'This number already has several upcoming bookings. Please call or visit the clinic instead.': 'Kini nga numero aduna nay daghang umaabot nga booking. Palihug tawagi o bisitaha na lang ang klinika.',
+   "One of the files couldn't be accepted. Please use a PDF or a photo of up to {mb} MB.": 'Dili madawat ang usa sa mga file. Palihug gamit og PDF o litrato nga hangtod {mb} MB.',
++
++  // ---------- About the clinic (section before the form) ----------
++  // Lines marked * are the clinic's own Bisaya text from "About the Clinic" (BAHIN SA KLINIKA). The rest still need review.
++  'About the clinic': 'Bahin sa klinika', // *
++  'Need help with a legal concern?': 'Aduna ba moy legal nga problema o pangutana?', // *
++  "We're here to help.": 'Ania kami aron motabang.', // *
++  'We offer free legal advice, help in preparing legal documents, information about your rights, and, when appropriate, legal representation.':
++    'Naghatag kami og libreng legal nga tambag, tabang sa pag-andam og legal nga mga dokumento, impormasyon bahin sa inyong mga katungod, ug, kon angay, pagrepresentar sa inyong kaso.', // *
++  'What this online form is for': 'Unsa ang katuyoan niini nga online form',
++  "Tell us about your concern through this platform. We will assess your needs and explain how we can help, depending on your eligibility and the Clinic's capacity. If another office or agency can better assist you, we will guide you to the right office or agency.":
++    'Isugilon kanamo ang inyong pangutanang legal pinaagi niini nga plataporma. Among susihon ang inyong panginahanglan ug ipasabot kon unsang tabang ang among mahatag, depende sa inyong kwalipikasyon ug sa kapasidad sa Klinika. Kon adunay laing opisina o ahensiya nga mas makatabang kaninyo, among susihon kon asa kamo mahimong moduol.', // *
++  'Sending this form does not yet make you a client of the Clinic. Your request is evaluated first, at the intake interview.':
++    'Ang pagpadala niini nga form dili pa maghimo kaninyo nga kliyente sa Klinika. Susihon una ang inyong hangyo sa intake interview.',
++  'This platform is an initiative of the law student practitioners of Sto. Niño Mactan College of Law, under the supervision of lawyers.':
++    'Kini nga plataporma usa ka inisyatiba sa mga law student practitioner sa Sto. Niño Mactan College of Law, nga gigiyahan ug mga abogado.', // *
++  'Who we serve': 'Kinsa ang among gisilbihan',
++  'Our services are intended for individuals, groups, and communities who have limited resources or face difficulties accessing legal assistance.':
++    'Ang among serbisyo alang sa mga indibidwal, grupo, ug komunidad nga limitado ang pinansyal nga kahinguhaan o naglisod sa pagkuha og legal nga tabang.', // *
++  'Our focus is underserved and marginalized sectors, including:': 'Among gipangunahan ang mga sektor nga kulang sa serbisyo ug gipasagdan sa katilingban, sama sa:',
++  'Groups and communities': 'Mga grupo ug komunidad',
++  "We also work with people's organizations, civil society organizations, indigenous communities, local government units, and other public institutions.":
++    "Nakigtambayayong usab kami sa mga people's organization, civil society organization, komunidad sa mga lumad, local government unit, ug uban pang publikong institusyon.",
++  'Not sure you qualify?': 'Dili ka sigurado kon kwalipikado ka?',
++  'Start your booking': 'Sugdi ang imong booking',
++
++  // ---------- Our goals (section after the form) ----------
++  // From the CLEP Operations Manual, Goals and Objectives. Needs review by a native speaker.
++  'Our goals': 'Among mga tumong',
++  'What the Clinic works toward': 'Ang gitinguha sa Klinika',
++  'The Clinic is where experiential legal education, access to justice, and the formation of future lawyers converge.':
++    'Ang Klinika mao ang tagboanan sa praktikal nga pagtuon sa balaod, sa hustisya nga maabot sa tanan, ug sa paghulma sa umaabot nga mga abogado.',
++  'Legal aid for underserved sectors': 'Legal nga tabang alang sa mga sektor nga kulang sa serbisyo',
++  'The Clinic aims to provide competent, ethical, and supervised legal assistance to underserved sectors of society while advancing the educational objectives of the Clinical Legal Education Program (CLEP).':
++    'Ang Klinika nagtinguha nga mohatag og hanas, etikal, ug gigiyahan nga legal nga tabang ngadto sa mga sektor sa katilingban nga kulang sa serbisyo, samtang gipalambo ang mga tumong sa edukasyon sa Clinical Legal Education Program (CLEP).',
++  'Learning through public service': 'Pagkat-on pinaagi sa pag-alagad sa publiko',
++  'The Clinic renders legal services that integrate experiential learning with public service, ensuring that every engagement contributes both to client welfare and to the professional formation of Law Student Practitioners, consistent with Rule 138-A, the Code of Professional Responsibility and Accountability, and other applicable laws and issuances.':
++    'Ang Klinika mohatag og legal nga serbisyo nga naghiusa sa praktikal nga pagkat-on ug pag-alagad sa publiko, aron ang matag kaso makatabang sa kaayohan sa kliyente ug sa paghulma sa mga Law Student Practitioner isip propesyonal, subay sa Rule 138-A, sa Code of Professional Responsibility and Accountability, ug sa uban pang balaod ug kamandoan.',
++  'Service matched to our capacity': 'Serbisyo nga angay sa among kapasidad',
++  'The Clinic takes into account its designated practice areas, the competence and availability of its Supervising Lawyers, institutional resources, and the objectives of the Clinical Legal Education Program.':
++    'Gikonsiderar sa Klinika ang mga practice area nga gitakda niini, ang kahanas ug pagkaanaa sa mga Supervising Lawyer niini, ang kahinguhaan sa institusyon, ug ang mga tumong sa Clinical Legal Education Program.',
+ };
+diff --git a/index.html b/index.html
+index ecf88a5..999deb3 100644
+--- a/index.html
++++ b/index.html
+@@ -49,6 +49,71 @@
+       <p class="text-base" x-t>Online version of the clinic's Unified Client Intake Form (SNMC-CIF-001). Please answer completely and honestly. If you need help filling it in, call or visit the clinic and our staff or student practitioners will assist you.</p>
+     </page-intro>
+ 
++    <!-- ================= About the clinic (before the form) =================
++      What the online intake is for, and who the clinic serves.
++      Wording: "About the Clinic" (English + Bisaya, the clinic's own text) and the CLEP Operations Manual
++      (Forms of Assistance, Public Dissemination, Developmental Legal Assistance). The sector chips are the
++      same labels as the form's Section D. Public-facing text must be approved by the Clinic Director.
++      Text: x-t; Bisaya wording in assets/js/i18n-vs.js under "About the clinic". -->
++    <section id="about-clinic" class="bg-white py-16 sm:py-20" aria-labelledby="about-clinic-title">
++      <div class="container-site grid gap-12 lg:grid-cols-[1.15fr_1fr] lg:gap-16">
++        <div data-reveal>
++          <!-- Same setting as the picker on the form's first page ($store.i18n.lang), so visitors can read this section in Bisaya too -->
++          <div class="mb-6 flex flex-wrap items-center gap-3">
++            <label for="lang-about" class="text-sm font-semibold">Language / Pinulongan</label>
++            <select id="lang-about" x-model="$store.i18n.lang" class="rounded-sm border border-black/15 bg-white px-3 py-1.5 text-sm font-semibold text-ink focus:border-copper focus:outline-none focus:ring-2 focus:ring-copper/30">
++              <option value="en">EN — English</option>
++              <option value="vs">VS — Visaya</option>
++            </select>
++          </div>
++          <p class="eyebrow" x-t>About the clinic</p>
++          <h2 id="about-clinic-title" class="mt-4 text-3xl leading-tight sm:text-4xl">
++            <span x-t>Need help with a legal concern?</span>
++            <span class="block text-copper-dark" x-t>We're here to help.</span>
++          </h2>
++          <p class="mt-5 text-lg leading-relaxed text-muted" x-t>We offer free legal advice, help in preparing legal documents, information about your rights, and, when appropriate, legal representation.</p>
++
++          <h3 class="mt-10 text-2xl" x-t>What this online form is for</h3>
++          <p class="mt-3 leading-relaxed text-muted" x-t>Tell us about your concern through this platform. We will assess your needs and explain how we can help, depending on your eligibility and the Clinic's capacity. If another office or agency can better assist you, we will guide you to the right office or agency.</p>
++          <p class="mt-4 rounded-md border-l-4 border-copper bg-cream px-4 py-3 text-sm leading-relaxed text-ink" x-t>Sending this form does not yet make you a client of the Clinic. Your request is evaluated first, at the intake interview.</p>
++
++          <div class="mt-8 flex items-center gap-4">
++            <span class="seal size-14"><img src="assets/img/snmc-legal-aid.svg" alt="" class="size-12"></span>
++            <p class="text-sm leading-relaxed text-muted" x-t>This platform is an initiative of the law student practitioners of Sto. Niño Mactan College of Law, under the supervision of lawyers.</p>
++          </div>
++        </div>
++
++        <div class="rounded-md bg-cream p-6 sm:p-8" data-reveal data-reveal-delay="120">
++          <h3 class="text-2xl" x-t>Who we serve</h3>
++          <p class="mt-3 leading-relaxed text-muted" x-t>Our services are intended for individuals, groups, and communities who have limited resources or face difficulties accessing legal assistance.</p>
++
++          <p class="mt-6 text-sm font-semibold" x-t>Our focus is underserved and marginalized sectors, including:</p>
++          <ul class="mt-3 flex flex-wrap gap-2 text-sm">
++            <li class="rounded-sm bg-white px-3 py-1.5 ring-1 ring-black/10" x-t>Women</li>
++            <li class="rounded-sm bg-white px-3 py-1.5 ring-1 ring-black/10" x-t>Children (below 18)</li>
++            <li class="rounded-sm bg-white px-3 py-1.5 ring-1 ring-black/10" x-t>Youth</li>
++            <li class="rounded-sm bg-white px-3 py-1.5 ring-1 ring-black/10" x-t>Senior Citizen</li>
++            <li class="rounded-sm bg-white px-3 py-1.5 ring-1 ring-black/10" x-t>Person with Disability (PWD)</li>
++            <li class="rounded-sm bg-white px-3 py-1.5 ring-1 ring-black/10" x-t>Indigenous Peoples (IP)</li>
++            <li class="rounded-sm bg-white px-3 py-1.5 ring-1 ring-black/10" x-t>Urban Poor / Informal Settler</li>
++            <li class="rounded-sm bg-white px-3 py-1.5 ring-1 ring-black/10" x-t>Person Deprived of Liberty (PDL)</li>
++            <li class="rounded-sm bg-white px-3 py-1.5 ring-1 ring-black/10" x-t>Probationer / Parolee / Pardonee</li>
++            <li class="rounded-sm bg-white px-3 py-1.5 ring-1 ring-black/10" x-t>Survivor of Violence / Abuse</li>
++            <li class="rounded-sm bg-white px-3 py-1.5 ring-1 ring-black/10" x-t>Person with Diverse SOGIESC</li>
++          </ul>
++
++          <p class="mt-6 text-sm font-semibold" x-t>Groups and communities</p>
++          <p class="mt-1 text-sm leading-relaxed text-muted" x-t>We also work with people's organizations, civil society organizations, indigenous communities, local government units, and other public institutions.</p>
++
++          <div class="mt-8 border-t border-black/10 pt-6">
++            <p class="font-semibold" x-t>Not sure you qualify?</p>
++            <p class="mt-1 text-sm leading-relaxed text-muted" x-t>You do not need to prove anything before booking. Eligibility is checked during the intake interview, free of charge.</p>
++            <a href="#book" class="btn btn-primary mt-5"><span x-t>Start your booking</span> <span aria-hidden="true">↓</span></a>
++          </div>
++        </div>
++      </div>
++    </section>
++
+     <!--
+       Steps follow form SNMC-CIF-001:
+         1 Appointment · 2 Section B · 3 Sections C + D · 4 Sections F + E · 5 Sections G + K · 6 Review + Sections H + I
+@@ -57,7 +122,7 @@
+       x-field="key" ties a question to its settings (asked or not, required or not) and shows its error; keys are INTAKE_FIELDS in intake.js.
+       Text: x-t / $t() (assets/js/i18n.js); Bisaya wording in assets/js/i18n-vs.js.
+     -->
+-    <section class="py-16 sm:py-20">
++    <section id="book" class="scroll-mt-16 py-16 sm:py-20">
+       <form x-data="intake" @submit.prevent="step !== lastStep ? next() : submit()" novalidate
+             class="container-site grid scroll-mt-24 gap-8 xl:grid-cols-[2fr_1fr]"
+             x-effect="window.dispatchEvent(new CustomEvent('qr-wizard', { detail: { show: step === 1 } }))">
+@@ -857,6 +922,37 @@
+         </aside>
+       </form>
+     </section>
++
++    <!-- ================= Our goals (after the form) =================
++      The Clinic's Goals and Objectives, from the CLEP Operations Manual (Introduction), kept close to the
++      Manual's wording. Short card titles are ours. Public-facing text must be approved by the Clinic Director.
++      Text: x-t; Bisaya wording in assets/js/i18n-vs.js under "Our goals". -->
++    <section id="clinic-goals" class="bg-white py-16 sm:py-20" aria-labelledby="clinic-goals-title">
++      <div class="container-site">
++        <div class="max-w-3xl" data-reveal>
++          <p class="eyebrow" x-t>Our goals</p>
++          <h2 id="clinic-goals-title" class="mt-4 text-3xl leading-tight sm:text-4xl" x-t>What the Clinic works toward</h2>
++          <p class="mt-5 text-lg leading-relaxed text-muted" x-t>The Clinic is where experiential legal education, access to justice, and the formation of future lawyers converge.</p>
++        </div>
++        <ol class="mt-12 grid gap-6 md:grid-cols-3">
++          <li class="rounded-md bg-cream p-6" data-reveal>
++            <span class="grid size-9 place-items-center rounded-sm bg-copper text-sm font-semibold text-white" aria-hidden="true">01</span>
++            <h3 class="mt-4 text-xl" x-t>Legal aid for underserved sectors</h3>
++            <p class="mt-2 text-sm leading-relaxed text-muted" x-t>The Clinic aims to provide competent, ethical, and supervised legal assistance to underserved sectors of society while advancing the educational objectives of the Clinical Legal Education Program (CLEP).</p>
++          </li>
++          <li class="rounded-md bg-cream p-6" data-reveal data-reveal-delay="120">
++            <span class="grid size-9 place-items-center rounded-sm bg-copper text-sm font-semibold text-white" aria-hidden="true">02</span>
++            <h3 class="mt-4 text-xl" x-t>Learning through public service</h3>
++            <p class="mt-2 text-sm leading-relaxed text-muted" x-t>The Clinic renders legal services that integrate experiential learning with public service, ensuring that every engagement contributes both to client welfare and to the professional formation of Law Student Practitioners, consistent with Rule 138-A, the Code of Professional Responsibility and Accountability, and other applicable laws and issuances.</p>
++          </li>
++          <li class="rounded-md bg-cream p-6" data-reveal data-reveal-delay="240">
++            <span class="grid size-9 place-items-center rounded-sm bg-copper text-sm font-semibold text-white" aria-hidden="true">03</span>
++            <h3 class="mt-4 text-xl" x-t>Service matched to our capacity</h3>
++            <p class="mt-2 text-sm leading-relaxed text-muted" x-t>The Clinic takes into account its designated practice areas, the competence and availability of its Supervising Lawyers, institutional resources, and the objectives of the Clinical Legal Education Program.</p>
++          </li>
++        </ol>
++      </div>
++    </section>
+   </main>
+ 
+   <site-footer></site-footer>
+-- 
+2.43.0
+
