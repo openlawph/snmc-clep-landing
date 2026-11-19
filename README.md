@@ -129,15 +129,16 @@ The form checks each step (required questions, mobile/email format), then `sendR
 
 ### Sections around the form
 
-The booking page has two plain-text sections around the wizard. They're static HTML in `index.html` (no settings, no database), translated with `x-t` like the rest of the page:
+The booking page has two plain-text sections around the wizard, laid out like `services.html` (two numbered cards, then a dark full-width band). They're static HTML in `index.html` (no settings, no database), translated with `x-t` like the rest of the page:
 
 | Section | Where | What it says | Source |
 |---|---|---|---|
 | `#about-clinic` | Between the title band and the form | What the clinic offers, what the online form is for (and that sending it doesn't make you a client yet), who the clinic serves (the Section D sector labels, plus the groups and communities it works with), and a **Start your booking** button that jumps to `#book` | "About the Clinic" (EN + Bisaya) and the CLEP Operations Manual |
 | `#clinic-goals` | Between the form and the footer | The clinic's three goals | CLEP Operations Manual, *Goals and Objectives* |
 
+- Below the `lg` breakpoint (phones, tablets) the cards stack into a long scroll, so `#about-clinic` adds a **Skip to the form** link at the top and a **Start your booking** button at the end of each card (`lg:hidden`). All of them jump to `#book`.
 - `#about-clinic` has its own **Language / Pinulongan** picker; it's the same setting as the one on the form's first page, so switching either switches both.
-- The sector chips repeat the labels in `INTAKE_OPTIONS.sectors`, so they reuse the form's Bisaya wording. If a sector is added or renamed there, update the chips too.
+- The sector list repeats the labels in `INTAKE_OPTIONS.sectors`, so they reuse the form's Bisaya wording. If a sector is added or renamed there, update the list too.
 - In `i18n-vs.js`, the lines marked `// *` are the clinic's own Bisaya from "About the Clinic"; the others (headings, the goals) still need a native speaker's review.
 - Public-facing text must be approved by the Clinic Director (Operations Manual, *Public Dissemination*), so run wording changes past them.
 

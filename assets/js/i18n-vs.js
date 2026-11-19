@@ -480,12 +480,16 @@ window.I18N_STRINGS.vs = {
   'We offer free legal advice, help in preparing legal documents, information about your rights, and, when appropriate, legal representation.':
     'Naghatag kami og libreng legal nga tambag, tabang sa pag-andam og legal nga mga dokumento, impormasyon bahin sa inyong mga katungod, ug, kon angay, pagrepresentar sa inyong kaso.', // *
   'What this online form is for': 'Unsa ang katuyoan niini nga online form',
-  "Tell us about your concern through this platform. We will assess your needs and explain how we can help, depending on your eligibility and the Clinic's capacity. If another office or agency can better assist you, we will guide you to the right office or agency.":
-    'Isugilon kanamo ang inyong pangutanang legal pinaagi niini nga plataporma. Among susihon ang inyong panginahanglan ug ipasabot kon unsang tabang ang among mahatag, depende sa inyong kwalipikasyon ug sa kapasidad sa Klinika. Kon adunay laing opisina o ahensiya nga mas makatabang kaninyo, among susihon kon asa kamo mahimong moduol.', // *
+  'Tell us about your concern through this platform.': 'Isugilon kanamo ang inyong pangutanang legal pinaagi niini nga plataporma.', // *
+  "We will assess your needs and explain how we can help, depending on your eligibility and the Clinic's capacity.":
+    'Among susihon ang inyong panginahanglan ug ipasabot kon unsang tabang ang among mahatag, depende sa inyong kwalipikasyon ug sa kapasidad sa Klinika.', // *
+  'If another office or agency can better assist you, we will guide you to the right office or agency.':
+    'Kon adunay laing opisina o ahensiya nga mas makatabang kaninyo, among susihon kon asa kamo mahimong moduol.', // *
   'Sending this form does not yet make you a client of the Clinic. Your request is evaluated first, at the intake interview.':
     'Ang pagpadala niini nga form dili pa maghimo kaninyo nga kliyente sa Klinika. Susihon una ang inyong hangyo sa intake interview.',
   'This platform is an initiative of the law student practitioners of Sto. Niño Mactan College of Law, under the supervision of lawyers.':
     'Kini nga plataporma usa ka inisyatiba sa mga law student practitioner sa Sto. Niño Mactan College of Law, nga gigiyahan ug mga abogado.', // *
+  'Before you book': 'Sa dili pa mag-book',
   'Who we serve': 'Kinsa ang among gisilbihan',
   'Our services are intended for individuals, groups, and communities who have limited resources or face difficulties accessing legal assistance.':
     'Ang among serbisyo alang sa mga indibidwal, grupo, ug komunidad nga limitado ang pinansyal nga kahinguhaan o naglisod sa pagkuha og legal nga tabang.', // *
@@ -495,6 +499,7 @@ window.I18N_STRINGS.vs = {
     "Nakigtambayayong usab kami sa mga people's organization, civil society organization, komunidad sa mga lumad, local government unit, ug uban pang publikong institusyon.",
   'Not sure you qualify?': 'Dili ka sigurado kon kwalipikado ka?',
   'Start your booking': 'Sugdi ang imong booking',
+  'Skip to the form': 'Adto dayon sa form',
 
   // ---------- Our goals (section after the form) ----------
   // From the CLEP Operations Manual, Goals and Objectives. Needs review by a native speaker.
