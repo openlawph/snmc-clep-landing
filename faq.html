@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frequently Asked Questions · SNMC Law Legal Clinic</title>
+  <meta name="description" content="Answers about the SNMC Law Legal Clinic: free legal aid, who can ask for help, booking a visit online, what to bring, privacy, and what happens after you book.">
+
+  <!-- ===== Shared head: keep identical on every page ===== -->
+  <!-- Where this page may load scripts, styles, images and data from. Add a host here when you add a CDN library or API (README → "Security"). -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://capi.snmclaw.com; connect-src 'self' https://capi.snmclaw.com; frame-src https://challenges.cloudflare.com https://maps.google.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
+  <link rel="icon" type="image/svg+xml" href="assets/img/snmc-legal-aid.svg">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="assets/js/theme.js"></script>
+  <script src="assets/js/preloader.js"></script><!-- logo preloader: not deferred, it covers the first paint -->
+  <script src="assets/js/maintenance.js"></script><!-- public pages only: maintenance mode (not deferred) -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3/dist/index.global.js" integrity="sha384-2ql948lIdLcGEE0/qxNiudyTjgauA3RDJERu5xW75kFCvSl5a9odyQYCb6tEjnmB" crossorigin="anonymous" defer></script><!-- deferred: the preloader covers the page until the styles are built -->
+  <script src="assets/js/components.js" defer></script>
+  <script src="assets/js/components/site-header.js" defer></script>
+  <script src="assets/js/components/site-footer.js" defer></script>
+  <script src="assets/js/components/page-intro.js" defer></script>
+  <script src="assets/js/components/legal-notice.js" defer></script>
+  <script src="assets/js/components/contact-info.js" defer></script>
+  <script src="assets/js/i18n.js" defer></script><!-- page-specific: EN / VS translation helpers -->
+  <script src="assets/js/i18n-faq-vs.js" defer></script><!-- page-specific: Bisaya wording for this page -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.5/dist/cdn.min.js" integrity="sha384-FYLKjwG3aohNhNZoVG8sY/5ntunm+MqylL90Q+rT3OM7AwV9/BKFjk/RjoIpIgsI" crossorigin="anonymous" defer></script>
+  <!-- ===== /Shared head ===== -->
+</head>
+<body class="bg-cream text-ink">
+  <site-header active="faq"></site-header>
+
+  <!--
+    Frequently asked questions. Same questions and wording as the printed FAQs pamphlet (English + Bisaya):
+    keep the two in step when either changes. Text: x-t / x-t.html (assets/js/i18n.js);
+    Bisaya wording in assets/js/i18n-faq-vs.js, keyed by the English exactly as it is written here.
+    Each question has an id, so faq.html#cost opens that answer directly.
+  -->
+  <!-- x-data here so the translated text (x-t) is processed. The x-init opens the question named in the address (#id). -->
+  <main x-data="{ setAll(open) { document.querySelectorAll('details.faq-item').forEach((d) => { d.open = open; }); } }"
+        x-init="const target = document.getElementById(location.hash.slice(1)); if (target instanceof HTMLDetailsElement) { target.open = true; $nextTick(() => target.scrollIntoView()); }">
+    <page-intro eyebrow="SNMC Law Legal Clinic · Client guide" title="Frequently asked questions" logo i18n>
+      <p x-t>Free legal aid from the law student practitioners of SNMC School of Law, under the supervision of lawyers.</p>
+    </page-intro>
+
+    <section class="py-16 sm:py-24">
+      <!-- Language: the same setting as the booking form's picker ($store.i18n.lang), remembered in this browser -->
+      <div class="container-site mb-8 flex flex-wrap items-center justify-end gap-3">
+        <label for="lang-faq" class="text-sm font-semibold">Language / Pinulongan</label>
+        <select id="lang-faq" x-model="$store.i18n.lang" class="rounded-sm border border-black/15 bg-white px-3 py-1.5 text-sm font-semibold text-ink focus:border-copper focus:outline-none focus:ring-2 focus:ring-copper/30">
+          <option value="en">EN — English</option>
+          <option value="vs">VS — Visaya</option>
+        </select>
+      </div>
+
+      <div class="container-site">
+        <legal-notice title="Is it an emergency?" i18n>
+          <p class="text-base" x-t>Facing arrest or detention, a court hearing within 48 hours, or violence at home? Don't wait to book. Go to the nearest PAO or IBP office now. In danger? Go to the police or your barangay VAWC desk.</p>
+        </legal-notice>
+      </div>
+
+      <div class="container-site mt-12 grid gap-12 lg:grid-cols-[15rem_1fr] lg:gap-16">
+        <!-- Section links: a sticky list on large screens, a row of chips on phones -->
+        <nav aria-label="On this page" class="lg:sticky lg:top-24 lg:self-start">
+          <p class="form-section" x-t>On this page</p>
+          <ul class="mt-3 hidden lg:block">
+                <li><a href="#basics" class="flex items-baseline gap-3 rounded-sm py-2 text-[15px] text-ink/70 hover:text-brick-dark"><span class="font-display text-lg text-copper" aria-hidden="true">01</span><span class="flex-1" x-t>Client guide</span><span class="text-xs text-muted" aria-hidden="true">10</span></a></li>
+                <li><a href="#booking" class="flex items-baseline gap-3 rounded-sm py-2 text-[15px] text-ink/70 hover:text-brick-dark"><span class="font-display text-lg text-copper" aria-hidden="true">02</span><span class="flex-1" x-t>Booking online</span><span class="text-xs text-muted" aria-hidden="true">10</span></a></li>
+                <li><a href="#getting-help" class="flex items-baseline gap-3 rounded-sm py-2 text-[15px] text-ink/70 hover:text-brick-dark"><span class="font-display text-lg text-copper" aria-hidden="true">03</span><span class="flex-1" x-t>Getting help</span><span class="text-xs text-muted" aria-hidden="true">9</span></a></li>
+                <li><a href="#your-visit" class="flex items-baseline gap-3 rounded-sm py-2 text-[15px] text-ink/70 hover:text-brick-dark"><span class="font-display text-lg text-copper" aria-hidden="true">04</span><span class="flex-1" x-t>Your visit</span><span class="text-xs text-muted" aria-hidden="true">10</span></a></li>
+          </ul>
+          <div class="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 lg:hidden">
+            <a href="#basics" class="shrink-0 rounded-sm border border-black/15 bg-white px-3.5 py-2 text-sm font-semibold text-ink hover:border-copper/60"><span x-t>Client guide</span></a>
+            <a href="#booking" class="shrink-0 rounded-sm border border-black/15 bg-white px-3.5 py-2 text-sm font-semibold text-ink hover:border-copper/60"><span x-t>Booking online</span></a>
+            <a href="#getting-help" class="shrink-0 rounded-sm border border-black/15 bg-white px-3.5 py-2 text-sm font-semibold text-ink hover:border-copper/60"><span x-t>Getting help</span></a>
+            <a href="#your-visit" class="shrink-0 rounded-sm border border-black/15 bg-white px-3.5 py-2 text-sm font-semibold text-ink hover:border-copper/60"><span x-t>Your visit</span></a>
+          </div>
+          <div class="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold lg:flex-col">
+            <button type="button" class="text-left text-brick underline underline-offset-4 hover:text-brick-dark" @click="setAll(true)" x-t>Open all answers</button>
+            <button type="button" class="text-left text-brick underline underline-offset-4 hover:text-brick-dark" @click="setAll(false)" x-t>Close all answers</button>
+          </div>
+        </nav>
+
+        <div class="space-y-20">
+        <section id="basics" class="scroll-mt-24" aria-labelledby="basics-title">
+          <p class="eyebrow"><span aria-hidden="true">01 · </span><span x-t>Client guide</span></p>
+          <h2 id="basics-title" class="mt-3 text-3xl sm:text-4xl" x-t>The basics</h2>
+          <div class="mt-8 space-y-3">
+            <details id="cost" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">01</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>How much does it cost?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Nothing. There are no fees at any stage. Court or government costs, like filing fees, are explained to you first. If anyone asks for payment in the clinic’s name, report it to the Clinical Program Director.</p></div>
+            </details>
+            <details id="who-can-ask" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">02</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Who can ask for help?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Anyone can book. We put first the people who can’t afford a lawyer, such as low-income families, women and children facing abuse, senior citizens, PWDs and PDLs. Eligibility is checked at your interview, free.</p></div>
+            </details>
+            <details id="kinds-of-help" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">03</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>What kind of help can I get?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Legal advice, information about your rights, and help preparing documents like affidavits and demand letters. When appropriate, we help settle disputes or represent you. If another office can help better, we refer you.</p></div>
+            </details>
+            <details id="students" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">04</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Will a student handle my case?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Yes, with a lawyer behind every step. Law student practitioners interview you, research and draft under Rule 138-A. A supervising lawyer reviews and signs all work before it reaches you.</p></div>
+            </details>
+            <details id="privacy" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">05</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Is what I share kept private?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Yes. Everything you tell us is confidential and protected by lawyer-client privilege and RA 10173 (Data Privacy Act of 2012). Interviews take place in a private room.</p></div>
+            </details>
+            <details id="how-to-book" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">06</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>How do I book a visit?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Book online at <a href="index.html" class="font-semibold text-copper-dark underline underline-offset-4 hover:text-brick-dark">clinic.snmclaw.com</a> in English or Bisaya. It takes six short steps. Need help with the form? Email <a href="mailto:legal-clinic@snmclaw.com" class="font-semibold text-copper-dark underline underline-offset-4 hover:text-brick-dark">legal-clinic@snmclaw.com</a>.</p></div>
+            </details>
+            <details id="what-to-bring" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">07</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>What should I bring?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>A valid ID, your booking reference, and copies and originals of papers about your concern: contracts, receipts, text messages, barangay records or court notices. Bring a certificate of indigency if you have one.</p></div>
+            </details>
+            <details id="first-visit" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">08</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>What happens at my first visit?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>A law student practitioner interviews you, and you sign the printed intake form in front of staff. We check eligibility and conflicts, then tell you how we can help.</p></div>
+            </details>
+            <details id="attorney-client" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">09</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Does booking make the clinic my lawyer?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Not yet. The clinic provides free legal advice through supervised law student practitioners under Rule 138-A. Booking does not automatically establish an attorney-client relationship.</p></div>
+            </details>
+            <details id="turn-down" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">10</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Can the clinic turn down my case?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Yes. The Clinic reviews each request and reserves the right to decline a case for valid reasons. For example, we may decline if:</p><ul><li>Helping you would create a conflict of interest, such as when the Clinic already assists the other party in the same dispute.</li><li>You already have a lawyer handling the same matter.</li><li>Your request falls outside the Clinic’s services or eligibility guidelines.</li><li>The Clinic lacks the resources or available supervising lawyers to handle your case properly or meet an urgent deadline.</li></ul><p>If we cannot take your case, we will let you know and explain the reason when we can. Where appropriate, we will refer you to the Public Attorney’s Office (PAO), the Integrated Bar of the Philippines (IBP), or another office or agency that may be able to assist you.</p></div>
+            </details>
+          </div>
+        </section>
+        <section id="booking" class="scroll-mt-24" aria-labelledby="booking-title">
+          <p class="eyebrow"><span aria-hidden="true">02 · </span><span x-t>Booking online</span></p>
+          <h2 id="booking-title" class="mt-3 text-3xl sm:text-4xl" x-t>Booking online: your questions</h2>
+          <p class="mt-4 max-w-2xl text-lg leading-relaxed text-muted" x-t>About the Book a Visit form at clinic.snmclaw.com, from picking a slot to getting your reference.</p>
+          <aside class="mt-6 flex gap-4 rounded-md border-l-4 border-copper bg-copper/10 p-5 sm:p-6" role="note">
+            <svg class="mt-0.5 size-6 shrink-0 text-copper" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
+            <div class="space-y-2 text-sm leading-relaxed text-ink/80">
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-copper-dark" x-t>Have these ready</p>
+              <p x-t>A mobile number, a valid ID (type your name and birthday as they appear on it), your household’s monthly income (estimates are fine), and the name of the person or company your concern is against.</p>
+            </div>
+          </aside>
+          <div class="mt-8 space-y-3">
+            <details id="qualify-first" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">01</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Do I need to qualify before I book?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>No. Booking is free and open to everyone. You don’t need to prove anything first. Eligibility is checked at your intake interview.</p></div>
+            </details>
+            <details id="bisaya" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">02</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Can I fill in the form in Bisaya?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Yes. At the top of Step 1, under Language / Pinulongan, choose EN for English or VS for Bisaya. The questions and buttons switch at once.</p></div>
+            </details>
+            <details id="form-steps" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">03</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>What does the form ask?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Six steps, one at a time: a slot, your details, your household, your legal concern, what happened, and consent. The progress bar shows where you are, and you can go back to any finished step.</p></div>
+            </details>
+            <details id="days-times" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">04</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Which days and times can I pick?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Only the highlighted consultation days, up to 90 days ahead. Slots marked Not available are taken or have passed. Pick a day, then a time.</p></div>
+            </details>
+            <details id="income" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">05</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Why does the form ask about my income?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Only to check if you qualify for free legal aid, following Public Attorney’s Office standards. List who lives with you and what each earns a month. Estimates are fine.</p></div>
+            </details>
+            <details id="other-party" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">06</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Why do you need the other party’s name?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>The clinic can’t act against its own clients, so we check this name before anything else. If there are several, separate the names with semicolons.</p></div>
+            </details>
+            <details id="upload" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">07</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Can I upload my documents?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>You can attach photos or PDFs, but for now only their file names reach the clinic. Bring copies and the originals to your appointment.</p></div>
+            </details>
+            <details id="information-safe" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">08</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Is my information safe?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Yes. It is used only to assess your request and is protected under RA 10173 (Data Privacy Act of 2012). If you don’t agree to the privacy notice, the form can’t be sent online, but you can email the clinic instead.</p></div>
+            </details>
+            <details id="after-submit" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">09</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>What happens after I submit?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>You get a reference like <strong class="font-semibold text-ink">SNMC-2026-4K7Q2D</strong>. Take a screenshot or photo of it and show it at reception on your appointment day. Clinic staff review your request first.</p></div>
+            </details>
+            <details id="form-wont-send" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">10</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>What if the form won’t go through?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Booking closed? It opens again at the hours shown on the page. Too many requests? Wait a few minutes, then submit again. Something went wrong? Try again. Your answers stay on the page.</p></div>
+            </details>
+          </div>
+        </section>
+        <section id="getting-help" class="scroll-mt-24" aria-labelledby="getting-help-title">
+          <p class="eyebrow"><span aria-hidden="true">03 · </span><span x-t>Getting help</span></p>
+          <h2 id="getting-help-title" class="mt-3 text-3xl sm:text-4xl" x-t>Getting help from the clinic</h2>
+          <p class="mt-4 max-w-2xl text-lg leading-relaxed text-muted" x-t>More answers about who we help, how we help, and where we can reach you.</p>
+          <aside class="mt-6 flex gap-4 rounded-md border-l-4 border-copper bg-copper/10 p-5 sm:p-6" role="note">
+            <svg class="mt-0.5 size-6 shrink-0 text-copper" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <div class="space-y-2 text-sm leading-relaxed text-ink/80">
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-copper-dark" x-t>Not sure we can help?</p>
+              <p x-t>Book anyway, or email us. If your concern is outside what the clinic can do, we tell you why and point you to the office that can.</p>
+            </div>
+          </aside>
+          <div class="mt-8 space-y-3">
+            <details id="outside-lapu-lapu" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">01</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Do I have to live in Lapu-Lapu City?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>No. You can still book. We check at your intake interview whether the clinic can help, and if another office is better placed, we point you there.</p></div>
+            </details>
+            <details id="case-types" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">02</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>What kinds of cases do you handle?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Criminal, civil, labor, family, land and more. You don’t need the legal term. Describe your concern in a few words, and we sort out the category with you at intake.</p></div>
+            </details>
+            <details id="court" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">03</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Can you represent me in court?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Student practitioners can’t appear in court on their own. If your case needs a lawyer in court, the clinic tells you how it can help, and may refer you to PAO or the IBP.</p></div>
+            </details>
+            <details id="legal-missions" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">04</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Do you come to our barangay or island?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>The clinic holds legal missions in barangays, island communities and detention facilities from time to time. You can book online at any time.</p></div>
+            </details>
+            <details id="accessibility" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">05</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>I have a disability or trouble reading. Can you help?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Yes. We can arrange a Filipino Sign Language interpreter, large-print materials and an accessible room. Tell us what you need when you book.</p></div>
+            </details>
+            <details id="violence-at-home" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">06</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>I’m being hurt at home. What will you do?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>We act right away. We connect you to the police Women and Children Protection Desk, the City Social Welfare and Development Office or a partner shelter, and call ahead for you.</p></div>
+            </details>
+            <details id="pao-lawyer" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">07</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>I already have a PAO lawyer. Can you still help?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Usually not on the same case, because the clinic can’t take a case another lawyer already handles. You can still submit a request, and we will refer you.</p></div>
+            </details>
+            <details id="book-for-someone" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">08</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Can someone book for me?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>A relative or friend can help you fill in the form, but the details and the consent must be yours. You still come to the intake interview yourself.</p></div>
+            </details>
+            <details id="report-misconduct" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">09</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>How do I report misconduct by clinic staff?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Report it to the Clinical Program Director. The clinic has zero tolerance for abuse, harassment or asking for money. Complaints are handled in confidence.</p></div>
+            </details>
+          </div>
+        </section>
+        <section id="your-visit" class="scroll-mt-24" aria-labelledby="your-visit-title">
+          <p class="eyebrow"><span aria-hidden="true">04 · </span><span x-t>Your visit</span></p>
+          <h2 id="your-visit-title" class="mt-3 text-3xl sm:text-4xl" x-t>Before and after your visit</h2>
+          <p class="mt-4 max-w-2xl text-lg leading-relaxed text-muted" x-t>Practical answers about booking, waiting, and keeping in touch with the clinic.</p>
+          <aside class="mt-6 flex gap-4 rounded-md border-l-4 border-copper bg-copper/10 p-5 sm:p-6" role="note">
+            <svg class="mt-0.5 size-6 shrink-0 text-copper" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
+            <div class="space-y-2 text-sm leading-relaxed text-ink/80">
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-copper-dark" x-t>Keep your reference.</p>
+              <p x-t>Take a screenshot or photo of it after you submit, and bring it with a valid ID to every visit. Have it ready whenever you contact the clinic.</p>
+            </div>
+          </aside>
+          <div class="mt-8 space-y-3">
+            <details id="email-needed" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">01</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Do I need an email address?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>No. Only a mobile number is required. It is how the clinic reaches you about your booking, so type it carefully. Email is optional.</p></div>
+            </details>
+            <details id="phone-booking" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">02</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Can I book using my phone?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Yes. The form works on a phone or a computer. You need to be online with JavaScript turned on. If you see a notice about it, try another browser.</p></div>
+            </details>
+            <details id="hear-back" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">03</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>How soon will I hear from you?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Clinic staff review every request before your visit and contact you by mobile if anything needs to change. Your appointment stands unless we tell you otherwise.</p></div>
+            </details>
+            <details id="court-date" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">04</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>I have a court date coming up. What do I do?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Put the date and the court in Step 5. If the hearing is within 48 hours, don’t wait for your slot. Go to the nearest PAO or IBP office now.</p></div>
+            </details>
+            <details id="booking-hours" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">05</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Why is booking open only at certain hours?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>To keep the clinic’s bookings safe from spam and abuse. Outside those hours, the page tells you when it opens again. You can also email the clinic.</p></div>
+            </details>
+            <details id="security-check" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">06</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>What is the security check?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>A tick box that may show above Submit request. It keeps automated spam out. Tick it, then submit.</p></div>
+            </details>
+            <details id="reschedule" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">07</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Can I cancel or move my appointment?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Yes. Email the clinic as early as you can, with your name and reference number. Staff will help you pick a new slot.</p></div>
+            </details>
+            <details id="lost-reference" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">08</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>What if I lose my reference or miss my visit?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Email the clinic with your full name and mobile number. Staff can find your request and help you book again.</p></div>
+            </details>
+            <details id="case-updates" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">09</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Will you keep me updated on my case?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>Yes. Once the clinic takes your case, your student practitioner updates you at least every 15 days, and within a day of any notice from a court or office.</p></div>
+            </details>
+            <details id="costs-help" class="faq-item group scroll-mt-24 rounded-md bg-paper shadow-sm ring-1 ring-black/5 transition open:shadow-md">
+              <summary class="flex cursor-pointer list-none items-baseline gap-4 rounded-md p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brick sm:gap-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+                <span class="w-8 shrink-0 font-display text-2xl text-copper" aria-hidden="true">10</span>
+                <h3 class="flex-1 text-xl leading-snug text-ink sm:text-2xl" x-t>Can you help with travel, medical or document costs?</h3>
+                <svg class="size-5 shrink-0 self-center text-copper transition duration-200 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </summary>
+              <div class="space-y-3 px-5 pb-6 leading-relaxed text-muted sm:pl-[4.75rem] sm:pr-14 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_li]:marker:text-copper" x-t.html><p>If you qualify as indigent, you may get help with travel to court, required medical exams and document fees. Bring a barangay certificate of indigency and ask at your interview.</p></div>
+            </details>
+          </div>
+        </section>
+        </div>
+      </div>
+
+      <!-- Contact band: same wording as the pamphlet's "Need help?" block (no phone; online booking or email only) -->
+      <div class="container-site mt-20" data-reveal>
+        <div class="flex flex-col gap-8 rounded-md bg-ink p-8 text-white sm:p-10 lg:flex-row lg:items-center lg:justify-between">
+          <div class="max-w-2xl">
+            <h2 class="text-2xl sm:text-3xl" x-t>Need help? Email or book an appointment online.</h2>
+            <p class="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-rose" x-t>Visit</p>
+            <p class="mt-1.5 leading-relaxed text-white/75" x-t>Once you have secured an appointment, we will reach out to you before you visit us at SNMC School of Law, Soong, Lapu-Lapu City, Cebu.</p>
+          </div>
+          <div class="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col">
+            <a href="index.html" class="btn btn-primary" x-t>Book an appointment</a>
+            <a href="mailto:legal-clinic@snmclaw.com" class="btn border border-white/40 text-white hover:border-white hover:bg-white/10 active:bg-white/20"><span x-t>Email the clinic</span></a>
+          </div>
+        </div>
+        <p class="mt-6 text-center font-display text-lg text-muted">The law is for all.</p>
+      </div>
+    </section>
+  </main>
+
+  <site-footer></site-footer>
+</body>
+</html>

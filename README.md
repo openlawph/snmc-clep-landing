@@ -19,6 +19,7 @@ It's plain static HTML with no build step and no server-side code: upload the fi
 ```
 index.html          Book a Visit: "About the clinic" section, the 6-step intake wizard, then "Our goals" (the main page for now)
 book.html           Redirects to index.html so old links keep working
+faq.html            Frequently asked questions, EN / VS (same questions and wording as the printed FAQs pamphlet)
 404.html            "Page not found" (GitHub Pages shows it for any address that doesn't exist)
 home.html           Former home page (not linked in the nav for now)
 about.html          About Us (not linked in the nav for now)
@@ -45,6 +46,7 @@ assets/
   js/intake.js      Logic for the booking wizard (Alpine component "intake") + the field list, weekdays and default settings
   js/i18n.js        EN / VS translation helpers (x-t, $t) for the booking form
   js/i18n-vs.js     Bisaya wording, keyed by the English text
+  js/i18n-faq-vs.js Bisaya wording for the FAQ page (faq.html), keyed by the English text
   js/auth.js        PocketBase client (API URL) + sign-in helpers; guards pages marked data-auth-required
   js/login.js       Logic for the sign-in page (Alpine component "login")
   js/dashboard.js   Logic for the clinic dashboard (Alpine component "dashboard")
