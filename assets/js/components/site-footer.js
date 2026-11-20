@@ -28,6 +28,7 @@ customElements.define('site-footer', class extends HTMLElement {
           <div class="container-site flex flex-col gap-3 py-5 text-xs sm:flex-row sm:items-center sm:justify-between">
             <p>&copy; ${year} ${school}. Legal services are free of charge.</p>
             <div class="flex gap-5">
+              <a href="about.html" class="hover:text-white">About Us</a>
               <a href="faq.html" class="hover:text-white">FAQs</a>
               <!-- TODO: point these at the real Terms and Privacy pages when they exist -->
               <a href="#" class="hover:text-white">Terms &amp; Support</a>
