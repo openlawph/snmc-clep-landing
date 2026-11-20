@@ -30,9 +30,8 @@ customElements.define('site-footer', class extends HTMLElement {
             <div class="flex gap-5">
               <a href="about.html" class="hover:text-white">About Us</a>
               <a href="faq.html" class="hover:text-white">FAQs</a>
-              <!-- TODO: point these at the real Terms and Privacy pages when they exist -->
-              <a href="#" class="hover:text-white">Terms &amp; Support</a>
-              <a href="#" class="hover:text-white">Privacy Policy</a>
+              <a href="privacy.html" class="hover:text-white">Privacy Policy</a>
+              <!-- Terms & Support: link left out until the clinic has the text for that page -->
             </div>
           </div>
         </div>

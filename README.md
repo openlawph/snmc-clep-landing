@@ -22,6 +22,7 @@ book.html           Redirects to index.html so old links keep working
 faq.html            Frequently asked questions, EN / VS (same questions and wording as the printed FAQs pamphlet)
 404.html            "Page not found" (GitHub Pages shows it for any address that doesn't exist)
 home.html           Former home page (not linked in the nav for now)
+privacy.html        Privacy Policy, EN / VS (DRAFT, linked from the footer; needs the clinic's review)
 about.html          About Us, EN / VS (linked from the footer; wording from the "About the Clinic" document)
 services.html       Our Services (not linked in the nav for now)
 team.html           Our Team (not linked in the nav for now)
@@ -47,6 +48,7 @@ assets/
   js/i18n.js        EN / VS translation helpers (x-t, $t) for the booking form
   js/i18n-vs.js     Bisaya wording, keyed by the English text
   js/i18n-faq-vs.js Bisaya wording for the FAQ page (faq.html), keyed by the English text
+  js/i18n-privacy-vs.js Bisaya wording for the Privacy Policy page (privacy.html), keyed by the English text
   js/i18n-about-vs.js Bisaya wording for the About page (about.html), keyed by the English text
   js/auth.js        PocketBase client (API URL) + sign-in helpers; guards pages marked data-auth-required
   js/login.js       Logic for the sign-in page (Alpine component "login")
@@ -458,7 +460,7 @@ Things only an admin can do (outside this repo), in rough order of importance. T
 6. **Cloudflare:** make sure the PocketBase server only accepts connections from Cloudflare (firewall). PocketBase trusts the `CF-Connecting-IP` header for rate limits, so anyone who can reach the server directly could fake their address and get around the limits.
 7. **Semester job:** install `pocketbase/pb_hooks/semester-end.pb.js` (see "LSPs and semesters"), then add the current semester on the LSPs page.
 8. **Maintenance mode:** turn it **off** in Site Settings when the beta starts (it's on now). Check the **office and online booking hours** there too: both are Monday to Friday, 9:00 AM to 4:00 PM until someone changes them.
-9. **Content:** have a native Bisaya speaker review `assets/js/i18n-vs.js`, above all the "Annex D" section at the end, which is a draft. Add the real **emergency hotline** in Site Settings. Annex D and the form both mention **the Clinic's Privacy Policy**, but the site doesn't have one yet, and the footer link goes nowhere: the clinic needs to supply it.
+9. **Content:** have a native Bisaya speaker review `assets/js/i18n-vs.js`, above all the "Annex D" section at the end, which is a draft. Add the real **emergency hotline** in Site Settings. Annex D and the form both mention **the Clinic's Privacy Policy**. `privacy.html` is a **draft** written from what the site itself says and does, not from a clinic document: have Atty. Basalo or the clinic's data protection contact review (and the Bisaya checked) before relying on it. There is no Terms & Support page yet; the footer link was removed until the clinic has the text.
 10. **Accounts:** one sign-in per person, LSPs included, so the audit log names the right person.
 11. **Someone looks at the Dashboard every day.** There are no emails without files on the server, so emergencies and anything that has slipped wait in **Needs attention** until someone opens it.
 11. **Slot capacity:** it starts at 1 client per time slot. Change it in Intake Settings if the clinic can see more.

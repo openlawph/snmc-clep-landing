@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy · SNMC Law Legal Clinic</title>
+  <meta name="description" content="How the SNMC Law Legal Clinic collects, uses, shares and protects the personal information you give us through this website, in line with the Data Privacy Act of 2012.">
+
+  <!-- ===== Shared head: keep identical on every page ===== -->
+  <!-- Where this page may load scripts, styles, images and data from. Add a host here when you add a CDN library or API (README → "Security"). -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://capi.snmclaw.com; connect-src 'self' https://capi.snmclaw.com; frame-src https://challenges.cloudflare.com https://maps.google.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
+  <link rel="icon" type="image/svg+xml" href="assets/img/snmc-legal-aid.svg">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="assets/js/theme.js"></script>
+  <script src="assets/js/preloader.js"></script><!-- logo preloader: not deferred, it covers the first paint -->
+  <script src="assets/js/maintenance.js"></script><!-- public pages only: maintenance mode (not deferred) -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3/dist/index.global.js" integrity="sha384-2ql948lIdLcGEE0/qxNiudyTjgauA3RDJERu5xW75kFCvSl5a9odyQYCb6tEjnmB" crossorigin="anonymous" defer></script><!-- deferred: the preloader covers the page until the styles are built -->
+  <script src="assets/js/components.js" defer></script>
+  <script src="assets/js/components/site-header.js" defer></script>
+  <script src="assets/js/components/site-footer.js" defer></script>
+  <script src="assets/js/components/page-intro.js" defer></script>
+  <script src="assets/js/components/legal-notice.js" defer></script>
+  <script src="assets/js/components/contact-info.js" defer></script>
+  <script src="assets/js/i18n.js" defer></script><!-- page-specific: EN / VS translation helpers -->
+  <script src="assets/js/i18n-privacy-vs.js" defer></script><!-- page-specific: Bisaya wording for this page -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.5/dist/cdn.min.js" integrity="sha384-FYLKjwG3aohNhNZoVG8sY/5ntunm+MqylL90Q+rT3OM7AwV9/BKFjk/RjoIpIgsI" crossorigin="anonymous" defer></script>
+  <!-- ===== /Shared head ===== -->
+</head>
+<body class="bg-cream text-ink">
+  <site-header active="privacy"></site-header>
+
+  <!--
+    Privacy Policy. DRAFT written from what the site itself says and does (the booking form's consent text, the FAQ,
+    the README); it is not from a clinic-supplied document. Have Atty. Basalo / the clinic's data protection contact
+    review it before relying on it. Bisaya wording: assets/js/i18n-privacy-vs.js, keyed by the English exactly as written here.
+  -->
+  <!-- x-data here so the translated text (x-t) is processed -->
+  <main x-data>
+    <page-intro eyebrow="SNMC Law Legal Clinic" title="Privacy Policy" i18n>
+      <p x-t>How the SNMC Law Legal Clinic handles the personal information you give us, in line with the Data Privacy Act of 2012.</p>
+    </page-intro>
+
+    <section class="py-16 sm:py-24">
+      <!-- Language: the same setting as the booking form's picker ($store.i18n.lang), remembered in this browser -->
+      <div class="container-site mb-8 flex flex-wrap items-center justify-end gap-3">
+        <label for="lang-privacy" class="text-sm font-semibold">Language / Pinulongan</label>
+        <select id="lang-privacy" x-model="$store.i18n.lang" class="rounded-sm border border-black/15 bg-white px-3 py-1.5 text-sm font-semibold text-ink focus:border-copper focus:outline-none focus:ring-2 focus:ring-copper/30">
+          <option value="en">EN — English</option>
+          <option value="vs">VS — Visaya</option>
+        </select>
+      </div>
+
+      <div class="container-site grid max-w-4xl gap-6">
+        <article class="card" data-reveal>
+          <p class="eyebrow">01</p>
+          <h2 class="mt-3 text-3xl" x-t>Who we are</h2>
+          <p class="mt-4 leading-relaxed text-muted" x-t>The SNMC Law Legal Clinic is run by law student practitioners of Sto. Niño Mactan College of Law, under the supervision of lawyers. We are responsible for the personal information you give us through this website.</p>
+        </article>
+        <article class="card" data-reveal>
+          <p class="eyebrow">02</p>
+          <h2 class="mt-3 text-3xl" x-t>What we collect</h2>
+          <p class="mt-4 leading-relaxed text-muted" x-t>When you book a visit online, we ask for:</p>
+          <ul class="mt-4 space-y-2.5 leading-relaxed text-muted">
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span><span x-t>Your name and personal details, such as age, sex, civil status and occupation.</span></li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span><span x-t>Your contact details and address.</span></li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span><span x-t>Household, income and property information, to check if you qualify for free legal help.</span></li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span><span x-t>The facts of your concern, the name of the other party, and whether a lawyer already handles your matter.</span></li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span><span x-t>Your consent and your typed signature.</span></li>
+          </ul>
+          <p class="mt-4 leading-relaxed text-muted" x-t>Some of this may be sensitive personal information. Please give us only what the form asks for.</p>
+        </article>
+        <article class="card" data-reveal>
+          <p class="eyebrow">03</p>
+          <h2 class="mt-3 text-3xl" x-t>Why we use it</h2>
+          <p class="mt-4 leading-relaxed text-muted" x-t>We use your information only to:</p>
+          <ul class="mt-4 space-y-2.5 leading-relaxed text-muted">
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span><span x-t>decide if you qualify for free legal assistance;</span></li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span><span x-t>check for conflicts of interest;</span></li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span><span x-t>contact you about your appointment; and</span></li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span><span x-t>give you legal service and keep our records.</span></li>
+          </ul>
+        </article>
+        <article class="card" data-reveal>
+          <p class="eyebrow">04</p>
+          <h2 class="mt-3 text-3xl" x-t>Who can see it</h2>
+          <p class="mt-4 leading-relaxed text-muted" x-t>Your information is seen only by the clinic staff, law student practitioners and supervising lawyers who work on your request. We do not sell it. We share it outside the clinic only when you ask us to, when it is needed to refer you to another office, or when the law requires it.</p>
+        </article>
+        <article class="card" data-reveal>
+          <p class="eyebrow">05</p>
+          <h2 class="mt-3 text-3xl" x-t>Confidentiality</h2>
+          <p class="mt-4 leading-relaxed text-muted" x-t>All information you provide is treated with strict confidentiality in accordance with Republic Act No. 10173 (Data Privacy Act of 2012) and the attorney-client privilege.</p>
+        </article>
+        <article class="card" data-reveal>
+          <p class="eyebrow">06</p>
+          <h2 class="mt-3 text-3xl" x-t>How it is stored</h2>
+          <p class="mt-4 leading-relaxed text-muted" x-t>Your booking is stored on the clinic’s server, and only signed-in clinic staff can open it. The booking form uses a Cloudflare security check to keep out spam.</p>
+        </article>
+        <article class="card" data-reveal>
+          <p class="eyebrow">07</p>
+          <h2 class="mt-3 text-3xl" x-t>What your browser keeps</h2>
+          <p class="mt-4 leading-relaxed text-muted" x-t>This site saves your language choice (English or Bisaya) in your browser so it remembers it next time. You can clear it in your browser settings.</p>
+        </article>
+        <article class="card" data-reveal>
+          <p class="eyebrow">08</p>
+          <h2 class="mt-3 text-3xl" x-t>Your rights</h2>
+          <p class="mt-4 leading-relaxed text-muted" x-t>Under the Data Privacy Act, you may:</p>
+          <ul class="mt-4 space-y-2.5 leading-relaxed text-muted">
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span><span x-t>ask what information we hold about you and get a copy;</span></li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span><span x-t>dispute and correct anything that is wrong;</span></li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span><span x-t>withdraw your consent;</span></li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span><span x-t>object to how we use it, or ask us to block or delete it, as the law allows; and</span></li>
+            <li class="flex gap-3"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-copper"></span><span x-t>complain to the National Privacy Commission.</span></li>
+          </ul>
+          <p class="mt-4 leading-relaxed text-muted" x-t.html>To use any of these rights, email <a href="mailto:legal-clinic@snmclaw.com" class="font-semibold text-copper-dark underline underline-offset-4 hover:text-brick-dark">legal-clinic@snmclaw.com</a>. If you withdraw your consent, we cannot continue to process your online request.</p>
+        </article>
+        <article class="card" data-reveal>
+          <p class="eyebrow">09</p>
+          <h2 class="mt-3 text-3xl" x-t>How long we keep it</h2>
+          <p class="mt-4 leading-relaxed text-muted" x-t>We keep your information only as long as we need it for the purposes above, or as the law requires.</p>
+        </article>
+        <article class="card" data-reveal>
+          <p class="eyebrow">10</p>
+          <h2 class="mt-3 text-3xl" x-t>Changes to this policy</h2>
+          <p class="mt-4 leading-relaxed text-muted" x-t>We may update this policy. The date below shows when it last changed.</p>
+          <p class="mt-4 leading-relaxed text-muted" x-t>Last updated: 21 November 2026</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <site-footer></site-footer>
+</body>
+</html>
