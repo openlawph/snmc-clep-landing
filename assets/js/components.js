@@ -30,11 +30,10 @@ window.SITE = {
   emblem: 'assets/img/snmc-legal-aid-emblem-white.svg',
 
   // Top navigation. `key` matches the `active` attribute on <site-header>.
-  // For now the booking page (index.html) and the FAQs (faq.html) are the only pages linked. home.html, about.html,
-  // services.html, team.html and donate.html still exist; add them back here to relink them.
+  // For now the booking page (index.html) is the only public page linked here (the FAQs are linked from the footer).
+  // home.html, about.html, services.html, team.html and donate.html still exist; add them back here to relink them.
   nav: [
     { key: 'book', label: 'Book a Visit', href: 'index.html' },
-    { key: 'faq', label: 'FAQs', href: 'faq.html' },
     { key: 'login', label: 'Staff Login', href: 'login.html' },
   ],
 };
